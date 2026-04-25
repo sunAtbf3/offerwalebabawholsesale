@@ -10,9 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@reduxjs/toolkit": "^2.11.2",
+    "@tanstack/react-virtual": "^3.13.24",
+    "axios": "^1.15.2",
     "lucide-react": "^1.8.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "react-redux": "^9.2.0",
     "react-router-dom": "^7.14.2",
     "swiper": "^12.1.3"
   },
