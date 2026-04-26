@@ -352,20 +352,20 @@ export const {
 
 // ── Selectors ─────────────────────────────────────────────────────────────────
 export const selectWishlistItems      = (state) => state.userWishlist.items;
-export const selectWishlistGuestItems = (state) => state.userWishlist.guestItems;
+export const selectWishlistGuestItems = (state) => state.userWishlist?.guestItems;
 export const selectWishlistCount      = (state) => state.userWishlist.totalItems;
 export const selectWishlistLoading    = (state) => state.userWishlist.loading;
 export const selectWishlistError      = (state) => state.userWishlist.error;
 
 // ✅ Check if a specific product slug is wishlisted (works for both logged in + guest)
 export const selectIsWishlisted = (slug) => (state) => {
-//   const { isLoggedIn } = state.auth;
-//   if (isLoggedIn) {
+  const { isLoggedIn } = state.auth;
+  if (isLoggedIn) {
     return state.userWishlist?.items.some(
       (item) => item?.product?.slug === slug
     );
-//   }
-//   return state.userWishlist.guestItems.includes(slug);
+  }
+  return state.userWishlist?.guestItems.includes(slug);
 };
 
 

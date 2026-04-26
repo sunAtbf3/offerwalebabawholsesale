@@ -40,7 +40,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
-      <Route path="/product/:productId" element={<ProductDetail />} />
+      <Route path="/product/:slug" element={<ProductDetail />} />
       <Route path="/category/:slug" element={<CatProducts />} />
       <Route path="/activate" element={<ActivatePage />} />
               <Route path="/shopByCategory/:slug" element={<ShopByPrice />} />

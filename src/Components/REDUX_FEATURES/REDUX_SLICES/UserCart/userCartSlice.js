@@ -602,40 +602,17 @@ export const selectLastOrder = (state) => state.userCart.lastOrder;
 // ✅ FIXED — uses _productSlug we attached, works for both fresh + refresh
 export const selectCartItemBySlug = (productSlug) => (state) => {
   if (!productSlug) return null;
-//   const { isLoggedIn } = state.auth;
-//   if (isLoggedIn) {
-//     return state.userCart.items.find(
-//       (item) => item._productSlug === productSlug
-//     ) ?? null;
-// //   }
-  return state.userCart?.guestItems.find(
-    (i) => i.productSlug === productSlug
-  ) ?? null;
-};
 
-// ✅ FIXED — derived from selectCartItemBySlug
-export const selectIsInCart = (productSlug) => (state) => {
-  if (!productSlug) return false;
-//   const { isLoggedIn } = state.auth;
-//   if (isLoggedIn) {
-//     return state.userCart.items.some(
-//       (item) => item._productSlug === productSlug
-//     );
-//   }
-  return state.userCart.guestItems.some((i) => i.productSlug === productSlug);
-};
+  const { isLoggedIn } = state.auth;
 
-// ✅ Display count
-export const selectDisplayCartCount = (state) => {
-//   const { isLoggedIn } = state.auth;
-//   return isLoggedIn
-  return
-    // ? state.userCart.totalItems
-    state.userCart.guestItems.reduce((sum, i) => sum + (i.quantity || 1), 0);
+  const list = isLoggedIn
+    ? state.userCart?.items
+    : state.userCart?.guestItems;
+
+  return list.find((i) => i?.productSlug === productSlug) ?? null;
 };
 
 export default userCartSlice.reducer;
-
 // import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 // import axiosInstance from "../../../SERVICES/axiosInstance";
 
@@ -1161,4 +1138,4 @@ export default userCartSlice.reducer;
 //     : state.userCart.guestItems.reduce((sum, i) => sum + (i.quantity || 1), 0);
 // };
 
-// export default userCartSlice.reducer;
+// export default userCartSlice.reducer

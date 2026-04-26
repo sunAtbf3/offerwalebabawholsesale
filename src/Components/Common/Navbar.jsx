@@ -9,10 +9,13 @@ import { openModal } from '../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerSl
 import { logout, selectUser, selectIsAuthenticated } from '../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
 import { useLogoutMutation } from '../REDUX_FEATURES/REDUX_SLICES/authApi/authApi';
 import LOGO from "../../assets/logo2.png";
+// import { selectDisplayedData } from 'recharts/types/state/selectors/axisSelectors';
+import { selectCartTotalItems } from '../REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice';
 
 const Navbar = () => {
   const dispatch = useDispatch();
   const user = useSelector(selectUser);
+  const cartCount = useSelector(selectCartTotalItems);
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const [logoutMutation] = useLogoutMutation();
   
@@ -141,8 +144,11 @@ const Navbar = () => {
               </div>
               <div className="relative p-2 lg:p-3 bg-amber-500/10 hover:bg-amber-500/20 rounded-full cursor-pointer border border-amber-500/20">
                 <ShoppingCart size={22} className="text-amber-600" />
-                <span className="absolute -top-1 -right-1 bg-[#0F172A] text-white text-[9px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-white">24</span>
-              </div>
+{cartCount > 0 && (
+  <span className="absolute -top-1 -right-1 bg-[#0F172A] text-white text-[9px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-white">
+    {cartCount > 99 ? "99+" : cartCount}
+  </span>
+)}              </div>
             </div>
 
             <div className="h-8 w-[1px] bg-slate-200 mx-1 hidden sm:block"></div>
