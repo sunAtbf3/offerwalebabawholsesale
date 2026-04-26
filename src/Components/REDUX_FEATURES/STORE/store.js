@@ -20,8 +20,6 @@ import { authApi } from "../REDUX_SLICES/authApi/authApi";
 import authReducer from "../REDUX_SLICES/authApi/authSlice";
 
 // ========== ADMIN PANEL IMPORTS (EXTRACTED FROM FIRST FILE) ==========
-// import adminAuthReducer from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/adminAuthSlice";
-// import { adminAuthApi } from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/adminAuthApi";
 import adminProductCreateReducer from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/adminProductCreateSlice";
 import adminGetProductsReducer from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/adminGetProductsSlice";
 import adminEditProductReducer from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/adminEditProductSlice";
@@ -48,7 +46,6 @@ export const store = configureStore({
     wholesaler: wholesalerReducer,
 
     // ========== ADMIN PANEL REDUCERS (EXTRACTED FROM FIRST FILE) ==========
-    // adminAuth: adminAuthReducer,
     adminProductCreate: adminProductCreateReducer,
     adminGetProducts: adminGetProductsReducer,
     adminEditProduct: adminEditProductReducer,
@@ -58,7 +55,6 @@ export const store = configureStore({
     staff: staffReducer,
     seoUi: seoUiReducer,
     adminOrdersUi: adminOrdersUiReducer,
-    // [adminAuthApi.reducerPath]: adminAuthApi.reducer,
     [userAnalyticsApi.reducerPath]: userAnalyticsApi.reducer,
     [seoAnalyticsApi.reducerPath]: seoAnalyticsApi.reducer,
     [adminOrdersApi.reducerPath]: adminOrdersApi.reducer,
@@ -81,7 +77,6 @@ export const store = configureStore({
       authApi.middleware,
       // ADMIN MIDDLEWARES (EXTRACTED FROM FIRST FILE)
       userAnalyticsApi.middleware,
-      // adminAuthApi.middleware,
       seoAnalyticsApi.middleware,
       adminOrdersApi.middleware,
       adminWholesalerApi.middleware,
