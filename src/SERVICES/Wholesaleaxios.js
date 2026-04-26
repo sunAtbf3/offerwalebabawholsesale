@@ -12,7 +12,7 @@ const wholesaleAxios = axios.create({
   withCredentials: true, // sends refreshToken cookie
   headers: {
     "Content-Type": "application/json",
-    "X-Store-Type": "wholesale", // ← backend reads this to return wholesale data
+    "x-storefront": "wholesale", // ← backend reads this to return wholesale data
   },
 });
 
