@@ -140,7 +140,7 @@ const WholesaleProductDetail = () => {
 
   // ── RTK Query ─────────────────────────────────────────────────────────────
   const {
-    data: product,
+    data: product,  
     isLoading,
     isError,
     error,
