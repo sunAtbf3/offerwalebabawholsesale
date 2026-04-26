@@ -77,42 +77,40 @@
       "label": "Under ₹299",
       "sublabel": "per unit · MOQ 10+",
       "badge": "Best Value",
-      "badgeColor": "bg-green-600"
+      "badgeColor": "bg-green-600",
+      "path": "/shopByCategory/under-299"
     },
     {
       "id": 2,
       "label": "Under ₹999",
       "sublabel": "per unit · MOQ 10+",
       "badge": "Must Buy",
-      "badgeColor": "bg-amber-500"
+      "badgeColor": "bg-amber-500",
+      "path": "/shopByCategory/under-999"
     },
     {
       "id": 3,
       "label": "Under ₹2,999",
       "sublabel": "per unit · MOQ 10+",
       "badge": "Hot",
-      "badgeColor": "bg-red-500"
+      "badgeColor": "bg-red-500",
+      "path": "/shopByCategory/under-2999"
     },
     {
       "id": 4,
       "label": "Under ₹4,999",
       "sublabel": "per unit · MOQ 50+",
       "badge": "Super Saver",
-      "badgeColor": "bg-blue-600"
+      "badgeColor": "bg-blue-600",
+      "path": "/shopByCategory/under-4999"
     },
     {
       "id": 5,
-      "label": "Under ₹4,999",
-      "sublabel": "per unit · MOQ 10+",
-      "badge": "Super Saver",
-      "badgeColor": "bg-green-600"
-    },
-    {
-      "id": 6,
       "label": "Above ₹5,000",
       "sublabel": "per unit · MOQ 10+",
       "badge": "Premium",
-      "badgeColor": "bg-purple-600"
+      "badgeColor": "bg-purple-600",
+      "path": "/shopByCategory/above-5000"
     }
   ],
   "bestsellerCategories": [

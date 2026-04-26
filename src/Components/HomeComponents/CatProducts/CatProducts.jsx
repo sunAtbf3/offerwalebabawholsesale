@@ -142,6 +142,7 @@ const CatProducts = () => {
     baseArgs:  { slug },
     limit:     8,
     dataKey:   "products",
+    skip: !slug, 
   });
 
   // ── Derived ────────────────────────────────────────────────────────────────

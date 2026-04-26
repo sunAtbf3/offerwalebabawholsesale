@@ -6,6 +6,7 @@ import Home from './Components/Website_Pages/Home';
 import ProductDetail from './Components/Website_Pages/ProductDetail';
 import CatProducts from './Components/HomeComponents/CatProducts/CatProducts'; // ← add this
 import './App.css';
+import ShopByPrice from './Components/HomeComponents/ShopByWHoleSalePrice/ShopByPrice';
 
 function App() {
   return (
@@ -14,7 +15,9 @@ function App() {
       <Routes>
         <Route path="/"                  element={<Home />} />
         <Route path="/product/:productId" element={<ProductDetail />} />
+        {/* <Route path="/product/productId" element={<ProductDetail />} /> */}
         <Route path="/category/:slug"     element={<CatProducts />} /> {/* ← add this */}
+        <Route path="/shopByCategory/:slug" element={<ShopByPrice />} />
       </Routes>
       <Footer />
     </BrowserRouter>

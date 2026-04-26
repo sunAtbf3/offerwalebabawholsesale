@@ -1,27 +1,14 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// WholesaleProductCard.jsx
-// Same visual structure as ecom ProductCard.
-// Key differences:
-//   1. Shows variant.price.base as the wholesale price
-//   2. Shows MOQ badge (variant.minimumOrderQuantity)
-//   3. "Add to Bag" button is placeholder — cart integration in next phase
-//   4. Navigates to /products/:slug (same route as ecom — same website, same backend)
-//   5. No Redux cart/wishlist calls yet — just UI
-//
-// Data shape (from backend with X-Store-Type: wholesale):
-//   variant.price.base              → wholesale base price
-//   variant.price.sale              → sale price (ignore isSaleActive / finalPrice)
-//   variant.minimumOrderQuantity    → MOQ
-//   variant.wholesale               → true (confirms wholesale variant)
-//   variant.channelVisibility.wholesale → "active"
-// ─────────────────────────────────────────────────────────────────────────────
-
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, Star, ShoppingBag, Package } from "lucide-react";
-import LazyImage from "./LazyImage/LazyImage"; // same LazyImage as ecom
+import { useDispatch, useSelector } from "react-redux";
+import { Eye, Star, ShoppingBag, Package, Heart, Loader2, Minus, Plus } from "lucide-react";
+import LazyImage from "./LazyImage/LazyImage";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+import { useGetAllCategoriesQuery } from "../REDUX_FEATURES/REDUX_SLICES/SHOP_BY_CATEGORY/categoriesApi";
+import { addToCart, updateCartItem, removeCartItem, addGuestCartItem, updateGuestCartItem, removeGuestCartItem, selectCartItemBySlug } from "../REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice";
+import { addToWishlist, removeFromWishlist, addGuestItem, removeGuestItem, selectIsWishlisted } from "../REDUX_FEATURES/REDUX_SLICES/UserWIshlist/userWishlistSLice";
+import { toast } from "react-toastify";
+
 const formatPrice = (n) => {
   if (n == null) return "—";
   return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(n);
@@ -33,60 +20,149 @@ const formatCount = (count) => {
   return Math.floor(count / 100) * 100 + "+";
 };
 
-// ── WholesaleProductCard ──────────────────────────────────────────────────────
 const WholesaleProductCard = ({ product, index = 0 }) => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
-  if (!product) return null;
+  const wishlisted = useSelector(selectIsWishlisted(product?.slug));
+  const cartItem   = useSelector(selectCartItemBySlug(product?.slug));
 
-  // ── Derived from API response ─────────────────────────────────────────────
-  const variant  = product.variants?.[0] ?? {};
+  const { data: categories = [] } = useGetAllCategoriesQuery();
 
-  // Price — read base & sale directly, ignore finalPrice/isSaleActive
-  const basePrice  = variant.price?.base ?? null;
-  const salePrice  = variant.price?.sale ?? null;
-  // Only show discount if sale is genuinely lower than base
+  const [localLoading, setLocalLoading] = React.useState({
+    add: false, update: false, remove: false, wishlist: false,
+  });
+  const setL = (k, v) => setLocalLoading((p) => ({ ...p, [k]: v }));
+  const isProcessing = localLoading.add || localLoading.update || localLoading.remove;
+
+  const getCategoryName = (productCategory) => {
+    if (!productCategory) return "";
+    const found = categories.find(
+      (cat) => cat._id === productCategory || cat.name === productCategory
+    );
+    return found ? found.name : productCategory;
+  };
+
+  const variant     = product?.variants?.[0] ?? {};
+  const title       = product?.title || product?.name || "Product";
+  const basePrice   = variant.price?.base ?? null;
+  const salePrice   = variant.price?.sale ?? null;
   const hasDiscount = basePrice != null && salePrice != null && salePrice < basePrice;
   const discountPct = hasDiscount
     ? Math.round(((basePrice - salePrice) / basePrice) * 100)
     : null;
-
-  // MOQ — lives at variant level
-  const moq = variant.minimumOrderQuantity ?? variant.price?.minimumOrderQuantity ?? null;
-
-  // Image
-  const imgUrl = variant.images?.[0]?.url || null;
-
-  // Stock
+  const moq      = variant.minimumOrderQuantity ?? variant.price?.minimumOrderQuantity ?? null;
+  const imgUrl   = variant.images?.[0]?.url || null;
   const maxStock = variant.inventory?.trackInventory
     ? (variant.inventory?.quantity ?? 0)
     : Infinity;
-  const inStock = maxStock > 0;
-
-  // Meta
-  const title    = product.title || product.name || "Product";
-  const category = typeof product.category === "object"
+  const inStock    = maxStock > 0;
+  const isInCart   = !!cartItem;
+  const currentQty = cartItem?.quantity ?? 0;
+  const isAtMax    = currentQty >= maxStock && maxStock !== Infinity;
+  const category   = typeof product?.category === "object"
     ? product.category?.name
-    : product.category || "";
+    : product?.category || "";
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleCardClick = () => {
-    if (product?.slug) navigate(`/products/${product.slug}`);
+    if (product?.slug) navigate(`/product/${product.slug}`);
   };
 
-  const handleView = (e) => {
+  // ── Wishlist — guest only abhi ke liye ────────────────────────────────────
+  const handleWishlist = async (e) => {
     e.stopPropagation();
-    if (product?.slug) navigate(`/products/${product.slug}`);
+    if (!product?.slug || localLoading.wishlist) return;
+    setL("wishlist", true);
+    try {
+      if (wishlisted) {
+        dispatch(removeGuestItem(product.slug));
+        toast.success("Removed", { icon: "💔" });
+      } else {
+        dispatch(addGuestItem(product.slug));
+        toast.success("Saved to wishlist", { icon: "❤️" });
+      }
+    } catch (err) {
+      toast.error(err?.message || "Wishlist action failed");
+    } finally {
+      setL("wishlist", false);
+    }
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Cart — guest only abhi ke liye ───────────────────────────────────────
+  const handleAddToCart = async (e) => {
+    e.stopPropagation();
+    if (isInCart || isProcessing || !inStock || !product?.slug) return;
+    setL("add", true);
+    try {
+      dispatch(addGuestCartItem({
+        productId:   product._id,
+        productSlug: product.slug,
+        variantId:   variant?._id?.toString() || "",
+        quantity:    moq || 1,
+      }));
+      toast.success("Added to cart");
+    } catch (err) {
+      toast.error(err?.message || "Failed to add to cart");
+    } finally {
+      setL("add", false);
+    }
+  };
+
+  const handleIncrement = async (e) => {
+    e.stopPropagation();
+    if (isAtMax) { toast.warning(`Max stock: ${maxStock}`); return; }
+    if (isProcessing) return;
+    setL("update", true);
+    try {
+      dispatch(updateGuestCartItem({
+        productSlug: product.slug,
+        variantId:   variant?._id?.toString() || "",
+        quantity:    currentQty + 1,
+      }));
+    } catch (err) {
+      toast.error(err?.message || "Failed to update");
+    } finally {
+      setL("update", false);
+    }
+  };
+
+  const handleDecrement = async (e) => {
+    e.stopPropagation();
+    if (isProcessing) return;
+    const newQty = currentQty - 1;
+    try {
+      if (newQty <= 0) {
+        setL("remove", true);
+        dispatch(removeGuestCartItem({
+          productSlug: product.slug,
+          variantId:   variant?._id?.toString() || "",
+        }));
+        toast.info("Removed from cart");
+      } else {
+        setL("update", true);
+        dispatch(updateGuestCartItem({
+          productSlug: product.slug,
+          variantId:   variant?._id?.toString() || "",
+          quantity:    newQty,
+        }));
+      }
+    } catch (err) {
+      toast.error(err?.message || "Failed to update");
+    } finally {
+      setL("update", false);
+      setL("remove", false);
+    }
+  };
+
+  if (!product) return null;
+
   return (
     <div
       className="group relative flex flex-col cursor-pointer rounded-2xl bg-white border border-zinc-100 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden"
       style={{ animationDelay: `${index * 50}ms` }}
       onClick={handleCardClick}
     >
-      {/* ── IMAGE ── */}
+      {/* IMAGE */}
       <div className="relative w-full aspect-square bg-zinc-50 overflow-hidden">
         <LazyImage
           src={imgUrl}
@@ -96,7 +172,6 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
 
-        {/* Out of stock overlay */}
         {!inStock && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
             <span className="text-white text-[10px] md:text-[13px] font-black uppercase tracking-widest bg-black/60 px-3 py-1 rounded-full">
@@ -105,7 +180,6 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
           </div>
         )}
 
-        {/* Discount badge */}
         {discountPct && inStock && (
           <div className="absolute top-2 left-2 z-10">
             <span className="text-[10px] bg-[#EB4C4C] text-white px-2 py-0.5 rounded-md shadow-sm font-bold">
@@ -114,7 +188,6 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
           </div>
         )}
 
-        {/* MOQ badge — top left below discount or standalone */}
         {moq && (
           <div className={`absolute ${discountPct ? "top-8" : "top-2"} left-2 z-10`}>
             <span className="flex items-center gap-1 text-[10px] bg-[#F7A221] text-white px-2 py-0.5 rounded-md shadow-sm font-bold">
@@ -124,14 +197,29 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
           </div>
         )}
 
-        {/* Action buttons */}
         <div className="absolute top-2 right-2 flex flex-col gap-1.5 z-10
           md:translate-x-10 md:opacity-0
           md:group-hover:translate-x-0 md:group-hover:opacity-100
           transition-all duration-300"
         >
           <button
-            onClick={handleView}
+            onClick={handleWishlist}
+            disabled={localLoading.wishlist}
+            aria-label="Toggle wishlist"
+            className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all active:scale-90 ${
+              wishlisted
+                ? "bg-red-500 text-white"
+                : "bg-white/90 backdrop-blur-sm text-zinc-600 hover:bg-red-500 hover:text-white"
+            } disabled:opacity-50`}
+          >
+            {localLoading.wishlist
+              ? <Loader2 size={13} className="animate-spin" />
+              : <Heart size={14} className={wishlisted ? "fill-current" : ""} />
+            }
+          </button>
+
+          <button
+            onClick={(e) => { e.stopPropagation(); handleCardClick(); }}
             aria-label="View product"
             className="w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md text-zinc-600 hover:bg-zinc-900 hover:text-white transition-all active:scale-90"
           >
@@ -140,17 +228,15 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
         </div>
       </div>
 
-      {/* ── CONTENT ── */}
+      {/* CONTENT */}
       <div className="flex flex-col flex-1 p-2.5 sm:p-3 gap-1">
 
-        {/* Category */}
         {category && (
           <span className="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-400 font-medium truncate">
-            {category}
+            {getCategoryName(category)}
           </span>
         )}
 
-        {/* Title + Rating */}
         <div className="flex items-start justify-between gap-1">
           <h3 className="text-xs sm:text-sm font-semibold text-zinc-900 line-clamp-2 group-hover:text-[#F7A221] transition-colors leading-snug flex-1">
             {title}
@@ -161,7 +247,6 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
           </div>
         </div>
 
-        {/* Sold info */}
         {product?.soldInfo?.count > 0 && (
           <p className="text-[9px] sm:text-[10px] text-zinc-500 hidden sm:block">
             <span className="font-bold text-red-500">
@@ -171,28 +256,20 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
           </p>
         )}
 
-        {/* ── PRICE SECTION (wholesale) ─────────────────────────────────────── */}
         <div className="flex flex-col gap-0.5 mt-1">
-          {/* Wholesale label */}
           <span className="text-[9px] uppercase tracking-widest text-[#F7A221] font-bold">
             Wholesale Price
           </span>
-
           <div className="flex items-center gap-1.5">
-            {/* Show sale price as main if available and lower, else show base */}
             <span className="text-sm sm:text-base font-bold text-zinc-900">
               ₹{formatPrice(hasDiscount ? salePrice : basePrice)}
             </span>
-
-            {/* Strikethrough base if there's a discount */}
             {hasDiscount && (
               <span className="text-[10px] sm:text-xs text-zinc-400 line-through">
                 ₹{formatPrice(basePrice)}
               </span>
             )}
           </div>
-
-          {/* MOQ info line below price */}
           {moq && (
             <p className="text-[10px] text-zinc-500 font-medium">
               Min. order:{" "}
@@ -201,27 +278,58 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
           )}
         </div>
 
-        {/* ── ADD TO BAG (placeholder — cart integration in next phase) ── */}
         <div className="mt-auto pt-2" onClick={(e) => e.stopPropagation()}>
           {!inStock ? (
-            <button
-              disabled
-              className="w-full py-2 text-[10px] font-bold bg-zinc-100 text-zinc-400 rounded-xl cursor-not-allowed"
-            >
+            <button disabled className="w-full py-2 text-[10px] font-bold bg-zinc-100 text-zinc-400 rounded-xl cursor-not-allowed">
               Out of Stock
             </button>
-          ) : (
+          ) : !isInCart ? (
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                // TODO: cart integration in next phase
-                handleCardClick();
-              }}
-              className="w-full py-2 sm:py-3 text-[10px] sm:text-xs font-bold rounded-xl bg-zinc-900 text-white hover:bg-[#F7A221] transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
+              onClick={handleAddToCart}
+              disabled={localLoading.add}
+              className="w-full py-2 sm:py-3 text-[10px] sm:text-xs font-bold rounded-xl bg-zinc-900 text-white hover:bg-[#F7A221] transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer disabled:opacity-60"
             >
-              <ShoppingBag size={12} />
-              ADD TO BAG
+              {localLoading.add
+                ? <><Loader2 size={12} className="animate-spin" /> Adding...</>
+                : <><ShoppingBag size={12} /> ADD TO BAG</>
+              }
             </button>
+          ) : (
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center w-full border-2 border-zinc-900 rounded-xl overflow-hidden">
+                <button
+                  onClick={handleDecrement}
+                  disabled={isProcessing}
+                  className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-zinc-100 hover:bg-red-500 hover:text-white transition-colors disabled:opacity-40 flex-shrink-0"
+                >
+                  {localLoading.remove
+                    ? <Loader2 size={11} className="animate-spin" />
+                    : <Minus size={13} />
+                  }
+                </button>
+                <div className="flex-1 text-center text-xs sm:text-sm font-bold text-zinc-900 select-none">
+                  {localLoading.update
+                    ? <Loader2 size={11} className="animate-spin mx-auto" />
+                    : currentQty
+                  }
+                </div>
+                <button
+                  onClick={handleIncrement}
+                  disabled={isAtMax || isProcessing}
+                  className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-zinc-900 text-white hover:bg-[#F7A221] transition-colors disabled:opacity-40 flex-shrink-0"
+                >
+                  {localLoading.update
+                    ? <Loader2 size={11} className="animate-spin" />
+                    : <Plus size={13} />
+                  }
+                </button>
+              </div>
+              {isAtMax && (
+                <p className="text-[9px] text-center text-orange-500 font-semibold">
+                  Max stock reached
+                </p>
+              )}
+            </div>
           )}
         </div>
       </div>
