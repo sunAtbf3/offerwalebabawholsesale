@@ -10,19 +10,26 @@ import { logout, selectUser, selectIsAuthenticated } from '../REDUX_FEATURES/RED
 import { useLogoutMutation } from '../REDUX_FEATURES/REDUX_SLICES/authApi/authApi';
 import LOGO from "../../assets/logo2.png";
 // import { selectDisplayedData } from 'recharts/types/state/selectors/axisSelectors';
-import { selectCartTotalItems } from '../REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice';
+import { selectDisplayCartCount } from '../REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice';
+import WholesaleCartSidebar from '../HomeComponents/Sidebar/CartSidebar';
+import WishlistSidebar from '../HomeComponents/Sidebar/Wishlist';
+import { selectDisplayWishlistCount } from '../REDUX_FEATURES/REDUX_SLICES/UserWIshlist/userWishlistSLice';
 
 const Navbar = () => {
   const dispatch = useDispatch();
   const user = useSelector(selectUser);
-  const cartCount = useSelector(selectCartTotalItems);
+  const cartCount = useSelector(selectDisplayCartCount);
   const isAuthenticated = useSelector(selectIsAuthenticated);
+  const wishlistCount = useSelector(selectDisplayWishlistCount);
+
   const [logoutMutation] = useLogoutMutation();
   
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+const [wishlistOpen, setWishlistOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
 
   // Close mobile menu on resize to desktop
   useEffect(() => {
@@ -51,6 +58,12 @@ const Navbar = () => {
       setIsLoggingOut(false);
     }
   };
+  // Yeh function add karo existing handlers ke saath (handleLogout ke baad)
+
+const handleOpenAuth = () => {
+  setWishlistOpen(false);
+  dispatch(openModal('login'));  // ✅ openModal is already imported
+};
 
   const handleAccountClick = () => {
     if (!isAuthenticated) {
@@ -74,7 +87,8 @@ const Navbar = () => {
   const directCategoryLinks = categories.slice(0, 6).map(cat => cat.label);
 
   return (
-    <nav className="sticky top-0 w-full z-[100] font-sans shadow-sm bg-white">
+    <>
+     <nav className="sticky top-0 w-full z-[100] font-sans shadow-sm bg-white">
       {/* TOP UTILITY STRIP */}
       <div className="bg-[#0F172A] text-white/70 py-2 px-6 hidden lg:flex justify-between items-center text-[11px] font-bold tracking-widest border-b border-white/5 uppercase">
         <div className="flex gap-8 items-center">
@@ -137,19 +151,35 @@ const Navbar = () => {
             </div>
 
             {/* Heart & Cart */}
-            <div className="flex items-center gap-1 lg:gap-3">
-              <div className="relative p-2 lg:p-3 bg-amber-500/10 hover:bg-amber-500/20 rounded-full cursor-pointer border border-amber-500/20">
-                <Heart size={22} className="text-slate-700 group-hover:text-amber-600" />
-                <span className="absolute top-1 right-1 bg-amber-500 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full">0</span>
-              </div>
-              <div className="relative p-2 lg:p-3 bg-amber-500/10 hover:bg-amber-500/20 rounded-full cursor-pointer border border-amber-500/20">
-                <ShoppingCart size={22} className="text-amber-600" />
-{cartCount > 0 && (
-  <span className="absolute -top-1 -right-1 bg-[#0F172A] text-white text-[9px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-white">
-    {cartCount > 99 ? "99+" : cartCount}
-  </span>
-)}              </div>
-            </div>
+        <div className="flex items-center gap-1 lg:gap-3">
+  
+  {/* Wishlist Button */}
+  <div
+    onClick={() => setWishlistOpen(true)}
+    className="relative p-2 lg:p-3 bg-amber-500/10 hover:bg-amber-500/20 rounded-full cursor-pointer border border-amber-500/20"
+  >
+    <Heart size={22} className="text-slate-700" />
+    {wishlistCount > 0 && (
+      <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full">
+        {wishlistCount > 99 ? "99+" : wishlistCount}
+      </span>
+    )}
+  </div>
+
+  {/* Cart Button */}
+  <div
+    onClick={() => setIsCartOpen(true)}
+    className="relative p-2 lg:p-3 bg-amber-500/10 hover:bg-amber-500/20 rounded-full cursor-pointer border border-amber-500/20"
+  >
+    <ShoppingCart size={22} className="text-amber-600" />
+    {cartCount > 0 && (
+      <span className="absolute top-1 right-1 bg-amber-500 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full">
+        {cartCount > 99 ? "99+" : cartCount}
+      </span>
+    )}
+  </div>
+
+</div>
 
             <div className="h-8 w-[1px] bg-slate-200 mx-1 hidden sm:block"></div>
 
@@ -297,6 +327,18 @@ const Navbar = () => {
         </div>
       </div>
     </nav>
+      <WholesaleCartSidebar
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        onOpenAuth={handleOpenAuth}
+      />
+        <WishlistSidebar
+      isOpen={wishlistOpen}
+      onClose={() => setWishlistOpen(false)}
+      onOpenAuth={handleOpenAuth}
+    />
+    
+    </>
   );
 };
 

@@ -249,6 +249,7 @@ const userWishlistSlice = createSlice({
       })
       .addCase(fetchWishlist.fulfilled, (state, action) => {
         state.loading.fetch = false;
+          console.log('🟡 RAW wishlist payload:', JSON.stringify(action.payload, null, 2)); // ADD THIS
         state.items = normalizeItems(action.payload);
         state.totalItems = state.items.length;
       })
@@ -328,11 +329,9 @@ const userWishlistSlice = createSlice({
         state.error.moveToCart = null;
       })
       .addCase(moveToCart.fulfilled, (state, action) => {
-        state.loading.moveToCart = false;
-        // backend returns updated wishlist after move
-        if (action.payload?.cart) {
-          console.log("✅ [moveToCart] Cart updated");
-        }
+       state.loading.moveToCart = false;
+  state.items = [];       // ✅ clear wishlist after move-all
+  state.totalItems = 0;
       })
       .addCase(moveToCart.rejected, (state, action) => {
         state.loading.moveToCart = false;
@@ -359,13 +358,21 @@ export const selectWishlistError      = (state) => state.userWishlist.error;
 
 // ✅ Check if a specific product slug is wishlisted (works for both logged in + guest)
 export const selectIsWishlisted = (slug) => (state) => {
-  const { isLoggedIn } = state.auth;
-  if (isLoggedIn) {
+  // ✅ dono field names try karo
+  const isAuth = state.auth?.isAuthenticated ?? state.auth?.isLoggedIn ?? false;
+  if (isAuth) {
     return state.userWishlist?.items.some(
-      (item) => item?.product?.slug === slug
+      (item) => item?.product?.slug === slug || item?.product?.slug === slug
     );
   }
   return state.userWishlist?.guestItems.includes(slug);
+};
+// userWishlistSlice.js mein add karo
+export const selectDisplayWishlistCount = (state) => {
+  const isAuth = state.auth?.isAuthenticated ?? state.auth?.isLoggedIn ?? false;
+  return isAuth
+    ? state.userWishlist.totalItems
+    : state.userWishlist.guestItems.length;
 };
 
 

@@ -8,7 +8,7 @@ import { useGetAllCategoriesQuery } from "../REDUX_FEATURES/REDUX_SLICES/SHOP_BY
 import { addToCart, updateCartItem, removeCartItem, addGuestCartItem, updateGuestCartItem, removeGuestCartItem, selectCartItemBySlug } from "../REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice";
 import { addToWishlist, removeFromWishlist, addGuestItem, removeGuestItem, selectIsWishlisted } from "../REDUX_FEATURES/REDUX_SLICES/UserWIshlist/userWishlistSLice";
 import { toast } from "react-toastify";
-
+import { selectIsAuthenticated } from "../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice";
 const formatPrice = (n) => {
   if (n == null) return "—";
   return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(n);
@@ -26,6 +26,8 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
 
   const wishlisted = useSelector(selectIsWishlisted(product?.slug));
   const cartItem   = useSelector(selectCartItemBySlug(product?.slug));
+    const isAuthenticated = useSelector(selectIsAuthenticated); // ✅ add karo
+
 
   const { data: categories = [] } = useGetAllCategoriesQuery();
 
@@ -69,11 +71,25 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
   };
 
   // ── Wishlist — guest only abhi ke liye ────────────────────────────────────
-  const handleWishlist = async (e) => {
-    e.stopPropagation();
-    if (!product?.slug || localLoading.wishlist) return;
-    setL("wishlist", true);
-    try {
+ const handleWishlist = async (e) => {
+  e.stopPropagation();
+  if (!product?.slug || localLoading.wishlist) return;
+  setL("wishlist", true);
+  try {
+    if (isAuthenticated) {
+      // Logged-in user — API call
+      if (wishlisted) {
+        await dispatch(removeFromWishlist({ productSlug: product.slug })).unwrap();
+        toast.success("Removed from wishlist", { icon: "💔" });
+      } else {
+        await dispatch(addToWishlist({
+          productSlug: product.slug,
+          variantId: variant?._id?.toString() || "",
+        })).unwrap();
+        toast.success("Saved to wishlist", { icon: "❤️" });
+      }
+    } else {
+      // Guest user — localStorage
       if (wishlisted) {
         dispatch(removeGuestItem(product.slug));
         toast.success("Removed", { icon: "💔" });
@@ -81,78 +97,122 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
         dispatch(addGuestItem(product.slug));
         toast.success("Saved to wishlist", { icon: "❤️" });
       }
-    } catch (err) {
-      toast.error(err?.message || "Wishlist action failed");
-    } finally {
-      setL("wishlist", false);
     }
-  };
+  } catch (err) {
+    toast.error(err?.message || "Wishlist action failed");
+  } finally {
+    setL("wishlist", false);
+  }
+};
 
   // ── Cart — guest only abhi ke liye ───────────────────────────────────────
-  const handleAddToCart = async (e) => {
-    e.stopPropagation();
-    if (isInCart || isProcessing || !inStock || !product?.slug) return;
-    setL("add", true);
-    try {
+ // ── handleAddToCart fix ───────────────────────────────────────────
+const handleAddToCart = async (e) => {
+  e.stopPropagation();
+  if (isInCart || isProcessing || !inStock || !product?.slug) return;
+  setL("add", true);
+  try {
+    if (isAuthenticated) {
+      // ✅ Logged-in user — API call
+      await dispatch(addToCart({
+        productSlug: product.slug,
+        productId:   product._id,
+        variantId:   variant?._id?.toString() || "",
+        quantity:    moq || 1,
+      })).unwrap();
+    } else {
+      // Guest user — localStorage
       dispatch(addGuestCartItem({
         productId:   product._id,
         productSlug: product.slug,
         variantId:   variant?._id?.toString() || "",
         quantity:    moq || 1,
       }));
-      toast.success("Added to cart");
-    } catch (err) {
-      toast.error(err?.message || "Failed to add to cart");
-    } finally {
-      setL("add", false);
     }
-  };
+    toast.success("Added to cart");
+  } catch (err) {
+    toast.error(err?.message || "Failed to add to cart");
+  } finally {
+    setL("add", false);
+  }
+};
 
-  const handleIncrement = async (e) => {
-    e.stopPropagation();
-    if (isAtMax) { toast.warning(`Max stock: ${maxStock}`); return; }
-    if (isProcessing) return;
-    setL("update", true);
-    try {
+// ── handleIncrement fix ───────────────────────────────────────────
+const handleIncrement = async (e) => {
+  e.stopPropagation();
+  if (isAtMax) { toast.warning(`Max stock: ${maxStock}`); return; }
+  if (isProcessing) return;
+  setL("update", true);
+  try {
+    if (isAuthenticated) {
+      // ✅ Logged-in user — API call
+      await dispatch(updateCartItem({
+        productId:   product._id,
+        variantId:   variant?._id?.toString() || "",
+        quantity:    currentQty + 1,
+        productSlug: product.slug,
+      })).unwrap();
+    } else {
       dispatch(updateGuestCartItem({
         productSlug: product.slug,
         variantId:   variant?._id?.toString() || "",
         quantity:    currentQty + 1,
       }));
-    } catch (err) {
-      toast.error(err?.message || "Failed to update");
-    } finally {
-      setL("update", false);
     }
-  };
+  } catch (err) {
+    toast.error(err?.message || "Failed to update");
+  } finally {
+    setL("update", false);
+  }
+};
 
-  const handleDecrement = async (e) => {
-    e.stopPropagation();
-    if (isProcessing) return;
-    const newQty = currentQty - 1;
-    try {
-      if (newQty <= 0) {
-        setL("remove", true);
+// ── handleDecrement fix ───────────────────────────────────────────
+const handleDecrement = async (e) => {
+  e.stopPropagation();
+  if (isProcessing) return;
+  const newQty = currentQty - 1;
+  try {
+    if (newQty <= 0) {
+      setL("remove", true);
+      if (isAuthenticated) {
+        // ✅ Logged-in user — API call
+        await dispatch(removeCartItem({
+          productId:   product._id,
+          variantId:   variant?._id?.toString() || "",
+          productSlug: product.slug,
+        })).unwrap();
+      } else {
         dispatch(removeGuestCartItem({
           productSlug: product.slug,
           variantId:   variant?._id?.toString() || "",
         }));
-        toast.info("Removed from cart");
+      }
+      toast.info("Removed from cart");
+    } else {
+      setL("update", true);
+      if (isAuthenticated) {
+        // ✅ Logged-in user — API call
+        await dispatch(updateCartItem({
+          productId:   product._id,
+          variantId:   variant?._id?.toString() || "",
+          quantity:    newQty,
+          productSlug: product.slug,
+        })).unwrap();
       } else {
-        setL("update", true);
         dispatch(updateGuestCartItem({
           productSlug: product.slug,
           variantId:   variant?._id?.toString() || "",
           quantity:    newQty,
         }));
       }
-    } catch (err) {
-      toast.error(err?.message || "Failed to update");
-    } finally {
-      setL("update", false);
-      setL("remove", false);
     }
-  };
+  } catch (err) {
+    toast.error(err?.message || "Failed to update");
+  } finally {
+    setL("update", false);
+    setL("remove", false);
+  }
+};
 
   if (!product) return null;
 

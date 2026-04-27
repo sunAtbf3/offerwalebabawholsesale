@@ -16,6 +16,8 @@ import UserTab from "./components/ADMIN_SEGMENT/ADMIN_TABS/USER/UserTab";
 import AdminDashboard from "./components/ADMIN_SEGMENT/Admin_dashboard";
 import './App.css';
 import ShopByPrice from './Components/HomeComponents/ShopByWHoleSalePrice/ShopByPrice';
+import { fetchCart, loadGuestCart } from './Components/REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice';
+import { fetchWishlist, loadGuestWishlist } from './Components/REDUX_FEATURES/REDUX_SLICES/UserWIshlist/userWishlistSLice';
 
 // Layout wrapper component
 function Layout({ children }) {
@@ -88,35 +90,33 @@ function SessionHandler() {
   const [sessionChecked, setSessionChecked] = useState(false);
   
   const { isLoading, error } = useGetMeQuery(undefined, {
-    // Only run once on mount to check existing session
     refetchOnMountOrArgChange: false,
     refetchOnReconnect: false,
     refetchOnFocus: false,
-    // Don't auto-refetch, just check once
     skip: sessionChecked && isAuthenticated,
   });
 
   useEffect(() => {
-    // Once we have a response (success or error), session check is complete
     if (!isLoading) {
       setSessionChecked(true);
     }
   }, [isLoading]);
 
-  // Log session restoration result
+  useEffect(() => {
+    if (sessionChecked && !isAuthenticated) {
+      dispatch(loadGuestCart());
+      dispatch(loadGuestWishlist());
+    }
+  }, [sessionChecked, isAuthenticated, dispatch]);
+
+  // ✅ YEH ADD KARO — session restore hone ke BAAD cart fetch karo
   useEffect(() => {
     if (sessionChecked && isAuthenticated) {
-      console.log('[App] Session restored: User is authenticated');
+      dispatch(fetchCart()); // ← session confirm hone ke baad
+      dispatch(fetchWishlist())
     }
-    if (sessionChecked && !isAuthenticated && !isLoading) {
-      console.log('[App] No active session');
-    }
-    if (error && error?.status !== 401) {
-      console.error('[App] Session check error:', error);
-    }
-  }, [sessionChecked, isAuthenticated, isLoading, error]);
+  }, [sessionChecked, isAuthenticated, dispatch]);
 
-  // Don't render anything - this is just for session management
   return null;
 }
 
