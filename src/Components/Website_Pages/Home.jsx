@@ -10,7 +10,7 @@ import { useGetAllCategoriesQuery } from '../REDUX_FEATURES/REDUX_SLICES/SHOP_BY
 import CategorySection from '../HomeComponents/Categories/Categories';
 
 const Home = () => {
-    const { data: categories = [], isLoading, isError } = useGetAllCategoriesQuery();
+  const { data: categories = [], isLoading, isError } = useGetAllCategoriesQuery();
 
   return (
     <div className="min-h-screen">
@@ -19,15 +19,15 @@ const Home = () => {
       <SaleIsLive />
       <ShopByCategory />
       <ShopByWholesalePrice />
-    
+
       <ExploreBestsellers />
-     {categories.map((cat) => (
-  <CategorySection
-    key={cat.slug}
-    slug={cat.slug}
-    title={cat.name}
-  />
-))}
+      {categories.map((cat) => (
+        <CategorySection
+          key={cat.slug}
+          slug={cat.slug}
+          title={cat.name}
+        />
+      ))}
     </div>
   );
 };
