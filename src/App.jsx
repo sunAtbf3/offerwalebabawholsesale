@@ -15,6 +15,7 @@ import { selectIsAuthenticated } from './Components/REDUX_FEATURES/REDUX_SLICES/
 import UserTab from "./components/ADMIN_SEGMENT/ADMIN_TABS/USER/UserTab";
 import AdminDashboard from "./components/ADMIN_SEGMENT/Admin_dashboard";
 import './App.css';
+import ShopByPrice from './Components/HomeComponents/ShopByWHoleSalePrice/ShopByPrice';
 
 // Layout wrapper component
 function Layout({ children }) {
@@ -39,9 +40,11 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
-      <Route path="/product/:productId" element={<ProductDetail />} />
+      <Route path="/product/:slug" element={<ProductDetail />} />
       <Route path="/category/:slug" element={<CatProducts />} />
       <Route path="/activate" element={<ActivatePage />} />
+              <Route path="/shopByCategory/:slug" element={<ShopByPrice />} />
+
 
               {/* ── Admin auth routes (public — no AdminPrivateRoute) ───── */}
                 {/* <Route path="/admin/login"        element={<AdminLogin />} /> */}

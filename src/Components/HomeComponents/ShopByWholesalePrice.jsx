@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
 import data from '../../Data/data.json';
+import { Link } from 'react-router-dom';
 
 const ShopByWholesalePrice = () => {
   const { priceRanges } = data;
@@ -26,7 +27,8 @@ const ShopByWholesalePrice = () => {
       {/* Top Row — 4 cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
         {topRow.map((range) => (
-          <div
+          <Link
+            to={range.path}
             key={range.id}
             className="bg-navy rounded-2xl p-5 cursor-pointer hover:-translate-y-0.5 transition-all duration-200 group relative overflow-hidden"
           >
@@ -44,15 +46,16 @@ const ShopByWholesalePrice = () => {
             </div>
             {/* Decorative gradient */}
             <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-gold/10 to-transparent rounded-bl-full" />
-          </div>
+          </Link>
         ))}
       </div>
 
       {/* Bottom Row — 2 cards (wider) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {bottomRow.map((range) => (
-          <div
+          <Link
             key={range.id}
+            to={range.path}
             className="bg-navy rounded-2xl p-5 cursor-pointer hover:-translate-y-0.5 transition-all duration-200 group relative overflow-hidden"
           >
             <span className={`${range.badgeColor} text-white text-[8px] font-extrabold px-2 py-0.5 rounded-sm inline-block mb-3`}>
@@ -65,7 +68,7 @@ const ShopByWholesalePrice = () => {
               <ArrowRight size={14} className="text-gold group-hover:translate-x-1 transition-transform" />
             </div>
             <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-gold/10 to-transparent rounded-bl-full" />
-          </div>
+          </Link>
         ))}
       </div>
     </section>

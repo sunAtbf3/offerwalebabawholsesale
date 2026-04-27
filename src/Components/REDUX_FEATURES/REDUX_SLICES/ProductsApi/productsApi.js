@@ -34,6 +34,7 @@ export const productsApi = createApi({
 
     // ── GET products by category slug (paginated) ─────────────────────────────
     // This is what CatProducts page uses via usePaginatedFetch
+   
     getProductsByCategory: builder.query({
       query: ({ slug, page = 1, limit = 12 }) => ({
         url: `/products/category/${slug}`,
@@ -65,11 +66,46 @@ export const productsApi = createApi({
     }),
 
     // ── GET all products (generic listing) ────────────────────────────────────
-    getAllProducts: builder.query({
-      query: (filters = {}) => ({ url: "/products/all", params: filters }),
-      transformResponse: (res) => res,
-      providesTags: ["Product"],
-    }),
+  getAllProducts: builder.query({
+  query: ({ page = 1, limit = 12, ...filters } = {}) => ({
+    url: "/products/all",
+    params: {
+      page,
+      limit,
+      ...filters,
+    },
+  }),
+
+  serializeQueryArgs: ({ queryArgs }) => {
+    const { page, ...rest } = queryArgs || {};
+    return JSON.stringify(rest);
+  },
+
+ merge: (currentCache, newData, { arg }) => {
+  if (!currentCache || arg.page === 1) {
+    return newData;
+  }
+
+  const existingIds = new Set(
+    currentCache.products.map((p) => p._id)
+  );
+
+  const fresh = newData.products.filter(
+    (p) => !existingIds.has(p._id)
+  );
+
+  return {
+    ...newData,
+    products: [...currentCache.products, ...fresh],
+  };
+},
+
+forceRefetch: ({ currentArg, previousArg }) =>
+  JSON.stringify(currentArg) !== JSON.stringify(previousArg),
+
+  transformResponse: (res) => res,
+  providesTags: ["Product"],
+}),
 
     // ── GET single product by slug ────────────────────────────────────────────
     getProductBySlug: builder.query({

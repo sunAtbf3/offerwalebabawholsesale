@@ -8,6 +8,7 @@ import { configureStore } from "@reduxjs/toolkit";
 // ========== YOUR EXISTING IMPORTS (PRESERVED) ==========
 import { categoriesApi } from "../REDUX_SLICES/SHOP_BY_CATEGORY/categoriesApi";
 import userCategoriesReducer from "../REDUX_SLICES/SHOP_BY_CATEGORY/userCategoriesSlice";
+import userCartReducer from "../REDUX_SLICES/UserCart/userCartSlice";
 
 import { productsApi } from "../REDUX_SLICES/ProductsApi/productsApi";
 import userProductsReducer from "../REDUX_SLICES/ProductsApi/userProductsSlice";
@@ -32,6 +33,7 @@ import adminOrdersUiReducer from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/ord
 import { adminOrdersApi } from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/order_management/adminOrdersApi";
 import staffReducer from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/staffSlice";
 import { wholesalerApi as adminWholesalerApi } from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/wholesalerApi/wholesalerApi";
+import userWishlistReducer from "../REDUX_SLICES/UserWIshlist/userWishlistSLice";
 
 export const store = configureStore({
   reducer: {
@@ -44,6 +46,8 @@ export const store = configureStore({
     userCategories: userCategoriesReducer,
     userProducts: userProductsReducer,
     wholesaler: wholesalerReducer,
+     userCart: userCartReducer,
+     userWishlist: userWishlistReducer,
 
     // ========== ADMIN PANEL REDUCERS (EXTRACTED FROM FIRST FILE) ==========
     adminProductCreate: adminProductCreateReducer,
