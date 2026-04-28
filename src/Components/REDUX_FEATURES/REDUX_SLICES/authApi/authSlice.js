@@ -20,6 +20,20 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
+    // Set authenticated session from non-login flows (e.g. account activation)
+    setAuthenticatedSession: (state, action) => {
+      const user = action.payload?.user || null;
+      const accessToken = action.payload?.accessToken || null;
+
+      state.user = user;
+      state.isAuthenticated = Boolean(user || accessToken);
+      state.loading = false;
+      state.error = null;
+
+      if (accessToken) {
+        localStorage.setItem('accessToken', accessToken);
+      }
+    },
     // Manual logout (clear state)
     logout: (state) => {
       state.user = null;
@@ -106,7 +120,7 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout, clearError, setLoading } = authSlice.actions;
+export const { setAuthenticatedSession, logout, clearError, setLoading } = authSlice.actions;
 
 // Selectors
 export const selectUser = (state) => state.auth.user;

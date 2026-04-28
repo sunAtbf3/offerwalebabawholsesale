@@ -1,12 +1,14 @@
 import React, { useState } from "react";
 import { Phone, KeyRound, Lock, Eye, EyeOff, Loader2, CheckCircle2, ArrowRight, ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import {
   useSendActivationOtpMutation,
   useVerifyActivationOtpMutation,
   logError,
 } from "../../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerApi";
+import { setAuthenticatedSession } from "../../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice";
 
 // ── Inline field component ────────────────────────────────────────────────────
 const Field = ({ label, icon: Icon, error, hint, rightEl, ...props }) => (
@@ -133,6 +135,7 @@ const Phase1 = ({ onSuccess }) => {
 
 // ── Phase 2: OTP + password ───────────────────────────────────────────────────
 const Phase2 = ({ mobileNumber, onBack }) => {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
   const [form, setForm]           = useState({ otp: "", password: "", confirmPassword: "" });
   const [errors, setErrors]       = useState({});
@@ -167,8 +170,11 @@ const Phase2 = ({ mobileNumber, onBack }) => {
         password: form.password,
       }).unwrap();
 
-      // Save token and navigate home
-      localStorage.setItem("accessToken", result.accessToken);
+      // Save authenticated session so navbar/app state reflects login immediately.
+      dispatch(setAuthenticatedSession({
+        user: result?.user ?? null,
+        accessToken: result?.accessToken ?? null,
+      }));
       toast.success(`🎉 Welcome, ${result.user?.name ?? "Wholesaler"}! Account activated successfully.`, {
         autoClose: 5000,
       });
