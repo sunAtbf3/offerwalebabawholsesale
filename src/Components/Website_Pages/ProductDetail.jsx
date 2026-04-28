@@ -56,6 +56,14 @@ function formatCount(count = 0) {
   return Math.floor(count / 100) * 100 + "+";
 }
 
+const getAvailabilityMeta = (availability) => {
+  const status = availability?.status || "IN_STOCK";
+  if (status === "OUT_OF_STOCK") return { label: "Out of stock", className: "text-red-600" };
+  if (status === "MOQ_UNMET") return { label: "MOQ not met", className: "text-amber-600" };
+  if (status === "NOT_LISTED") return { label: "Not available", className: "text-gray-500" };
+  return { label: "In stock", className: "text-green-700" };
+};
+
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 const Skeleton = () => (
   <div className="max-w-7xl mx-auto px-4 py-10 animate-pulse">
@@ -298,10 +306,14 @@ const WholesaleProductDetail = () => {
   const marginPercent = product?.marginPercent ?? (hasDisc ? discPct : null);
 
   const stock = selectedVariant?.inventory?.quantity ?? product?.stock ?? null;
-  const inStock = product?.inStock ?? (stock == null || stock > 0);
+  const availability = selectedVariant?.availability || null;
+  const availabilityMeta = getAvailabilityMeta(availability);
+  const fallbackInStock = product?.inStock ?? (stock == null || stock > 0);
+  const inStock = availability?.purchasable ?? fallbackInStock;
   const lowStock = stock != null && stock > 0 && stock <= 10;
 
-  const moq = product?.moq ?? 1;
+  const moq = selectedVariant?.minimumOrderQuantity ?? product?.moq ?? 1;
+  const minRequiredQty = availability?.requiredQuantity ?? moq;
   const casePack = product?.casePack ?? 1;
   const leadTime = product?.leadTime ?? "3–5 days";
   const returnPolicy = product?.returnPolicy ?? "7 days";
@@ -323,7 +335,12 @@ const WholesaleProductDetail = () => {
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleAddToCart = (e) => {
     e.stopPropagation();
-    if (!inStock) return;
+    if (!inStock) {
+      if (availability?.status === "MOQ_UNMET") {
+        toast.warning(`MOQ not met: Min qty ${minRequiredQty}, available ${availability?.quantity ?? stock ?? 0}`);
+      }
+      return;
+    }
     toast.success(`${qty} units added to cart 🛒`);
   };
 
@@ -836,7 +853,7 @@ const WholesaleProductDetail = () => {
                 {/* Qty row */}
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-gray-700">
-                    Quantity <span className="font-normal text-gray-400">(MOQ: {moq})</span>
+                    Quantity <span className="font-normal text-gray-400">(MOQ: {minRequiredQty})</span>
                   </span>
                   {totalPrice != null && (
                     <span className="text-xs font-extrabold text-gray-900">Total: {fmt(totalPrice)}</span>
@@ -844,17 +861,17 @@ const WholesaleProductDetail = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setQty((q) => Math.max(moq, q - moq))}
+                    onClick={() => setQty((q) => Math.max(minRequiredQty, q - minRequiredQty))}
                     className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-lg font-bold text-gray-700 hover:border-yellow-400 transition-colors"
                   >−</button>
                   <input
                     type="number"
                     value={qty}
-                    onChange={(e) => setQty(Math.max(moq, Number(e.target.value)))}
+                    onChange={(e) => setQty(Math.max(minRequiredQty, Number(e.target.value)))}
                     className="flex-1 h-10 text-center border border-gray-200 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-yellow-400"
                   />
                   <button
-                    onClick={() => setQty((q) => q + moq)}
+                    onClick={() => setQty((q) => q + minRequiredQty)}
                     className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-lg font-bold text-gray-700 hover:border-yellow-400 transition-colors"
                   >+</button>
                 </div>
@@ -896,14 +913,29 @@ const WholesaleProductDetail = () => {
                   className="w-full bg-yellow-400 text-gray-900 py-3 rounded-xl font-extrabold text-sm hover:bg-yellow-300 transition-colors flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ShoppingCart size={16} />
-                  Add To Cart — {totalPrice != null ? fmt(totalPrice) : "—"}
+                  {inStock ? `Add To Cart — ${totalPrice != null ? fmt(totalPrice) : "—"}` : availabilityMeta.label}
                 </button>
-                <Link
-                  to="/checkout"
-                  className="w-full bg-gray-900 text-yellow-400 py-3 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors active:scale-[0.98]"
-                >
-                  Order Now
-                </Link>
+                {inStock ? (
+                  <Link
+                    to="/checkout"
+                    className="w-full bg-gray-900 text-yellow-400 py-3 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors active:scale-[0.98]"
+                  >
+                    Order Now
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full bg-gray-200 text-gray-500 py-3 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 cursor-not-allowed"
+                  >
+                    {availabilityMeta.label}
+                  </button>
+                )}
+                {availability?.status === "MOQ_UNMET" && (
+                  <p className={`text-xs font-semibold ${availabilityMeta.className}`}>
+                    Min qty {minRequiredQty}, available {availability?.quantity ?? stock ?? 0}
+                  </p>
+                )}
 
                 {/* Wishlist + Share */}
                 <div className="flex items-center gap-2 pt-1">
