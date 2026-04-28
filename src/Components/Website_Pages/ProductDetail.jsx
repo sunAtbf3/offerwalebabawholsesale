@@ -74,6 +74,14 @@ function formatCount(count = 0) {
   return Math.floor(count / 100) * 100 + "+";
 }
 
+const getAvailabilityMeta = (availability) => {
+  const status = availability?.status || "IN_STOCK";
+  if (status === "OUT_OF_STOCK") return { label: "Out of stock", className: "text-red-600" };
+  if (status === "MOQ_UNMET") return { label: "MOQ not met", className: "text-amber-600" };
+  if (status === "NOT_LISTED") return { label: "Not available", className: "text-gray-500" };
+  return { label: "In stock", className: "text-green-700" };
+};
+
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 const Skeleton = () => (
   <div className="max-w-7xl mx-auto px-4 py-10 animate-pulse">
@@ -397,23 +405,25 @@ const WholesaleProductDetail = () => {
   const discPct        = hasDisc ? Math.round(((mrp - wholesalePrice) / mrp) * 100) : null;
   const marginPercent  = product?.marginPercent ?? (hasDisc ? discPct : null);
 
-  const maxStock = selectedVariant?.inventory?.trackInventory
-    ? (selectedVariant?.inventory?.quantity ?? 0)
-    : Infinity;
-  const stock    = selectedVariant?.inventory?.quantity ?? product?.stock ?? null;
-  const inStock  = product?.inStock ?? (maxStock === Infinity || maxStock > 0);
+  const stock = selectedVariant?.inventory?.quantity ?? product?.stock ?? null;
+  const availability = selectedVariant?.availability || null;
+  const availabilityMeta = getAvailabilityMeta(availability);
+  const fallbackInStock = product?.inStock ?? (stock == null || stock > 0);
+  const inStock = availability?.purchasable ?? fallbackInStock;
   const lowStock = stock != null && stock > 0 && stock <= 10;
   const isAtMaxStock = currentQty >= maxStock && maxStock !== Infinity;
 
-  const moq            = product?.moq ?? 1;
-  const casePack       = product?.casePack ?? 1;
-  const leadTime       = product?.leadTime ?? "3–5 days";
-  const returnPolicy   = product?.returnPolicy ?? "7 days";
-  const title          = product?.title || product?.name || "Product";
-  const rating         = product?.rating?.value ?? product?.rating ?? 4.5;
-  const ratingCnt      = product?.rating?.count ?? product?.reviewCount ?? 0;
-  const soldInfo       = product?.soldInfo?.count ?? product?.soldCount ?? 0;
-  const brand          = product?.brand ?? null;
+  const moq = selectedVariant?.minimumOrderQuantity ?? product?.moq ?? 1;
+  const minRequiredQty = availability?.requiredQuantity ?? moq;
+  const casePack = product?.casePack ?? 1;
+  const leadTime = product?.leadTime ?? "3–5 days";
+  const returnPolicy = product?.returnPolicy ?? "7 days";
+
+  const title = product?.title || product?.name || "Product";
+  const rating = product?.rating?.value ?? product?.rating ?? 4.5;
+  const ratingCnt = product?.rating?.count ?? product?.reviewCount ?? 0;
+  const soldInfo = product?.soldInfo?.count ?? product?.soldCount ?? 0;
+  const brand = product?.brand ?? null;
   const sellingPriceRange = product?.sellingPriceRange ?? null;
   const earnPerUnit    = product?.earnPerUnit ?? null;
   const volumePricing  = product?.volumePricing ?? [];
@@ -422,7 +432,7 @@ const WholesaleProductDetail = () => {
   const unitPrice   = currentTier?.price ?? wholesalePrice;
   const totalPrice  = unitPrice != null ? unitPrice * qty : null;
 
-  const variant = selectedVariant || {};
+  // ── Handlers ──────────────────────────────────────────────────────────────
 
   // ── Cart handlers ─────────────────────────────────────────────────────────
   const handleWishlist = async (e) => {
@@ -463,6 +473,12 @@ const WholesaleProductDetail = () => {
   // ── handleAddToCart fix ───────────────────────────────────────────
  const handleAddToCart = async (e) => {
    e.stopPropagation();
+      if (!inStock) {
+      if (availability?.status === "MOQ_UNMET") {
+        toast.warning(`MOQ not met: Min qty ${minRequiredQty}, available ${availability?.quantity ?? stock ?? 0}`);
+      }
+      return;
+    }
    if (isInCart || isProcessing || !inStock || !product?.slug) return;
    setL("add", true);
    try {
@@ -1066,36 +1082,31 @@ const WholesaleProductDetail = () => {
 
               {/* Quantity + CTA */}
               <div className="px-4 sm:px-5 py-4 space-y-3">
-
-                {/* Bulk qty selector (only when NOT in cart) */}
-                {!isInCart && (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-gray-700">
-                        Quantity <span className="font-normal text-gray-400">(MOQ: {moq})</span>
-                      </span>
-                      {totalPrice != null && (
-                        <span className="text-xs font-extrabold text-gray-900">Total: {fmt(totalPrice)}</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setQty((q) => Math.max(moq, q - moq))}
-                        className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-lg font-bold text-gray-700 hover:border-yellow-400 transition-colors"
-                      >−</button>
-                      <input
-                        type="number"
-                        value={qty}
-                        onChange={(e) => setQty(Math.max(moq, Number(e.target.value)))}
-                        className="flex-1 h-10 text-center border border-gray-200 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-yellow-400"
-                      />
-                      <button
-                        onClick={() => setQty((q) => q + moq)}
-                        className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-lg font-bold text-gray-700 hover:border-yellow-400 transition-colors"
-                      >+</button>
-                    </div>
-                  </>
-                )}
+                {/* Qty row */}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-gray-700">
+                    Quantity <span className="font-normal text-gray-400">(MOQ: {minRequiredQty})</span>
+                  </span>
+                  {totalPrice != null && (
+                    <span className="text-xs font-extrabold text-gray-900">Total: {fmt(totalPrice)}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setQty((q) => Math.max(minRequiredQty, q - minRequiredQty))}
+                    className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-lg font-bold text-gray-700 hover:border-yellow-400 transition-colors"
+                  >−</button>
+                  <input
+                    type="number"
+                    value={qty}
+                    onChange={(e) => setQty(Math.max(minRequiredQty, Number(e.target.value)))}
+                    className="flex-1 h-10 text-center border border-gray-200 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-yellow-400"
+                  />
+                  <button
+                    onClick={() => setQty((q) => q + minRequiredQty)}
+                    className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-lg font-bold text-gray-700 hover:border-yellow-400 transition-colors"
+                  >+</button>
+                </div>
 
                 {/* Variant attrs */}
                 {attrKeys.length > 0 && (
@@ -1127,59 +1138,36 @@ const WholesaleProductDetail = () => {
                   </div>
                 )}
 
-                {/* ── ADD TO CART / QTY CONTROLS ── */}
-                {inStock ? (
-                  !isInCart ? (
-                    <button
-                      onClick={handleAddToCart}
-                      disabled={localLoading.add}
-                      className="w-full bg-yellow-400 text-gray-900 py-3 rounded-xl font-extrabold text-sm hover:bg-yellow-300 transition-colors flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
-                    >
-                      {localLoading.add
-                        ? <Loader2 size={16} className="animate-spin" />
-                        : <ShoppingCart size={16} />}
-                      Add To Cart — {totalPrice != null ? fmt(totalPrice) : "—"}
-                    </button>
-                  ) : (
-                    <div className="flex items-center w-full border-2 border-yellow-400 rounded-xl overflow-hidden">
-                      <button
-                        onClick={handleDecrement}
-                        disabled={isProcessing}
-                        className="w-12 h-12 flex items-center justify-center bg-gray-50 hover:bg-red-500 hover:text-white transition disabled:opacity-40"
-                      >
-                        {localLoading.remove
-                          ? <Loader2 size={14} className="animate-spin" />
-                          : <Minus size={16} />}
-                      </button>
-                      <div className="flex-1 text-center text-sm font-extrabold text-gray-900">
-                        {localLoading.update
-                          ? <Loader2 size={14} className="animate-spin mx-auto" />
-                          : `${currentQty} in cart`}
-                      </div>
-                      <button
-                        onClick={handleIncrement}
-                        disabled={isAtMaxStock || isProcessing}
-                        className="w-12 h-12 flex items-center justify-center bg-yellow-400 hover:bg-yellow-300 transition disabled:opacity-40"
-                      >
-                        {localLoading.update
-                          ? <Loader2 size={14} className="animate-spin" />
-                          : <Plus size={16} />}
-                      </button>
-                    </div>
-                  )
-                ) : (
-                  <div className="w-full bg-gray-100 text-gray-400 py-3 rounded-xl font-extrabold text-sm text-center">
-                    Out of Stock
-                  </div>
-                )}
-
-                {/* Order Now */}
-                <Link
-                  to="/checkout"
-                  className="w-full bg-gray-900 text-yellow-400 py-3 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors active:scale-[0.98]"
+                {/* CTAs */}
+                <button
+                  onClick={handleAddToCart}
+                  disabled={!inStock}
+                  className="w-full bg-yellow-400 text-gray-900 py-3 rounded-xl font-extrabold text-sm hover:bg-yellow-300 transition-colors flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Order Now
-                </Link>
+                  <ShoppingCart size={16} />
+                  {inStock ? `Add To Cart — ${totalPrice != null ? fmt(totalPrice) : "—"}` : availabilityMeta.label}
+                </button>
+                {inStock ? (
+                  <Link
+                    to="/checkout"
+                    className="w-full bg-gray-900 text-yellow-400 py-3 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors active:scale-[0.98]"
+                  >
+                    Order Now
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full bg-gray-200 text-gray-500 py-3 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 cursor-not-allowed"
+                  >
+                    {availabilityMeta.label}
+                  </button>
+                )}
+                {availability?.status === "MOQ_UNMET" && (
+                  <p className={`text-xs font-semibold ${availabilityMeta.className}`}>
+                    Min qty {minRequiredQty}, available {availability?.quantity ?? stock ?? 0}
+                  </p>
+                )}
 
                 {/* Wishlist + Share */}
                 <div className="flex items-center gap-2 pt-1">

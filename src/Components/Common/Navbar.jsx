@@ -47,7 +47,6 @@ const [wishlistOpen, setWishlistOpen] = useState(false);
   useEffect(() => {
     const handleScroll = () => {
       scrollPos.current = window.scrollY;
-
       if (!ticking.current) {
         window.requestAnimationFrame(() => {
           const currentScroll = scrollPos.current;

@@ -20,6 +20,14 @@ const formatCount = (count) => {
   return Math.floor(count / 100) * 100 + "+";
 };
 
+const getAvailabilityMeta = (availability) => {
+  const status = availability?.status || "IN_STOCK";
+  if (status === "OUT_OF_STOCK") return { label: "Out of stock", chipClass: "bg-red-100 text-red-700" };
+  if (status === "MOQ_UNMET") return { label: "MOQ not met", chipClass: "bg-amber-100 text-amber-700" };
+  if (status === "NOT_LISTED") return { label: "Not available", chipClass: "bg-gray-100 text-gray-600" };
+  return { label: "In stock", chipClass: "bg-green-100 text-green-700" };
+};
+
 const WholesaleProductCard = ({ product, index = 0 }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -54,11 +62,15 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
     ? Math.round(((basePrice - salePrice) / basePrice) * 100)
     : null;
   const moq      = variant.minimumOrderQuantity ?? variant.price?.minimumOrderQuantity ?? null;
+  const availability = variant?.availability || null;
+  const availabilityMeta = getAvailabilityMeta(availability);
   const imgUrl   = variant.images?.[0]?.url || null;
   const maxStock = variant.inventory?.trackInventory
     ? (variant.inventory?.quantity ?? 0)
     : Infinity;
-  const inStock    = maxStock > 0;
+  const fallbackInStock = maxStock > 0;
+  const canPurchase = availability?.purchasable ?? fallbackInStock;
+  const inStock    = canPurchase;
   const isInCart   = !!cartItem;
   const currentQty = cartItem?.quantity ?? 0;
   const isAtMax    = currentQty >= maxStock && maxStock !== Infinity;
@@ -106,31 +118,20 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
 };
 
   // ── Cart — guest only abhi ke liye ───────────────────────────────────────
- // ── handleAddToCart fix ───────────────────────────────────────────
-const handleAddToCart = async (e) => {
-  e.stopPropagation();
-  if (isInCart || isProcessing || !inStock || !product?.slug) return;
-  setL("add", true);
-  try {
-    if (isAuthenticated) {
-      // ✅ Logged-in user — API call
-      await dispatch(addToCart({
-        productSlug: product.slug,
-        productId:   product._id,
-        variantId:   variant?._id?.toString() || "",
-        quantity:    moq || 1,
-      })).unwrap();
-    } else {
-      // Guest user — localStorage
+  const handleAddToCart = async (e) => {
+    e.stopPropagation();
+    if (isInCart || isProcessing || !canPurchase || !product?.slug) return;
+    setL("add", true);
+    try {
       dispatch(addGuestCartItem({
         productId:   product._id,
         productSlug: product.slug,
         variantId:   variant?._id?.toString() || "",
         quantity:    moq || 1,
       }));
+      toast.success("Added to cart");
     }
-    toast.success("Added to cart");
-  } catch (err) {
+   catch (err) {
     toast.error(err?.message || "Failed to add to cart");
   } finally {
     setL("add", false);
@@ -232,15 +233,15 @@ const handleDecrement = async (e) => {
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
 
-        {!inStock && (
+        {!canPurchase && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
             <span className="text-white text-[10px] md:text-[13px] font-black uppercase tracking-widest bg-black/60 px-3 py-1 rounded-full">
-              Out of Stock
+              {availabilityMeta.label}
             </span>
           </div>
         )}
 
-        {discountPct && inStock && (
+        {discountPct && canPurchase && (
           <div className="absolute top-2 left-2 z-10">
             <span className="text-[10px] bg-[#EB4C4C] text-white px-2 py-0.5 rounded-md shadow-sm font-bold">
               {discountPct}% OFF
@@ -336,12 +337,20 @@ const handleDecrement = async (e) => {
               <span className="text-zinc-800 font-bold">{moq} pcs</span>
             </p>
           )}
+          <span className={`inline-flex w-fit items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${availabilityMeta.chipClass}`}>
+            {availabilityMeta.label}
+          </span>
+          {availability?.status === "MOQ_UNMET" && (
+            <p className="text-[10px] text-amber-700 font-semibold">
+              Min qty {availability?.requiredQuantity ?? moq ?? 0}, available {availability?.quantity ?? 0}
+            </p>
+          )}
         </div>
 
         <div className="mt-auto pt-2" onClick={(e) => e.stopPropagation()}>
-          {!inStock ? (
+          {!canPurchase ? (
             <button disabled className="w-full py-2 text-[10px] font-bold bg-zinc-100 text-zinc-400 rounded-xl cursor-not-allowed">
-              Out of Stock
+              {availabilityMeta.label}
             </button>
           ) : !isInCart ? (
             <button
