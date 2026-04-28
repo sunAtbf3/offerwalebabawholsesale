@@ -253,6 +253,9 @@ const CatProducts = () => {
     resetPage();
     refetch();
   }, [resetPage, refetch]);
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [])
 
   // ── Filter Panel ───────────────────────────────────────────────────────────
   const FilterPanel = () => (
@@ -266,7 +269,7 @@ const CatProducts = () => {
           {[
             { label: "Under ₹29", val: "u29" },
             { label: "₹29 - ₹49", val: "29-49" },
-            { label: "₹49 - ₹79", val: "49-79" },
+            { label: "₹49 - ₹99", val: "49-99" },
             { label: "Over ₹99",  val: "o99" },
           ].map(({ label, val }) => (
             <label key={val} className="flex items-center gap-3 cursor-pointer group">

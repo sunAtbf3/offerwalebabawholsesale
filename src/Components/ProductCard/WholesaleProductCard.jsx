@@ -172,11 +172,13 @@ const handleDecrement = async (e) => {
   e.stopPropagation();
   if (isProcessing) return;
   const newQty = currentQty - 1;
+  
   try {
-    if (newQty <= 0) {
+    // ✅ MOQ check — moq se kam nahi jaayega
+    if (newQty < (moq || 1)) {
+      // Remove from cart
       setL("remove", true);
       if (isAuthenticated) {
-        // ✅ Logged-in user — API call
         await dispatch(removeCartItem({
           productId:   product._id,
           variantId:   variant?._id?.toString() || "",
@@ -190,9 +192,9 @@ const handleDecrement = async (e) => {
       }
       toast.info("Removed from cart");
     } else {
+      // Normal decrement
       setL("update", true);
       if (isAuthenticated) {
-        // ✅ Logged-in user — API call
         await dispatch(updateCartItem({
           productId:   product._id,
           variantId:   variant?._id?.toString() || "",
@@ -368,7 +370,7 @@ const handleDecrement = async (e) => {
               <div className="flex items-center w-full border-2 border-zinc-900 rounded-xl overflow-hidden">
                 <button
                   onClick={handleDecrement}
-                  disabled={isProcessing}
+                  disabled={isProcessing || currentQty <= (moq || 1)}
                   className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-zinc-100 hover:bg-red-500 hover:text-white transition-colors disabled:opacity-40 flex-shrink-0"
                 >
                   {localLoading.remove

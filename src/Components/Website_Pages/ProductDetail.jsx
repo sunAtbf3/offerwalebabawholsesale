@@ -125,6 +125,7 @@ const RelatedCard = ({ product }) => {
   const maxStock  = variant.inventory?.trackInventory ? (variant.inventory?.quantity ?? 0) : Infinity;
   const inStock   = maxStock > 0;
   const isAtMax   = currentQty >= maxStock && maxStock !== Infinity;
+  // const isAtMax = isAtMaxStock; // alias — handleIncrement use karta hai yeh
 
   const [adding, setAdding] = useState(false);
 
@@ -144,7 +145,7 @@ const RelatedCard = ({ product }) => {
 
   const handleInc = (e) => {
     e.stopPropagation();
-    if (isAtMaxStock) { toast.warning(`Max stock: ${maxStock}`); return; }
+    if (isAtMax) { toast.warning(`Max stock: ${maxStock}`); return; }
     dispatch(updateGuestCartItem({ productSlug: product.slug, variantId: variant?._id?.toString() || "", quantity: currentQty + 1 }));
   };
 
@@ -413,17 +414,15 @@ const WholesaleProductDetail = () => {
   const lowStock = stock != null && stock > 0 && stock <= 10;
   const isAtMaxStock = currentQty >= maxStock && maxStock !== Infinity;
 
-  const moq = selectedVariant?.minimumOrderQuantity ?? product?.moq ?? 1;
-  const minRequiredQty = availability?.requiredQuantity ?? moq;
-  const casePack = product?.casePack ?? 1;
-  const leadTime = product?.leadTime ?? "3–5 days";
-  const returnPolicy = product?.returnPolicy ?? "7 days";
-
-  const title = product?.title || product?.name || "Product";
-  const rating = product?.rating?.value ?? product?.rating ?? 4.5;
-  const ratingCnt = product?.rating?.count ?? product?.reviewCount ?? 0;
-  const soldInfo = product?.soldInfo?.count ?? product?.soldCount ?? 0;
-  const brand = product?.brand ?? null;
+  const moq            = selectedVariant?.minimumOrderQuantity ?? selectedVariant?.price?.minimumOrderQuantity ?? null;;
+  const casePack       = product?.casePack ?? 1;
+  const leadTime       = product?.leadTime ?? "3–5 days";
+  const returnPolicy   = product?.returnPolicy ?? "7 days";
+  const title          = product?.title || product?.name || "Product";
+  const rating         = product?.rating?.value ?? product?.rating ?? 4.5;
+  const ratingCnt      = product?.rating?.count ?? product?.reviewCount ?? 0;
+  const soldInfo       = product?.soldInfo?.count ?? product?.soldCount ?? 0;
+  const brand          = product?.brand ?? null;
   const sellingPriceRange = product?.sellingPriceRange ?? null;
   const earnPerUnit    = product?.earnPerUnit ?? null;
   const volumePricing  = product?.volumePricing ?? [];
@@ -468,6 +467,9 @@ const WholesaleProductDetail = () => {
      setL("wishlist", false);
    }
  };
+   useEffect(() => {
+  setQty(moq || 1);
+}, [moq]);
  
    // ── Cart — guest only abhi ke liye ───────────────────────────────────────
   // ── handleAddToCart fix ───────────────────────────────────────────
@@ -510,7 +512,7 @@ const WholesaleProductDetail = () => {
  // ── handleIncrement fix ───────────────────────────────────────────
  const handleIncrement = async (e) => {
    e.stopPropagation();
-   if (isAtMax) { toast.warning(`Max stock: ${maxStock}`); return; }
+   if (isAtMaxStock) { toast.warning(`Max stock: ${maxStock}`); return; }
    if (isProcessing) return;
    setL("update", true);
    try {
@@ -538,51 +540,50 @@ const WholesaleProductDetail = () => {
  
  // ── handleDecrement fix ───────────────────────────────────────────
  const handleDecrement = async (e) => {
-   e.stopPropagation();
-   if (isProcessing) return;
-   const newQty = currentQty - 1;
-   try {
-     if (newQty <= 0) {
-       setL("remove", true);
-       if (isAuthenticated) {
-         // ✅ Logged-in user — API call
-         await dispatch(removeCartItem({
-           productId:   product._id,
-           variantId:   variant?._id?.toString() || "",
-           productSlug: product.slug,
-         })).unwrap();
-       } else {
-         dispatch(removeGuestCartItem({
-           productSlug: product.slug,
-           variantId:   variant?._id?.toString() || "",
-         }));
-       }
-       toast.info("Removed from cart");
-     } else {
-       setL("update", true);
-       if (isAuthenticated) {
-         // ✅ Logged-in user — API call
-         await dispatch(updateCartItem({
-           productId:   product._id,
-           variantId:   variant?._id?.toString() || "",
-           quantity:    newQty,
-           productSlug: product.slug,
-         })).unwrap();
-       } else {
-         dispatch(updateGuestCartItem({
-           productSlug: product.slug,
-           variantId:   variant?._id?.toString() || "",
-           quantity:    newQty,
-         }));
-       }
-     }
-   } catch (err) {
-     toast.error(err?.message || "Failed to update");
-   } finally {
-     setL("update", false);
-     setL("remove", false);
-   }
- };
+  e.stopPropagation();
+  if (isProcessing) return;
+  const newQty = currentQty - 1;
+  try {
+    // ✅ moq se kam nahi jaayega — remove kar do
+    if (newQty < (moq || 1)) {
+      setL("remove", true);
+      if (isAuthenticated) {
+        await dispatch(removeCartItem({
+          productId:   product._id,
+          variantId:   variant?._id?.toString() || "",
+          productSlug: product.slug,
+        })).unwrap();
+      } else {
+        dispatch(removeGuestCartItem({
+          productSlug: product.slug,
+          variantId:   variant?._id?.toString() || "",
+        }));
+      }
+      toast.info("Removed from cart");
+    } else {
+      setL("update", true);
+      if (isAuthenticated) {
+        await dispatch(updateCartItem({
+          productId:   product._id,
+          variantId:   variant?._id?.toString() || "",
+          quantity:    newQty,
+          productSlug: product.slug,
+        })).unwrap();
+      } else {
+        dispatch(updateGuestCartItem({
+          productSlug: product.slug,
+          variantId:   variant?._id?.toString() || "",
+          quantity:    newQty,
+        }));
+      }
+    }
+  } catch (err) {
+    toast.error(err?.message || "Failed to update");
+  } finally {
+    setL("update", false);
+    setL("remove", false);
+  }
+};
 
   const share = (type) => {
     const url = window.location.href;
@@ -1138,15 +1139,60 @@ const WholesaleProductDetail = () => {
                   </div>
                 )}
 
-                {/* CTAs */}
-                <button
-                  onClick={handleAddToCart}
-                  disabled={!inStock}
-                  className="w-full bg-yellow-400 text-gray-900 py-3 rounded-xl font-extrabold text-sm hover:bg-yellow-300 transition-colors flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                {/* ── ADD TO CART / QTY CONTROLS ── */}
+                {inStock ? (
+                  !isInCart ? (
+                    <button
+                      onClick={handleAddToCart}
+                      disabled={localLoading.add}
+                      className="w-full bg-yellow-400 text-gray-900 py-3 rounded-xl font-extrabold text-sm hover:bg-yellow-300 transition-colors flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
+                    >
+                      {localLoading.add
+                        ? <Loader2 size={16} className="animate-spin" />
+                        : <ShoppingCart size={16} />}
+                      Add To Cart — {totalPrice != null ? fmt(totalPrice) : "—"}
+                    </button>
+                  ) : (
+                    <div className="flex items-center w-full border-2 border-yellow-400 rounded-xl overflow-hidden">
+                      <button
+                        onClick={handleDecrement}
+                        disabled={isProcessing || currentQty <= (moq || 1)}
+                        className="w-12 h-12 flex items-center justify-center bg-gray-50 hover:bg-red-500 hover:text-white transition disabled:opacity-40"
+                      >
+                        {localLoading.remove
+                          ? <Loader2 size={14} className="animate-spin" />
+                          : <Minus size={16} />}
+                      </button>
+                      <div className="flex-1 text-center text-sm font-extrabold text-gray-900">
+                        {localLoading.update
+                          ? <Loader2 size={14} className="animate-spin mx-auto" />
+                          : `${currentQty} in cart`}
+                      </div>
+                      <button
+                        onClick={handleIncrement}
+                        disabled={isAtMaxStock || isProcessing}
+                        className="w-12 h-12 flex items-center justify-center bg-yellow-400 hover:bg-yellow-300 transition disabled:opacity-40"
+                      >
+                        {localLoading.update
+                          ? <Loader2 size={14} className="animate-spin" />
+                          : <Plus size={16} />}
+                      </button>
+                    </div>
+                  )
+                ) : (
+                  <div className="w-full bg-gray-100 text-gray-400 py-3 rounded-xl font-extrabold text-sm text-center">
+                    Out of Stock
+                  </div>
+                )}
+
+                {/* Order Now */}
+                <Link
+                  to="/checkout"
+                  className="w-full bg-gray-900 text-yellow-400 py-3 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors active:scale-[0.98]"
                 >
                   <ShoppingCart size={16} />
                   {inStock ? `Add To Cart — ${totalPrice != null ? fmt(totalPrice) : "—"}` : availabilityMeta.label}
-                </button>
+                </Link>
                 {inStock ? (
                   <Link
                     to="/checkout"

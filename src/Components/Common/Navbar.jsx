@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Search, ShoppingCart, Heart, MapPin,
   User, ChevronDown, Menu, X, LogOut,
@@ -15,8 +15,10 @@ import { selectDisplayCartCount } from '../REDUX_FEATURES/REDUX_SLICES/UserCart/
 import WholesaleCartSidebar from '../HomeComponents/Sidebar/CartSidebar';
 import WishlistSidebar from '../HomeComponents/Sidebar/Wishlist';
 import { selectDisplayWishlistCount } from '../REDUX_FEATURES/REDUX_SLICES/UserWIshlist/userWishlistSLice';
+import { Link } from 'react-router-dom';
+import SearchModal from './Search_Modal/SearchModal';
 
-const Navbar = () => {
+const Navbar = ({ searchQuery, setSearchQuery }) => {
   const dispatch = useDispatch();
   const user = useSelector(selectUser);
   const cartCount = useSelector(selectDisplayCartCount);
@@ -31,6 +33,10 @@ const [wishlistOpen, setWishlistOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [showSearchTooltip, setShowSearchTooltip] = useState(false);
+  const scrollPos = useRef(0);
+const ticking = useRef(false);
 
   // Close mobile menu on resize to desktop
   useEffect(() => {
@@ -39,6 +45,20 @@ const [wishlistOpen, setWishlistOpen] = useState(false);
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+   useEffect(() => {
+    const hasSeenSearchTooltip = localStorage.getItem('hasSeenSearchTooltip');
+    if (!hasSeenSearchTooltip) {
+      setShowSearchTooltip(true);
+      const timer = setTimeout(() => {
+        setShowSearchTooltip(false);
+        localStorage.setItem('hasSeenSearchTooltip', 'true');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+   const handleSearchFocus = useCallback(() => {
+    setIsSearchModalOpen(true);
   }, []);
 
   /** * ROBUST SCROLL LOGIC 
@@ -151,11 +171,13 @@ const handleOpenAuth = () => {
             <div className="absolute left-4 text-slate-400 group-focus-within:text-amber-500 transition-colors">
               <Search size={18} />
             </div>
-            <input
-              type="text"
-              placeholder="Search by SKU, Product Name..."
-              className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 pl-12 pr-32 focus:outline-none focus:border-amber-500/50 focus:bg-white transition-all text-sm font-medium"
-            />
+       <input
+  type="text"
+  placeholder="Search by SKU, Product Name..."
+  onClick={handleSearchFocus}
+  readOnly
+  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 pl-12 pr-32 focus:outline-none focus:border-amber-500/50 focus:bg-white transition-all text-sm font-medium cursor-pointer"
+/>
             <button className="absolute right-2 bg-[#0F172A] text-white px-5 py-1.5 rounded-xl text-[10px] font-bold hover:bg-slate-800 transition-all uppercase tracking-wider">
               Search
             </button>
@@ -203,6 +225,7 @@ const handleOpenAuth = () => {
   </div>
 
 </div>
+   {/* Search Trigger - Perfectly Centered using absolute positioning */}
 
             <div className="h-8 w-[1px] bg-slate-200 mx-1 hidden sm:block"></div>
 
@@ -232,12 +255,12 @@ const handleOpenAuth = () => {
                       <p className="font-bold text-slate-900">{user.name || 'User'}</p>
                       <p className="text-slate-500">{user.email || user.phone}</p>
                     </div>
-                    <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
+                    <Link to="/account/userprofile" className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
                       <User size={14} /> My Profile
-                    </button>
-                    <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
+                    </Link>
+                    <Link to="/account/userorders" className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
                       <Package size={14} /> My Orders
-                    </button>
+                    </Link>
                     <button 
                       onClick={handleLogout}
                       disabled={isLoggingOut}
@@ -249,6 +272,7 @@ const handleOpenAuth = () => {
                 </div>
               )}
             </div>
+            {/* Search Bar - Desktop Only */}
 
             <button
               className="lg:hidden p-2 text-slate-800 focus:bg-slate-50 rounded-lg"
@@ -354,6 +378,12 @@ const handleOpenAuth = () => {
       onClose={() => setWishlistOpen(false)}
       onOpenAuth={handleOpenAuth}
     />
+     {/* Search Modal - Reused for both mobile and desktop */}
+      <SearchModal 
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+        initialQuery={searchQuery}
+      />
     
     </>
   );

@@ -350,6 +350,9 @@ case "discount":
     resetPage();
     refetch();
   }, [resetPage, refetch]);
+   useEffect(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }, [])
 
   // ── Filter Panel ─────────────────────────────────────────────────────────────
   const FilterPanel = () => (
