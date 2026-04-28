@@ -33,7 +33,7 @@ const baseQuery = async ({ url, method, body, params }) => {
 };
 
 export const wholesalerApi = createApi({
-  reducerPath: 'wholesalerApi',
+  reducerPath: 'adminWholesalerApi',
   baseQuery: baseQuery,
   tagTypes: ['WholesalerRequests', 'WholesalerSummary', 'WholesalerDetail'],
   endpoints: (builder) => ({
