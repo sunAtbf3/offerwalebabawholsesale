@@ -177,24 +177,15 @@ const Step3_BusinessInfo = () => {
     fd.append("idProof",               formData.idProofFile);
     fd.append("businessAddressProof",  formData.businessAddressProofFile);
 
-    try {
-      const result = await submitRequest(fd).unwrap();
+    const response = await submitRequest(fd);
+    const err = response?.error;
+    const result = response?.data;
 
-      // Success path
-      dispatch(setRegistrationSuccess(result.request?.id ?? null));
-      dispatch(resetFormData());
-      toast.success(
-        "🎉 Request submitted! Our team will review and contact you shortly.",
-        { autoClose: 6000 }
-      );
-      // Small delay so toast is visible before modal closes
-      setTimeout(() => dispatch(closeModal()), 1500);
-
-    } catch (err) {
+    if (err) {
       // ── Failure modes with full context logging ────────────────────────
       logError("submitWholesalerRequest", err);
 
-      const status  = err?.status;
+      const status = err?.status;
       const message = err?.data?.message ?? "";
 
       if (status === 409) {
@@ -222,7 +213,18 @@ const Step3_BusinessInfo = () => {
 
       // Catch-all
       toast.error(message || "Something went wrong. Please try again.", { autoClose: 5000 });
+      return;
     }
+
+    // Success path
+    dispatch(setRegistrationSuccess(result?.request?.id ?? null));
+    dispatch(resetFormData());
+    toast.success(
+      "🎉 Request submitted! Our team will review and contact you shortly.",
+      { autoClose: 6000 }
+    );
+    // Small delay so toast is visible before modal closes
+    setTimeout(() => dispatch(closeModal()), 1500);
   };
 
   return (
