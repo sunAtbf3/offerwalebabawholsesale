@@ -15,8 +15,12 @@ import UserTab from "./components/ADMIN_SEGMENT/ADMIN_TABS/USER/UserTab";
 import AdminDashboard from "./components/ADMIN_SEGMENT/Admin_dashboard";
 import './App.css';
 import ShopByPrice from './Components/HomeComponents/ShopByWHoleSalePrice/ShopByPrice';
-import { fetchCart, loadGuestCart } from './Components/REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice';
-import { fetchWishlist, loadGuestWishlist } from './Components/REDUX_FEATURES/REDUX_SLICES/UserWIshlist/userWishlistSLice';
+// import { fetchCart, loadGuestCart } from './Components/REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice';
+// import { fetchWishlist, loadGuestWishlist } from './Components/REDUX_FEATURES/REDUX_SLICES/UserWIshlist/userWishlistSLice';
+
+// ── These two are fine at app-level — they power Navbar badges ───────────────
+import useWishlistInit from "./Components/HOOKS/useWishlistInit";
+import useCartInit from "./Components/HOOKS/useCartInit";
 import ContactUs from './Components/HomeComponents/Contact';
 import UserDashboard from './User_Side_Web_Interface/User_Dash_Segment/UserDashboard';
 
@@ -88,6 +92,13 @@ function SessionHandler() {
     refetchOnFocus: false,
     skip: sessionChecked && isAuthenticated,
   });
+     // ── Cart & wishlist — fine here, they drive Navbar badges ────────────────
+    // DO NOT call these again inside any tab component
+    // useWishlistInit();
+    // useCartInit();
+    // In App.jsx — also skip wishlist/cart on admin routes
+    useWishlistInit();  // pass enabled flag
+    useCartInit();
 
   // Mark session as checked once the query settles (success or error)
   useEffect(() => {
@@ -95,20 +106,20 @@ function SessionHandler() {
   }, [isLoading]);
 
   // Guest: load cart & wishlist from localStorage
-  useEffect(() => {
-    if (sessionChecked && !isAuthenticated) {
-      dispatch(loadGuestCart());
-      dispatch(loadGuestWishlist());
-    }
-  }, [sessionChecked, isAuthenticated, dispatch]);
+  // useEffect(() => {
+  //   if (sessionChecked && !isAuthenticated) {
+  //     dispatch(loadGuestCart());
+  //     dispatch(loadGuestWishlist());
+  //   }
+  // }, [sessionChecked, isAuthenticated, dispatch]);
 
   // Authenticated: fetch cart & wishlist from server
-  useEffect(() => {
-    if (sessionChecked && isAuthenticated) {
-      dispatch(fetchCart());
-      dispatch(fetchWishlist());
-    }
-  }, [sessionChecked, isAuthenticated, dispatch]);
+  // useEffect(() => {
+  //   if (sessionChecked && isAuthenticated) {
+  //     dispatch(fetchCart());
+  //     dispatch(fetchWishlist());
+  //   }
+  // }, [sessionChecked, isAuthenticated, dispatch]);
 
   return null;
 }
