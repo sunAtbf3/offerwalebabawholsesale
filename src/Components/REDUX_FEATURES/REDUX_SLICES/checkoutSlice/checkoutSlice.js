@@ -140,6 +140,8 @@ export const checkDelivery = createAsyncThunk(
     try {
       const res = await axiosInstance.post("/delivery/check-delivery", { pincode });
       if (!res.data.success) throw new Error(res.data.message || "Delivery check failed");
+      console.log("data", res.data);
+      
       return res.data;
     } catch (err) {
       return rejectWithValue({
@@ -398,21 +400,24 @@ export const {
 // ─────────────────────────────────────────────────────────────────────────────
 // Selectors
 // ─────────────────────────────────────────────────────────────────────────────
-export const selectDelivery = (s) => s.checkout.delivery;
+export const selectDelivery = (s) => {
+  console.log("Delivery State1:", s);
+  return s.checkout?.delivery;
+};
 export const selectQuote = (s) => s.checkout.quote;
 export const selectQuoteId = (s) => s.checkout.quoteId;
 export const selectConfirmed = (s) => s.checkout.confirmed;
 export const selectPlacedOrder = (s) => s.checkout.placedOrder;
 export const selectSelectedAddressId = (s) => s.checkout.selectedAddressId;
-export const selectPaymentMethod = (s) => s.checkout.paymentMethod;
+export const selectPaymentMethod = (s) => s.checkout?.paymentMethod;
 export const selectPaymentPlan = (s) => s.checkout.paymentPlan;
 export const selectCouponCode = (s) => s.checkout.couponCode;
-export const selectCheckoutLoading = (s) => s.checkout.loading;
-export const selectCheckoutError = (s) => s.checkout.error;
+export const selectCheckoutLoading = (s) => s.checkout?.loading;
+export const selectCheckoutError = (s) => s.checkout?.error;
 export const selectRazorpayKey = (s) => s.checkout.razorpayKey;
 export const selectRazorpayKeyLoading = (s) => s.checkout.razorpayKeyLoading;
 export const selectRazorpayKeyError = (s) => s.checkout.razorpayKeyError;
-export const selectPaymentVerification = (s) => s.checkout.paymentVerification;
+export const selectPaymentVerification = (s) => s.checkout?.paymentVerification;
 
 export default checkoutSlice.reducer;
 // import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";

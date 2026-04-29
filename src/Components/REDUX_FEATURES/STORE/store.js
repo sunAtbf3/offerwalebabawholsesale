@@ -36,6 +36,8 @@ import { wholesalerApi as adminWholesalerApi } from "../../ADMIN_SEGMENT/ADMIN_R
 import userWishlistReducer from "../REDUX_SLICES/UserWIshlist/userWishlistSLice";
 import userAddressReducer from "../REDUX_SLICES/Useraddressslice";
 import { searchApi } from "../REDUX_SLICES/searchApi";
+import orderReducer from "../REDUX_SLICES/orderSlice";
+import checkoutReducer from "../REDUX_SLICES/checkoutSlice/checkoutSlice";
 
 export const store = configureStore({
   reducer: {
@@ -52,6 +54,9 @@ export const store = configureStore({
      userCart: userCartReducer,
      userWishlist: userWishlistReducer,
      userAddress: userAddressReducer,
+       orders: orderReducer,
+           checkout: checkoutReducer,
+
 
     // ========== ADMIN PANEL REDUCERS (EXTRACTED FROM FIRST FILE) ==========
     adminProductCreate: adminProductCreateReducer,

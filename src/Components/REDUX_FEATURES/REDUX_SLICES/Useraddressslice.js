@@ -234,7 +234,10 @@ const userAddressSlice = createSlice({
 export const { clearAddressErrors } = userAddressSlice.actions;
 
 // ── Selectors ─────────────────────────────────────────────────────────────────
-export const selectDefaultAddress  = (state) => state.userAddress.defaultAddress;
+export const selectDefaultAddress  = (state) => {
+  console.log("select Default address", state?.userAddress);
+  return state?.userAddress?.defaultAddress;
+};
 export const selectOtherAddresses  = (state) => state.userAddress.addresses;
 export const selectAllAddresses    = (state) => [
   ...(state.userAddress.defaultAddress ? [state.userAddress.defaultAddress] : []),

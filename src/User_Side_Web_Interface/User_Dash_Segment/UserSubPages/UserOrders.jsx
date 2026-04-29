@@ -176,6 +176,8 @@ const TrackingTimeline = ({ timeline = [] }) => (
 const OrderDetail = ({ orderId, onBack, onCancel, isCancelling, cancelError }) => {
   const dispatch = useDispatch();
   const order = useSelector(selectActiveOrder);
+  console.log("order", order);
+  
   const user = useSelector(selectUser);
   const tracking = useSelector(selectTracking(orderId));
   const loading = useSelector(selectOrderLoading);
@@ -266,7 +268,7 @@ const OrderDetail = ({ orderId, onBack, onCancel, isCancelling, cancelError }) =
   }, []);
 
   /** Verify / Razorpay client failures — initiate errors stay inline only */
-  const modalError = paymentVerification.error || razorpayClientError || null;
+  const modalError = paymentVerification?.error || razorpayClientError || null;
 
   const holdExpired = order && isPaymentWindowExpired(order);
 
@@ -539,11 +541,11 @@ const OrderDetail = ({ orderId, onBack, onCancel, isCancelling, cancelError }) =
         />
       )}
 
-      {paymentVerification.loading && (
+      {paymentVerification?.loading && (
         <PaymentLoadingModal message="Verifying payment…" />
       )}
 
-      {modalError && !paymentVerification.loading && !showRazorpay && (
+      {modalError && !paymentVerification?.loading && !showRazorpay && (
         <PaymentErrorModal
           error={modalError}
           onRetry={() => {

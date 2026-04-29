@@ -22,8 +22,6 @@ import {
   clearCurrentProduct,
 } from "../REDUX_FEATURES/REDUX_SLICES/ProductsApi/userProductsSlice";
 
-// ── Cart slice (same paths as WholesaleProductCard) ──────────────────────────
-// ── Cart slice
 import {
   addGuestCartItem,
   updateGuestCartItem,
@@ -34,7 +32,6 @@ import {
   removeCartItem,
 } from "../REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice";
 
-// ── Wishlist slice
 import {
   addGuestItem,
   removeGuestItem,
@@ -74,11 +71,12 @@ function formatCount(count = 0) {
   return Math.floor(count / 100) * 100 + "+";
 }
 
+// ── From V1: full availability meta with MOQ_UNMET / NOT_LISTED support ───────
 const getAvailabilityMeta = (availability) => {
   const status = availability?.status || "IN_STOCK";
   if (status === "OUT_OF_STOCK") return { label: "Out of stock", className: "text-red-600" };
-  if (status === "MOQ_UNMET") return { label: "MOQ not met", className: "text-amber-600" };
-  if (status === "NOT_LISTED") return { label: "Not available", className: "text-gray-500" };
+  if (status === "MOQ_UNMET")    return { label: "MOQ not met",  className: "text-amber-600" };
+  if (status === "NOT_LISTED")   return { label: "Not available", className: "text-gray-500" };
   return { label: "In stock", className: "text-green-700" };
 };
 
@@ -106,7 +104,7 @@ const Skeleton = () => (
   </div>
 );
 
-// ─── Related Card (with working cart) ─────────────────────────────────────────
+// ─── Related Card ─────────────────────────────────────────────────────────────
 const RelatedCard = ({ product }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -124,8 +122,7 @@ const RelatedCard = ({ product }) => {
   const discPct   = disc ? Math.round(((basePrice - salePrice) / basePrice) * 100) : null;
   const maxStock  = variant.inventory?.trackInventory ? (variant.inventory?.quantity ?? 0) : Infinity;
   const inStock   = maxStock > 0;
-  const isAtMax   = currentQty >= maxStock && maxStock !== Infinity;
-  // const isAtMax = isAtMaxStock; // alias — handleIncrement use karta hai yeh
+  const isAtMax   = currentQty >= maxStock && maxStock !== Infinity; // ✅ local var, not main component's
 
   const [adding, setAdding] = useState(false);
 
@@ -145,8 +142,12 @@ const RelatedCard = ({ product }) => {
 
   const handleInc = (e) => {
     e.stopPropagation();
-    if (isAtMax) { toast.warning(`Max stock: ${maxStock}`); return; }
-    dispatch(updateGuestCartItem({ productSlug: product.slug, variantId: variant?._id?.toString() || "", quantity: currentQty + 1 }));
+    if (isAtMax) { toast.warning(`Max stock: ${maxStock}`); return; } // ✅ uses local isAtMax
+    dispatch(updateGuestCartItem({
+      productSlug: product.slug,
+      variantId:   variant?._id?.toString() || "",
+      quantity:    currentQty + 1,
+    }));
   };
 
   const handleDec = (e) => {
@@ -155,7 +156,11 @@ const RelatedCard = ({ product }) => {
       dispatch(removeGuestCartItem({ productSlug: product.slug, variantId: variant?._id?.toString() || "" }));
       toast.info("Removed from cart");
     } else {
-      dispatch(updateGuestCartItem({ productSlug: product.slug, variantId: variant?._id?.toString() || "", quantity: currentQty - 1 }));
+      dispatch(updateGuestCartItem({
+        productSlug: product.slug,
+        variantId:   variant?._id?.toString() || "",
+        quantity:    currentQty - 1,
+      }));
     }
   };
 
@@ -191,7 +196,6 @@ const RelatedCard = ({ product }) => {
           {disc && <span className="text-xs text-gray-400 line-through">{fmt(basePrice)}</span>}
         </div>
 
-        {/* Cart controls */}
         <div onClick={(e) => e.stopPropagation()}>
           {!inStock ? (
             <button disabled className="w-full text-xs font-bold py-2 rounded-lg bg-gray-100 text-gray-400 cursor-not-allowed">
@@ -236,7 +240,6 @@ const WholesaleProductDetail = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // ── RTK Query ─────────────────────────────────────────────────────────────
   const {
     data: product,
     isLoading,
@@ -253,29 +256,26 @@ const WholesaleProductDetail = () => {
     { skip: !slug || !product }
   );
 
-  // ── Redux selectors ───────────────────────────────────────────────────────
-  const wishlisted = useSelector(selectIsWishlisted(product?.slug));
-  const cartItem   = useSelector(selectCartItemBySlug(product?.slug));
+  const wishlisted      = useSelector(selectIsWishlisted(product?.slug));
+  const cartItem        = useSelector(selectCartItemBySlug(product?.slug));
   const isAuthenticated = useSelector(selectIsAuthenticated);
-  const isInCart   = !!cartItem;
-  const currentQty = cartItem?.quantity ?? 0;
-  // const { isLoggedIn } = useSelector((state) => state.auth); // uncomment when auth ready
+  const isInCart        = !!cartItem;
+  const currentQty      = cartItem?.quantity ?? 0;
 
-  // ── Local UI state ────────────────────────────────────────────────────────
-  const [activeThumb, setActiveThumb]     = useState(0);
+  const [activeThumb, setActiveThumb] = useState(0);
   const [selectedAttrs, setSelectedAttrs] = useState({});
-  const [activeTab, setActiveTab]         = useState("desc");
-  const [openDesc, setOpenDesc]           = useState(false);
-  const [shareOpen, setShareOpen]         = useState(false);
-  const [showZoom, setShowZoom]           = useState(false);
-  const [isMobile, setIsMobile]           = useState(false);
-  const [isVisible, setIsVisible]         = useState(false);
-  const [qty, setQty]                     = useState(1);
+  const [activeTab, setActiveTab]     = useState("desc");
+  const [openDesc, setOpenDesc]       = useState(false);
+  const [shareOpen, setShareOpen]     = useState(false);
+  const [showZoom, setShowZoom]       = useState(false);
+  const [isMobile, setIsMobile]       = useState(false);
+  const [isVisible, setIsVisible]     = useState(false);
+  const [qty, setQty]                 = useState(1);
 
   const [localLoading, setLocalLoading] = useState({
     add: false, update: false, remove: false, wishlist: false,
   });
-  const setL = (key, val) => setLocalLoading((p) => ({ ...p, [key]: val }));
+  const setL         = (key, val) => setLocalLoading((p) => ({ ...p, [key]: val }));
   const isProcessing = localLoading.add || localLoading.update || localLoading.remove;
 
   const containerRef = useRef(null);
@@ -285,13 +285,11 @@ const WholesaleProductDetail = () => {
   const targetRef    = useRef({ x: 0.5, y: 0.5 });
   const currentRef   = useRef({ x: 0.5, y: 0.5 });
 
-  // ── Sync to redux slice ───────────────────────────────────────────────────
   useEffect(() => {
     if (product) dispatch(setCurrentProduct(product));
     return () => dispatch(clearCurrentProduct());
   }, [product, dispatch]);
 
-  // ── Scroll + reset on slug change ────────────────────────────────────────
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
     setActiveThumb(0);
@@ -299,7 +297,6 @@ const WholesaleProductDetail = () => {
     setActiveTab("desc");
   }, [slug]);
 
-  // ── Mobile detection ─────────────────────────────────────────────────────
   useEffect(() => {
     const check = () =>
       setIsMobile("ontouchstart" in window || navigator.maxTouchPoints > 0 || window.innerWidth < 768);
@@ -308,14 +305,12 @@ const WholesaleProductDetail = () => {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  // ── Close share on outside click ─────────────────────────────────────────
   useEffect(() => {
     const close = () => setShareOpen(false);
     document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
   }, []);
 
-  // ── RAF zoom loop ─────────────────────────────────────────────────────────
   useEffect(() => {
     const animate = () => {
       currentRef.current.x += (targetRef.current.x - currentRef.current.x) * 0.15;
@@ -396,9 +391,12 @@ const WholesaleProductDetail = () => {
 
   useEffect(() => { setActiveThumb(0); }, [selectedVariant?._id]);
 
-  // ── Derived values ────────────────────────────────────────────────────────
+  // ── Derived values ─────────────────────────────────────────────────────────
   const images    = selectedVariant?.images ?? [];
   const activeImg = images[activeThumb]?.url ?? product?.image ?? null;
+
+  // ✅ V2: variant properly declared from selectedVariant
+  const variant = selectedVariant || {};
 
   const wholesalePrice = selectedVariant?.finalPrice ?? selectedVariant?.price?.sale ?? product?.wholesalePrice ?? null;
   const mrp            = selectedVariant?.price?.base ?? product?.mrp ?? null;
@@ -406,187 +404,190 @@ const WholesaleProductDetail = () => {
   const discPct        = hasDisc ? Math.round(((mrp - wholesalePrice) / mrp) * 100) : null;
   const marginPercent  = product?.marginPercent ?? (hasDisc ? discPct : null);
 
-  const stock = selectedVariant?.inventory?.quantity ?? product?.stock ?? null;
-  const availability = selectedVariant?.availability || null;
-  const availabilityMeta = getAvailabilityMeta(availability);
-  const fallbackInStock = product?.inStock ?? (stock == null || stock > 0);
-  const inStock = availability?.purchasable ?? fallbackInStock;
-  const lowStock = stock != null && stock > 0 && stock <= 10;
-  const isAtMaxStock = currentQty >= maxStock && maxStock !== Infinity;
+  // ✅ V2: maxStock properly declared
+  const maxStock = selectedVariant?.inventory?.trackInventory
+    ? (selectedVariant?.inventory?.quantity ?? 0)
+    : Infinity;
+  const stock    = selectedVariant?.inventory?.quantity ?? product?.stock ?? null;
 
-  const moq            = selectedVariant?.minimumOrderQuantity ?? selectedVariant?.price?.minimumOrderQuantity ?? null;;
-  const casePack       = product?.casePack ?? 1;
-  const leadTime       = product?.leadTime ?? "3–5 days";
-  const returnPolicy   = product?.returnPolicy ?? "7 days";
-  const title          = product?.title || product?.name || "Product";
-  const rating         = product?.rating?.value ?? product?.rating ?? 4.5;
-  const ratingCnt      = product?.rating?.count ?? product?.reviewCount ?? 0;
-  const soldInfo       = product?.soldInfo?.count ?? product?.soldCount ?? 0;
-  const brand          = product?.brand ?? null;
+  // ✅ V1: full availability logic with canPurchase
+  const availability     = selectedVariant?.availability || null;
+  const availabilityMeta = getAvailabilityMeta(availability);
+  const fallbackInStock  = product?.inStock ?? (maxStock === Infinity || maxStock > 0);
+  const inStock          = availability?.purchasable ?? fallbackInStock;
+  const lowStock         = stock != null && stock > 0 && stock <= 10;
+  const isAtMaxStock     = currentQty >= maxStock && maxStock !== Infinity;
+
+  // ✅ V1: moq from variant (more specific), V2 fallback from product
+  const moq           = selectedVariant?.minimumOrderQuantity
+    ?? selectedVariant?.price?.minimumOrderQuantity
+    ?? product?.moq
+    ?? 1;
+  const casePack      = product?.casePack ?? 1;
+  const leadTime      = product?.leadTime ?? "3–5 days";
+  const returnPolicy  = product?.returnPolicy ?? "7 days";
+  const title         = product?.title || product?.name || "Product";
+  const rating        = product?.rating?.value ?? product?.rating ?? 4.5;
+  const ratingCnt     = product?.rating?.count ?? product?.reviewCount ?? 0;
+  const soldInfo      = product?.soldInfo?.count ?? product?.soldCount ?? 0;
+  const brand         = product?.brand ?? null;
   const sellingPriceRange = product?.sellingPriceRange ?? null;
-  const earnPerUnit    = product?.earnPerUnit ?? null;
-  const volumePricing  = product?.volumePricing ?? [];
+  const earnPerUnit   = product?.earnPerUnit ?? null;
+  const volumePricing = product?.volumePricing ?? [];
 
   const currentTier = volumePricing.find((t) => qty >= t.min && qty <= t.max) || volumePricing[0];
   const unitPrice   = currentTier?.price ?? wholesalePrice;
   const totalPrice  = unitPrice != null ? unitPrice * qty : null;
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  // ✅ V1: reset qty to moq when variant/moq changes
+  useEffect(() => {
+    setQty(moq || 1);
+  }, [moq]);
 
-  // ── Cart handlers ─────────────────────────────────────────────────────────
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleWishlist = async (e) => {
-   e.stopPropagation();
-   if (!product?.slug || localLoading.wishlist) return;
-   setL("wishlist", true);
-   try {
-     if (isAuthenticated) {
-       // Logged-in user — API call
-       if (wishlisted) {
-         await dispatch(removeFromWishlist({ productSlug: product.slug })).unwrap();
-         toast.success("Removed from wishlist", { icon: "💔" });
-       } else {
-         await dispatch(addToWishlist({
-           productSlug: product.slug,
-           variantId: variant?._id?.toString() || "",
-         })).unwrap();
-         toast.success("Saved to wishlist", { icon: "❤️" });
-       }
-     } else {
-       // Guest user — localStorage
-       if (wishlisted) {
-         dispatch(removeGuestItem(product.slug));
-         toast.success("Removed", { icon: "💔" });
-       } else {
-         dispatch(addGuestItem(product.slug));
-         toast.success("Saved to wishlist", { icon: "❤️" });
-       }
-     }
-   } catch (err) {
-     toast.error(err?.message || "Wishlist action failed");
-   } finally {
-     setL("wishlist", false);
-   }
- };
-   useEffect(() => {
-  setQty(moq || 1);
-}, [moq]);
- 
-   // ── Cart — guest only abhi ke liye ───────────────────────────────────────
-  // ── handleAddToCart fix ───────────────────────────────────────────
- const handleAddToCart = async (e) => {
-   e.stopPropagation();
-      if (!inStock) {
+    e.stopPropagation();
+    if (!product?.slug || localLoading.wishlist) return;
+    setL("wishlist", true);
+    try {
+      if (isAuthenticated) {
+        if (wishlisted) {
+          await dispatch(removeFromWishlist({ productSlug: product.slug })).unwrap();
+          toast.success("Removed from wishlist", { icon: "💔" });
+        } else {
+          await dispatch(addToWishlist({
+            productSlug: product.slug,
+            variantId:   variant?._id?.toString() || "",
+          })).unwrap();
+          toast.success("Saved to wishlist", { icon: "❤️" });
+        }
+      } else {
+        if (wishlisted) {
+          dispatch(removeGuestItem(product.slug));
+          toast.success("Removed", { icon: "💔" });
+        } else {
+          dispatch(addGuestItem(product.slug));
+          toast.success("Saved to wishlist", { icon: "❤️" });
+        }
+      }
+    } catch (err) {
+      toast.error(err?.message || "Wishlist action failed");
+    } finally {
+      setL("wishlist", false);
+    }
+  };
+
+  // ✅ V1: MOQ_UNMET toast warning added; V2: isAuthenticated branches
+  const handleAddToCart = async (e) => {
+    e.stopPropagation();
+    if (!inStock) {
       if (availability?.status === "MOQ_UNMET") {
-        toast.warning(`MOQ not met: Min qty ${minRequiredQty}, available ${availability?.quantity ?? stock ?? 0}`);
+        toast.warning(`MOQ not met: Min qty ${moq}, available ${availability?.quantity ?? stock ?? 0}`);
       }
       return;
     }
-   if (isInCart || isProcessing || !inStock || !product?.slug) return;
-   setL("add", true);
-   try {
-     if (isAuthenticated) {
-       // ✅ Logged-in user — API call
-       await dispatch(addToCart({
-         productSlug: product.slug,
-         productId:   product._id,
-         variantId:   variant?._id?.toString() || "",
-         quantity:    moq || 1,
-       })).unwrap();
-     } else {
-       // Guest user — localStorage
-       dispatch(addGuestCartItem({
-         productId:   product._id,
-         productSlug: product.slug,
-         variantId:   variant?._id?.toString() || "",
-         quantity:    moq || 1,
-       }));
-     }
-     toast.success("Added to cart");
-   } catch (err) {
-     toast.error(err?.message || "Failed to add to cart");
-   } finally {
-     setL("add", false);
-   }
- };
- 
- // ── handleIncrement fix ───────────────────────────────────────────
- const handleIncrement = async (e) => {
-   e.stopPropagation();
-   if (isAtMaxStock) { toast.warning(`Max stock: ${maxStock}`); return; }
-   if (isProcessing) return;
-   setL("update", true);
-   try {
-     if (isAuthenticated) {
-       // ✅ Logged-in user — API call
-       await dispatch(updateCartItem({
-         productId:   product._id,
-         variantId:   variant?._id?.toString() || "",
-         quantity:    currentQty + 1,
-         productSlug: product.slug,
-       })).unwrap();
-     } else {
-       dispatch(updateGuestCartItem({
-         productSlug: product.slug,
-         variantId:   variant?._id?.toString() || "",
-         quantity:    currentQty + 1,
-       }));
-     }
-   } catch (err) {
-     toast.error(err?.message || "Failed to update");
-   } finally {
-     setL("update", false);
-   }
- };
- 
- // ── handleDecrement fix ───────────────────────────────────────────
- const handleDecrement = async (e) => {
-  e.stopPropagation();
-  if (isProcessing) return;
-  const newQty = currentQty - 1;
-  try {
-    // ✅ moq se kam nahi jaayega — remove kar do
-    if (newQty < (moq || 1)) {
-      setL("remove", true);
+    if (isInCart || isProcessing || !product?.slug) return;
+    setL("add", true);
+    try {
       if (isAuthenticated) {
-        await dispatch(removeCartItem({
+        await dispatch(addToCart({
+          productSlug: product.slug,
           productId:   product._id,
           variantId:   variant?._id?.toString() || "",
-          productSlug: product.slug,
+          quantity:    moq || 1,
         })).unwrap();
       } else {
-        dispatch(removeGuestCartItem({
+        dispatch(addGuestCartItem({
+          productId:   product._id,
           productSlug: product.slug,
           variantId:   variant?._id?.toString() || "",
+          quantity:    moq || 1,
         }));
       }
-      toast.info("Removed from cart");
-    } else {
-      setL("update", true);
+      toast.success("Added to cart");
+    } catch (err) {
+      toast.error(err?.message || "Failed to add to cart");
+    } finally {
+      setL("add", false);
+    }
+  };
+
+  // ✅ V2: uses isAtMaxStock (correctly declared above)
+  const handleIncrement = async (e) => {
+    e.stopPropagation();
+    if (isAtMaxStock) { toast.warning(`Max stock: ${maxStock}`); return; }
+    if (isProcessing) return;
+    setL("update", true);
+    try {
       if (isAuthenticated) {
         await dispatch(updateCartItem({
           productId:   product._id,
           variantId:   variant?._id?.toString() || "",
-          quantity:    newQty,
+          quantity:    currentQty + 1,
           productSlug: product.slug,
         })).unwrap();
       } else {
         dispatch(updateGuestCartItem({
           productSlug: product.slug,
           variantId:   variant?._id?.toString() || "",
-          quantity:    newQty,
+          quantity:    currentQty + 1,
         }));
       }
+    } catch (err) {
+      toast.error(err?.message || "Failed to update");
+    } finally {
+      setL("update", false);
     }
-  } catch (err) {
-    toast.error(err?.message || "Failed to update");
-  } finally {
-    setL("update", false);
-    setL("remove", false);
-  }
-};
+  };
+
+  // ✅ V1: removes when newQty < moq (not just <= 0); V2: isAuthenticated branches
+  const handleDecrement = async (e) => {
+    e.stopPropagation();
+    if (isProcessing) return;
+    const newQty = currentQty - 1;
+    try {
+      if (newQty < (moq || 1)) {
+        setL("remove", true);
+        if (isAuthenticated) {
+          await dispatch(removeCartItem({
+            productId:   product._id,
+            variantId:   variant?._id?.toString() || "",
+            productSlug: product.slug,
+          })).unwrap();
+        } else {
+          dispatch(removeGuestCartItem({
+            productSlug: product.slug,
+            variantId:   variant?._id?.toString() || "",
+          }));
+        }
+        toast.info("Removed from cart");
+      } else {
+        setL("update", true);
+        if (isAuthenticated) {
+          await dispatch(updateCartItem({
+            productId:   product._id,
+            variantId:   variant?._id?.toString() || "",
+            quantity:    newQty,
+            productSlug: product.slug,
+          })).unwrap();
+        } else {
+          dispatch(updateGuestCartItem({
+            productSlug: product.slug,
+            variantId:   variant?._id?.toString() || "",
+            quantity:    newQty,
+          }));
+        }
+      }
+    } catch (err) {
+      toast.error(err?.message || "Failed to update");
+    } finally {
+      setL("update", false);
+      setL("remove", false);
+    }
+  };
 
   const share = (type) => {
-    const url = window.location.href;
+    const url     = window.location.href;
     const message = `🛒 *OfferWaleBaba* — WHOLESALE & RETAIL\n\n` +
       `🏭 From Maker | 🛍️ Market & Grow | 📈 E-Business\n\n` +
       `Check out this product: *${title}*\n` +
@@ -611,7 +612,7 @@ const WholesaleProductDetail = () => {
     }
   };
 
-  // ── Tab content ───────────────────────────────────────────────────────────
+  // ── Tabs ──────────────────────────────────────────────────────────────────
   const tabs = [
     { key: "desc",    label: "Description" },
     { key: "specs",   label: "Specifications" },
@@ -771,7 +772,7 @@ const WholesaleProductDetail = () => {
   return (
     <div className="min-h-screen bg-gray-50">
 
-      {/* ── Mobile image lightbox ── */}
+      {/* Mobile image lightbox */}
       {isVisible && (
         <div
           className="fixed inset-0 z-50 md:hidden bg-black/60 backdrop-blur-sm flex items-end"
@@ -838,10 +839,9 @@ const WholesaleProductDetail = () => {
           <span className="text-gray-700 font-semibold">{title}</span>
         </nav>
 
-        {/* ═══════════ PDP GRID ═══════════ */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_440px] gap-8 items-start">
 
-          {/* ── LEFT COLUMN ── */}
+          {/* LEFT COLUMN */}
           <div className="flex flex-col gap-5">
 
             {/* Image Card */}
@@ -919,7 +919,7 @@ const WholesaleProductDetail = () => {
               </div>
             </div>
 
-            {/* Zoom panel (desktop) — rendered inside left col, positioned absolutely */}
+            {/* Zoom panel (desktop) */}
             {showZoom && !isMobile && activeImg && (
               <div
                 ref={zoomRef}
@@ -967,10 +967,9 @@ const WholesaleProductDetail = () => {
             )}
           </div>
 
-          {/* ── RIGHT COLUMN — Sticky ── */}
+          {/* RIGHT COLUMN — Sticky */}
           <div className="flex flex-col gap-4 lg:sticky lg:top-[74px]">
 
-            {/* Main info card */}
             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
 
               {/* Title area */}
@@ -1083,31 +1082,36 @@ const WholesaleProductDetail = () => {
 
               {/* Quantity + CTA */}
               <div className="px-4 sm:px-5 py-4 space-y-3">
-                {/* Qty row */}
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-gray-700">
-                    Quantity <span className="font-normal text-gray-400">(MOQ: {minRequiredQty})</span>
-                  </span>
-                  {totalPrice != null && (
-                    <span className="text-xs font-extrabold text-gray-900">Total: {fmt(totalPrice)}</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setQty((q) => Math.max(minRequiredQty, q - minRequiredQty))}
-                    className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-lg font-bold text-gray-700 hover:border-yellow-400 transition-colors"
-                  >−</button>
-                  <input
-                    type="number"
-                    value={qty}
-                    onChange={(e) => setQty(Math.max(minRequiredQty, Number(e.target.value)))}
-                    className="flex-1 h-10 text-center border border-gray-200 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-yellow-400"
-                  />
-                  <button
-                    onClick={() => setQty((q) => q + minRequiredQty)}
-                    className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-lg font-bold text-gray-700 hover:border-yellow-400 transition-colors"
-                  >+</button>
-                </div>
+
+                {/* ✅ V2: qty selector only shown when not in cart */}
+                {!isInCart && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-gray-700">
+                        Quantity <span className="font-normal text-gray-400">(MOQ: {moq})</span>
+                      </span>
+                      {totalPrice != null && (
+                        <span className="text-xs font-extrabold text-gray-900">Total: {fmt(totalPrice)}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setQty((q) => Math.max(moq, q - moq))}
+                        className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-lg font-bold text-gray-700 hover:border-yellow-400 transition-colors"
+                      >−</button>
+                      <input
+                        type="number"
+                        value={qty}
+                        onChange={(e) => setQty(Math.max(moq, Number(e.target.value)))}
+                        className="flex-1 h-10 text-center border border-gray-200 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-yellow-400"
+                      />
+                      <button
+                        onClick={() => setQty((q) => q + moq)}
+                        className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-lg font-bold text-gray-700 hover:border-yellow-400 transition-colors"
+                      >+</button>
+                    </div>
+                  </>
+                )}
 
                 {/* Variant attrs */}
                 {attrKeys.length > 0 && (
@@ -1139,7 +1143,7 @@ const WholesaleProductDetail = () => {
                   </div>
                 )}
 
-                {/* ── ADD TO CART / QTY CONTROLS ── */}
+                {/* ADD TO CART / QTY CONTROLS */}
                 {inStock ? (
                   !isInCart ? (
                     <button
@@ -1154,6 +1158,7 @@ const WholesaleProductDetail = () => {
                     </button>
                   ) : (
                     <div className="flex items-center w-full border-2 border-yellow-400 rounded-xl overflow-hidden">
+                      {/* ✅ V1: disabled also when at/below moq */}
                       <button
                         onClick={handleDecrement}
                         disabled={isProcessing || currentQty <= (moq || 1)}
@@ -1181,39 +1186,24 @@ const WholesaleProductDetail = () => {
                   )
                 ) : (
                   <div className="w-full bg-gray-100 text-gray-400 py-3 rounded-xl font-extrabold text-sm text-center">
-                    Out of Stock
+                    {availabilityMeta.label}
                   </div>
                 )}
 
-                {/* Order Now */}
+                {/* ✅ V1: MOQ_UNMET warning below CTA */}
+                {availability?.status === "MOQ_UNMET" && (
+                  <p className={`text-xs font-semibold ${availabilityMeta.className}`}>
+                    Min qty {moq}, available {availability?.quantity ?? stock ?? 0}
+                  </p>
+                )}
+
+                {/* ✅ V2: single clean "Order Now" link — no duplicate */}
                 <Link
                   to="/checkout"
                   className="w-full bg-gray-900 text-yellow-400 py-3 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors active:scale-[0.98]"
                 >
-                  <ShoppingCart size={16} />
-                  {inStock ? `Add To Cart — ${totalPrice != null ? fmt(totalPrice) : "—"}` : availabilityMeta.label}
+                  Order Now
                 </Link>
-                {inStock ? (
-                  <Link
-                    to="/checkout"
-                    className="w-full bg-gray-900 text-yellow-400 py-3 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors active:scale-[0.98]"
-                  >
-                    Order Now
-                  </Link>
-                ) : (
-                  <button
-                    type="button"
-                    disabled
-                    className="w-full bg-gray-200 text-gray-500 py-3 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 cursor-not-allowed"
-                  >
-                    {availabilityMeta.label}
-                  </button>
-                )}
-                {availability?.status === "MOQ_UNMET" && (
-                  <p className={`text-xs font-semibold ${availabilityMeta.className}`}>
-                    Min qty {minRequiredQty}, available {availability?.quantity ?? stock ?? 0}
-                  </p>
-                )}
 
                 {/* Wishlist + Share */}
                 <div className="flex items-center gap-2 pt-1">
