@@ -13,6 +13,12 @@ import { useGetMeQuery } from './Components/REDUX_FEATURES/REDUX_SLICES/authApi/
 import { selectIsAuthenticated } from './Components/REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
 import UserTab from "./components/ADMIN_SEGMENT/ADMIN_TABS/USER/UserTab";
 import AdminDashboard from "./components/ADMIN_SEGMENT/Admin_dashboard";
+import AdminLogin from './Components/ADMIN_SEGMENT/ADMIN_LOGIN_SEGMENT/AdminLogin';
+import AdminUnauthorized from './Components/ADMIN_SEGMENT/ADMIN_LOGIN_SEGMENT/AdminUnauthorized';
+import AdminPrivateRoute from './Components/ADMIN_SEGMENT/ADMIN_LOGIN_SEGMENT/AdminPrivateRoute';
+import { adminForceLogout } from './components/ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/adminAuthSlice';
+import { logout } from './Components/REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
+import { WHOLESALE_USER_ACCESS_TOKEN_KEY } from './SERVICES/wholesaleAxios';
 import './App.css';
 import ShopByPrice from './Components/HomeComponents/ShopByWHoleSalePrice/ShopByPrice';
 
@@ -42,40 +48,34 @@ function AppRoutes() {
       <Route path="/product/:slug" element={<ProductDetail />} />
       <Route path="/category/:slug" element={<CatProducts />} />
       <Route path="/activate" element={<ActivatePage />} />
-              <Route path="/shopByCategory/:slug" element={<ShopByPrice />} />
+      <Route path="/shopByCategory/:slug" element={<ShopByPrice />} />
 
+      {/* Public admin auth entrypoints for wholesale admin users. */}
+      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin/unauthorized" element={<AdminUnauthorized />} />
 
-              {/* ── Admin auth routes (public — no AdminPrivateRoute) ───── */}
-                {/* <Route path="/admin/login"        element={<AdminLogin />} /> */}
-                {/* <Route path="/admin/unauthorized" element={<AdminUnauthorized />} /> */}
+      {/*
+       * /no-access is shown to regular users who hit admin URLs.
+       * It stays public so the redirect target can always render.
+       */}
+      <Route path="/no-access" element={<UserTab />} />
 
-                        {/*
-                 * ── /no-access — shown to regular users who hit admin URLs ──
-                 * Public route — no auth needed to VIEW this page.
-                 * The UserTab component handles its own "Take Me Home" button.
-                 */}
-                <Route path="/no-access" element={<UserTab />} />
-
-
-
-                   <Route
-                    path="/babapanel"
-                    element={
-                    
-                             <AdminDashboard />
-                     
-                      
-                    }
-                />
-                <Route
-                    path="/babadash/*"
-                    element={
-                        
-                            <AdminDashboard />
-                 
-                     
-                    }
-                />
+      <Route
+        path="/babapanel"
+        element={
+          <AdminPrivateRoute>
+            <AdminDashboard />
+          </AdminPrivateRoute>
+        }
+      />
+      <Route
+        path="/babadash/*"
+        element={
+          <AdminPrivateRoute>
+            <AdminDashboard />
+          </AdminPrivateRoute>
+        }
+      />
     </Routes>
   );
 }
@@ -85,6 +85,14 @@ function SessionHandler() {
   const dispatch = useDispatch();
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const [sessionChecked, setSessionChecked] = useState(false);
+  const location = useLocation();
+  const isAdminRoute =
+    location.pathname.startsWith('/babapanel') ||
+    location.pathname.startsWith('/babadash') ||
+    location.pathname.startsWith('/admin/login') ||
+    location.pathname.startsWith('/admin/unauthorized') ||
+    location.pathname.startsWith('/no-access');
+  const hasUserToken = Boolean(localStorage.getItem(WHOLESALE_USER_ACCESS_TOKEN_KEY));
   
   const { isLoading, error } = useGetMeQuery(undefined, {
     // Only run once on mount to check existing session
@@ -92,8 +100,26 @@ function SessionHandler() {
     refetchOnReconnect: false,
     refetchOnFocus: false,
     // Don't auto-refetch, just check once
-    skip: sessionChecked && isAuthenticated,
+    skip: isAdminRoute || !hasUserToken || (sessionChecked && isAuthenticated),
   });
+
+  useEffect(() => {
+    const handleUserForceLogout = () => {
+      dispatch(logout());
+    };
+
+    const handleAdminForceLogout = () => {
+      dispatch(adminForceLogout());
+    };
+
+    window.addEventListener('auth:logout:wholesale-user', handleUserForceLogout);
+    window.addEventListener('auth:logout:wholesale-admin', handleAdminForceLogout);
+
+    return () => {
+      window.removeEventListener('auth:logout:wholesale-user', handleUserForceLogout);
+      window.removeEventListener('auth:logout:wholesale-admin', handleAdminForceLogout);
+    };
+  }, [dispatch]);
 
   useEffect(() => {
     // Once we have a response (success or error), session check is complete

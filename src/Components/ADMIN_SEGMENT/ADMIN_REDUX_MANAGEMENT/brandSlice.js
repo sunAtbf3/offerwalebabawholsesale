@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import axiosInstance from "../../../SERVICES/axiosInstance";
+import wholesaleAxios from "../../../SERVICES/wholesaleAxios";
 
 const initialState = {
   brands: [],
@@ -15,7 +15,7 @@ export const fetchBrands = createAsyncThunk(
   'brands/fetchAll',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get('/admin/products');
+      const response = await wholesaleAxios.get('/admin/products');
       const products = response.data.products || [];
       const uniqueBrands = [...new Set(products.map(p => p.brand).filter(Boolean))];
       return uniqueBrands.sort();

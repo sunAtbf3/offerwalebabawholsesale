@@ -30,6 +30,7 @@ import {
   selectAdminUser,
 }                                from "../ADMIN_REDUX_MANAGEMENT/adminAuthSlice";
 import { ROLES }                 from "../roles";
+import { WHOLESALE_ADMIN_ACCESS_TOKEN_KEY } from "../../../SERVICES/wholesaleAxios";
 
 const VALID_ADMIN_ROLES = Object.values(ROLES); // all roles from roles.js
 const USER_ROLE         = "user";               // regular customer role
@@ -90,7 +91,7 @@ const AdminPrivateRoute = ({ children }) => {
     const status   = useSelector(selectAdminStatus);
     const user     = useSelector(selectAdminUser);
 
-    const token   = localStorage.getItem("accessToken");
+    const token   = localStorage.getItem(WHOLESALE_ADMIN_ACCESS_TOKEN_KEY);
     const payload = decodeToken(token);
 
     // ✅ Only call /auth/me when we genuinely need server confirmation:

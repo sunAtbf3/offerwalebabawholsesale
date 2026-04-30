@@ -42,7 +42,11 @@ export const authApi = createApi({
       query: ({ identifier, password }) => ({
         url: '/auth/login',
         method: 'POST',
-        body: { identifier, password },
+        body: {
+          identifier,
+          password,
+          portal: 'wholesale',
+        },
       }),
       invalidatesTags: ['User'],
     }),
@@ -52,6 +56,7 @@ export const authApi = createApi({
       query: () => ({
         url: '/auth/logout',
         method: 'POST',
+        body: { portal: 'wholesale' },
       }),
       invalidatesTags: ['User'],
     }),
@@ -70,6 +75,7 @@ export const authApi = createApi({
       query: () => ({
         url: '/auth/refresh',
         method: 'POST',
+        body: { portal: 'wholesale' },
       }),
     }),
 

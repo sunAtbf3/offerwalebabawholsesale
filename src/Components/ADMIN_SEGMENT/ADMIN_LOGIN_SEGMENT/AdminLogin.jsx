@@ -67,6 +67,24 @@ const formatLockTime = (s) => {
   return `${s}s`;
 };
 
+const ADMIN_WHOLESALE_PORTAL = "admin-wholesale";
+
+const getAdminLoginErrorMessage = (error) => {
+  const code = error?.data?.code;
+  const message = error?.data?.message || error?.message || "Invalid credentials.";
+
+  if (code === "PORTAL_ACCESS_DENIED") {
+    return "This account is not allowed on the wholesale admin portal.";
+  }
+  if (code === "PORTAL_REQUIRED_FOR_PRIVILEGED_ACCOUNT") {
+    return "Admin or staff accounts must login from the admin portal.";
+  }
+  if (code === "INVALID_PORTAL") {
+    return "Login configuration is invalid. Please refresh and try again.";
+  }
+  return message;
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AdminLogin = () => {
@@ -159,7 +177,7 @@ const AdminLogin = () => {
     if (lockSecondsLeft > 0 || isLoading) return;
 
     try {
-      await adminLogin({ identifier, password }).unwrap();
+      await adminLogin({ identifier, password, portal: ADMIN_WHOLESALE_PORTAL }).unwrap();
 
       clearLock();
       setFailCount(0);
@@ -174,7 +192,7 @@ const AdminLogin = () => {
       startLock(newFail);
 
       const duration = getLockDuration(newFail);
-      const serverMsg = err?.data?.message || err?.message || "Invalid credentials.";
+      const serverMsg = getAdminLoginErrorMessage(err);
 
       if (duration > 0) {
         toast.error(`Too many attempts. Locked for ${formatLockTime(duration)}.`);

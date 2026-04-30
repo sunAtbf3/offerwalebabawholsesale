@@ -1,6 +1,7 @@
 // REDUX_SLICES/authSlice.js
 import { createSlice } from '@reduxjs/toolkit';
 import { authApi } from './authApi';
+import { WHOLESALE_USER_ACCESS_TOKEN_KEY } from '../../../../SERVICES/wholesaleAxios';
 
 const logError = (context, error) => {
   console.error(`[authSlice][${context}]`, {
@@ -31,7 +32,7 @@ const authSlice = createSlice({
       state.error = null;
 
       if (accessToken) {
-        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem(WHOLESALE_USER_ACCESS_TOKEN_KEY, accessToken);
       }
     },
     // Manual logout (clear state)
@@ -40,7 +41,7 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.loading = false;
       state.error = null;
-      localStorage.removeItem('accessToken');
+      localStorage.removeItem(WHOLESALE_USER_ACCESS_TOKEN_KEY);
     },
     // Clear error
     clearError: (state) => {
@@ -65,7 +66,7 @@ const authSlice = createSlice({
         state.error = null;
         // Store token in localStorage
         if (payload.accessToken) {
-          localStorage.setItem('accessToken', payload.accessToken);
+          localStorage.setItem(WHOLESALE_USER_ACCESS_TOKEN_KEY, payload.accessToken);
         }
       })
       .addMatcher(authApi.endpoints.login.matchRejected, (state, { error }) => {
@@ -108,13 +109,13 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.loading = false;
         state.error = null;
-        localStorage.removeItem('accessToken');
+        localStorage.removeItem(WHOLESALE_USER_ACCESS_TOKEN_KEY);
       })
       .addMatcher(authApi.endpoints.logout.matchRejected, (state) => {
         state.user = null;
         state.isAuthenticated = false;
         state.loading = false;
-        localStorage.removeItem('accessToken');
+        localStorage.removeItem(WHOLESALE_USER_ACCESS_TOKEN_KEY);
         logError('logout.rejected', { message: 'Logout failed but state cleared' });
       });
   },

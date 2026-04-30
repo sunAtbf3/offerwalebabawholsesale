@@ -508,7 +508,7 @@ const WholesaleProductDetail = () => {
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4">
       <AlertCircle size={32} className="text-red-400" />
       <p className="text-gray-600 text-sm text-center max-w-sm">
-        {error?.message || "Product not found.", error?.data?.message ? ` (${error.data.message})` : ""}
+        {(error?.message || "Product not found.") + (error?.data?.message ? ` (${error.data.message})` : "")}
       </p>
       <div className="flex gap-3">
         <button
