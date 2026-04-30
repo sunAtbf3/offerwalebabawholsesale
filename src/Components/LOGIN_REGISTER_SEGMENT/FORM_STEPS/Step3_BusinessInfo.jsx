@@ -167,7 +167,7 @@ const Step3_BusinessInfo = () => {
     fd.append("whatsappNumber",            formData.whatsappNumber.trim());
     fd.append("permanentAddress",          formData.permanentAddress.trim());
     fd.append("businessAddress",           formData.businessAddress.trim());
-    fd.append("deliveryAddress",           formData.deliveryAddress.trim());
+    fd.append("deliveryAddress",           formData.deliveryAddress.trim());  
     fd.append("haveShop",                  String(formData.haveShop));
     fd.append("sellingPlaceFrom",          formData.sellingPlaceFrom.trim());
     fd.append("sellingZoneCity",           formData.sellingZoneCity.trim());

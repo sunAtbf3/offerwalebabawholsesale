@@ -190,7 +190,7 @@ console.log("baseArgs =", baseArgs);
   } = usePaginatedFetch({
     useQuery: useGetAllProductsQuery,
     baseArgs: baseArgs,
-    limit:     8,
+    limit:     15,
     dataKey:  "products",
      skip: false,
   });
@@ -235,63 +235,61 @@ console.log("baseArgs =", baseArgs);
  const filteredProducts = useMemo(() => {
   if (!products?.length) return [];
 
+  const priceRange = PRICE_FILTERS[slug] || {};
+
   return products.filter((product) => {
     const variants = product.variants || [];
+    if (!variants.length) return false; // ✅ empty variants skip
 
     const prices = variants.map(v => ({
-      base: v.price?.base ?? 0,
-      sale: v.price?.sale ?? v.price?.base ?? 0,
+      // ✅ current field use karo — backend already calculate karta hai
+      current: v.price?.current ?? v.price?.sale ?? v.price?.base ?? 0,
       qty: v.inventory?.quantity ?? 0,
+      base: v.price?.base ?? 0,
+      sale: v.price?.sale ?? null,
     }));
 
-    const lowestSale = Math.min(...prices.map(p => p.sale));
+    const lowestPrice = Math.min(...prices.map(p => p.current));
+
+    // ✅ Price slug filter
+    if (priceRange.maxPrice !== undefined && lowestPrice > priceRange.maxPrice) return false;
+    if (priceRange.minPrice !== undefined && lowestPrice < priceRange.minPrice) return false;
 
     const maxDiscount = Math.max(
       ...prices.map(p =>
-        p.base > 0
+        p.base > 0 && p.sale != null
           ? Math.round(((p.base - p.sale) / p.base) * 100)
           : 0
       )
     );
 
     const totalQty = prices.reduce((sum, p) => sum + p.qty, 0);
-
-    const isOnSale = prices.some(p => p.sale < p.base);
-
+    const isOnSale = prices.some(p => p.sale != null && p.sale < p.base);
     const catName = product.category?.name ?? "";
 
-    // Availability
     if (filters.availability.length > 0) {
       const match = filters.availability.some((a) => {
         if (a === "instock") return totalQty > 0;
         if (a === "outofstock") return totalQty <= 0;
         return false;
       });
-
       if (!match) return false;
     }
 
-    // Discount
     if (filters.discount.length > 0) {
-      const match = filters.discount.some((d) => {
-        const minDiscount = Number(d);
-        return maxDiscount >= minDiscount;
-      });
-
+      const match = filters.discount.some((d) => maxDiscount >= Number(d));
       if (!match) return false;
     }
 
-    // On sale
     if (filters.onSale && !isOnSale) return false;
 
-    // Category
     if (filters.category.length > 0) {
       if (!filters.category.includes(catName)) return false;
     }
 
     return true;
   });
-}, [products, filters]);
+}, [products, filters, slug]);// ✅ slug add karo dependency mein
  const getLowestPrice = (product) => {
   const prices = (product.variants || [])
     .map(v => v.price?.sale ?? v.price?.base)
@@ -352,6 +350,9 @@ case "discount":
     resetPage();
     refetch();
   }, [resetPage, refetch]);
+   useEffect(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }, [])
 
   // ── Filter Panel ─────────────────────────────────────────────────────────────
   const FilterPanel = () => (
@@ -509,6 +510,10 @@ case "discount":
       )}
     </div>
   );
+  console.log('Total products from API:', products?.length);
+console.log('After filter:', filteredProducts?.length);
+console.log('Price range:', PRICE_FILTERS[slug]);
+console.log('Sample product price:', products?.[0]?.variants?.[0]?.price);
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (

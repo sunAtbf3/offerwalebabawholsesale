@@ -1,32 +1,47 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-// import { IoLogoWhatsapp, IoLogoFacebook, IoLogoInstagram } from "react-icons/io5";
-// import { FaTelegram } from "react-icons/fa6";
+import { IoLogoWhatsapp, IoLogoFacebook, IoLogoInstagram } from "react-icons/io5";
+import { FaTelegram } from "react-icons/fa6";
 import {
   Star, Heart, Minus, Plus, ShoppingCart,
   CheckCircle2, Truck, AlertCircle,
   RefreshCw, ArrowLeft, Loader2, ArrowRight,
   Package, ShieldCheck, RotateCcw,
   Tag, Share2, ChevronRight, TrendingUp,
-  Check, ThumbsUp, MapPin, Shield,
+  Check, ThumbsUp, MapPin, Shield, Eye, ShoppingBag,
 } from "lucide-react";
 
 import {
   useGetProductBySlugQuery,
   useGetRelatedProductsQuery,
-} from "../REDUX_FEATURES/REDUX_SLICES/ProductsApi/productsApi"; // adjust path as needed
+} from "../REDUX_FEATURES/REDUX_SLICES/ProductsApi/productsApi";
 
 import {
   setCurrentProduct,
   clearCurrentProduct,
 } from "../REDUX_FEATURES/REDUX_SLICES/ProductsApi/userProductsSlice";
 
-// ─── Wholesale cart / wishlist slices (adjust import paths) ──────────────────
-// import { addToCart, ... } from "../../components/REDUX_FEATURES/REDUX_SLICES/wholesaleCartSlice";
-// import { addToWishlist, ... } from "../../components/REDUX_FEATURES/REDUX_SLICES/wholesaleWishlistSlice";
+import {
+  addGuestCartItem,
+  updateGuestCartItem,
+  removeGuestCartItem,
+  selectCartItemBySlug,
+  addToCart,
+  updateCartItem,
+  removeCartItem,
+} from "../REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice";
+
+import {
+  addGuestItem,
+  removeGuestItem,
+  selectIsWishlisted,
+  addToWishlist,
+  removeFromWishlist,
+} from "../REDUX_FEATURES/REDUX_SLICES/UserWIshlist/userWishlistSLice";
 
 import { toast } from "react-toastify";
+import { selectIsAuthenticated } from "../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmt = (n) => {
@@ -56,11 +71,12 @@ function formatCount(count = 0) {
   return Math.floor(count / 100) * 100 + "+";
 }
 
+// ── From V1: full availability meta with MOQ_UNMET / NOT_LISTED support ───────
 const getAvailabilityMeta = (availability) => {
   const status = availability?.status || "IN_STOCK";
   if (status === "OUT_OF_STOCK") return { label: "Out of stock", className: "text-red-600" };
-  if (status === "MOQ_UNMET") return { label: "MOQ not met", className: "text-amber-600" };
-  if (status === "NOT_LISTED") return { label: "Not available", className: "text-gray-500" };
+  if (status === "MOQ_UNMET")    return { label: "MOQ not met",  className: "text-amber-600" };
+  if (status === "NOT_LISTED")   return { label: "Not available", className: "text-gray-500" };
   return { label: "In stock", className: "text-green-700" };
 };
 
@@ -91,17 +107,66 @@ const Skeleton = () => (
 // ─── Related Card ─────────────────────────────────────────────────────────────
 const RelatedCard = ({ product }) => {
   const navigate = useNavigate();
-  const v = product?.variants?.[0] ?? {};
-  const title = product?.title || product?.name || "Product";
-  const imgUrl = v.images?.[0]?.url ?? product?.image ?? null;
-  const salePrice = v.finalPrice ?? v.price?.sale ?? v.price?.base ?? product?.wholesalePrice ?? null;
-  const basePrice = v.price?.base ?? product?.mrp ?? null;
-  const disc = basePrice && salePrice && basePrice > salePrice;
-  const discPct = disc ? Math.round(((basePrice - salePrice) / basePrice) * 100) : null;
+  const dispatch = useDispatch();
+
+  const cartItem   = useSelector(selectCartItemBySlug(product?.slug));
+  const isInCart   = !!cartItem;
+  const currentQty = cartItem?.quantity ?? 0;
+
+  const variant   = product?.variants?.[0] ?? {};
+  const title     = product?.title || product?.name || "Product";
+  const imgUrl    = variant.images?.[0]?.url ?? product?.image ?? null;
+  const salePrice = variant.finalPrice ?? variant.price?.sale ?? variant.price?.base ?? product?.wholesalePrice ?? null;
+  const basePrice = variant.price?.base ?? product?.mrp ?? null;
+  const disc      = basePrice && salePrice && basePrice > salePrice;
+  const discPct   = disc ? Math.round(((basePrice - salePrice) / basePrice) * 100) : null;
+  const maxStock  = variant.inventory?.trackInventory ? (variant.inventory?.quantity ?? 0) : Infinity;
+  const inStock   = maxStock > 0;
+  const isAtMax   = currentQty >= maxStock && maxStock !== Infinity; // ✅ local var, not main component's
+
+  const [adding, setAdding] = useState(false);
+
+  const handleAdd = (e) => {
+    e.stopPropagation();
+    if (!inStock || !product?.slug || adding) return;
+    setAdding(true);
+    dispatch(addGuestCartItem({
+      productId:   product._id,
+      productSlug: product.slug,
+      variantId:   variant?._id?.toString() || "",
+      quantity:    1,
+    }));
+    toast.success("Added to cart");
+    setTimeout(() => setAdding(false), 400);
+  };
+
+  const handleInc = (e) => {
+    e.stopPropagation();
+    if (isAtMax) { toast.warning(`Max stock: ${maxStock}`); return; } // ✅ uses local isAtMax
+    dispatch(updateGuestCartItem({
+      productSlug: product.slug,
+      variantId:   variant?._id?.toString() || "",
+      quantity:    currentQty + 1,
+    }));
+  };
+
+  const handleDec = (e) => {
+    e.stopPropagation();
+    if (currentQty - 1 <= 0) {
+      dispatch(removeGuestCartItem({ productSlug: product.slug, variantId: variant?._id?.toString() || "" }));
+      toast.info("Removed from cart");
+    } else {
+      dispatch(updateGuestCartItem({
+        productSlug: product.slug,
+        variantId:   variant?._id?.toString() || "",
+        quantity:    currentQty - 1,
+      }));
+    }
+  };
 
   return (
     <div
-      onClick={() => navigate(`/products/${product.slug}`)}
+      onClick={() => navigate(`/product/${product.slug}`)}
       className="bg-white border border-gray-200 rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer group flex flex-col hover:shadow-md hover:border-yellow-400"
     >
       <div className="relative aspect-square bg-amber-50 flex items-center justify-center p-3 overflow-hidden">
@@ -121,6 +186,7 @@ const RelatedCard = ({ product }) => {
           <Package size={36} className="text-gray-300" />
         )}
       </div>
+
       <div className="p-3 flex flex-col flex-grow border-t border-gray-100">
         <h4 className="text-xs font-semibold text-gray-800 line-clamp-2 mb-2 group-hover:text-yellow-600 transition-colors">
           {title}
@@ -129,12 +195,40 @@ const RelatedCard = ({ product }) => {
           <span className="text-sm font-bold text-gray-900">{fmt(salePrice)}</span>
           {disc && <span className="text-xs text-gray-400 line-through">{fmt(basePrice)}</span>}
         </div>
-        <button
-          onClick={(e) => e.stopPropagation()}
-          className="w-full text-navy text-xs font-bold py-2 rounded-lg transition-all bg-yellow-400 hover:bg-yellow-300 active:scale-95"
-        >
-          Add to Cart
-        </button>
+
+        <div onClick={(e) => e.stopPropagation()}>
+          {!inStock ? (
+            <button disabled className="w-full text-xs font-bold py-2 rounded-lg bg-gray-100 text-gray-400 cursor-not-allowed">
+              Out of Stock
+            </button>
+          ) : !isInCart ? (
+            <button
+              onClick={handleAdd}
+              disabled={adding}
+              className="w-full text-gray-900 text-xs font-bold py-2 rounded-lg transition-all bg-yellow-400 hover:bg-yellow-300 active:scale-95 flex items-center justify-center gap-1.5"
+            >
+              {adding ? <Loader2 size={12} className="animate-spin" /> : <ShoppingBag size={12} />}
+              Add to Cart
+            </button>
+          ) : (
+            <div className="flex items-center border-2 border-yellow-400 rounded-xl overflow-hidden">
+              <button
+                onClick={handleDec}
+                className="w-8 h-8 flex items-center justify-center bg-gray-50 hover:bg-red-500 hover:text-white transition"
+              >
+                <Minus size={12} />
+              </button>
+              <div className="flex-1 text-center text-xs font-bold text-gray-900">{currentQty}</div>
+              <button
+                onClick={handleInc}
+                disabled={isAtMax}
+                className="w-8 h-8 flex items-center justify-center bg-yellow-400 hover:bg-yellow-300 transition disabled:opacity-40"
+              >
+                <Plus size={12} />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -146,9 +240,8 @@ const WholesaleProductDetail = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // ── RTK Query ─────────────────────────────────────────────────────────────
   const {
-    data: product,  
+    data: product,
     isLoading,
     isError,
     error,
@@ -156,7 +249,6 @@ const WholesaleProductDetail = () => {
     status,
   } = useGetProductBySlugQuery(slug, { skip: !slug });
 
-  // refetch is only safe to call once the query has been started
   const canRefetch = status !== "uninitialized";
 
   const { data: related = [] } = useGetRelatedProductsQuery(
@@ -164,32 +256,40 @@ const WholesaleProductDetail = () => {
     { skip: !slug || !product }
   );
 
-  // ── Local UI state ────────────────────────────────────────────────────────
+  const wishlisted      = useSelector(selectIsWishlisted(product?.slug));
+  const cartItem        = useSelector(selectCartItemBySlug(product?.slug));
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const isInCart        = !!cartItem;
+  const currentQty      = cartItem?.quantity ?? 0;
+
   const [activeThumb, setActiveThumb] = useState(0);
   const [selectedAttrs, setSelectedAttrs] = useState({});
-  const [activeTab, setActiveTab] = useState("desc");
-  const [openDesc, setOpenDesc] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
-  const [showZoom, setShowZoom] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
-  const [qty, setQty] = useState(1);
-  const [wishlisted, setWishlisted] = useState(false);
+  const [activeTab, setActiveTab]     = useState("desc");
+  const [openDesc, setOpenDesc]       = useState(false);
+  const [shareOpen, setShareOpen]     = useState(false);
+  const [showZoom, setShowZoom]       = useState(false);
+  const [isMobile, setIsMobile]       = useState(false);
+  const [isVisible, setIsVisible]     = useState(false);
+  const [qty, setQty]                 = useState(1);
+
+  const [localLoading, setLocalLoading] = useState({
+    add: false, update: false, remove: false, wishlist: false,
+  });
+  const setL         = (key, val) => setLocalLoading((p) => ({ ...p, [key]: val }));
+  const isProcessing = localLoading.add || localLoading.update || localLoading.remove;
 
   const containerRef = useRef(null);
-  const lensRef = useRef(null);
-  const zoomRef = useRef(null);
-  const rafRef = useRef(null);
-  const targetRef = useRef({ x: 0.5, y: 0.5 });
-  const currentRef = useRef({ x: 0.5, y: 0.5 });
+  const lensRef      = useRef(null);
+  const zoomRef      = useRef(null);
+  const rafRef       = useRef(null);
+  const targetRef    = useRef({ x: 0.5, y: 0.5 });
+  const currentRef   = useRef({ x: 0.5, y: 0.5 });
 
-  // ── Sync to redux slice ───────────────────────────────────────────────────
   useEffect(() => {
     if (product) dispatch(setCurrentProduct(product));
     return () => dispatch(clearCurrentProduct());
   }, [product, dispatch]);
 
-  // ── Scroll to top on slug change ─────────────────────────────────────────
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
     setActiveThumb(0);
@@ -197,24 +297,20 @@ const WholesaleProductDetail = () => {
     setActiveTab("desc");
   }, [slug]);
 
-  // ── Mobile detection ─────────────────────────────────────────────────────
   useEffect(() => {
-    const check = () => {
+    const check = () =>
       setIsMobile("ontouchstart" in window || navigator.maxTouchPoints > 0 || window.innerWidth < 768);
-    };
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  // ── Share close on outside click ──────────────────────────────────────────
   useEffect(() => {
     const close = () => setShareOpen(false);
     document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
   }, []);
 
-  // ── RAF zoom loop ─────────────────────────────────────────────────────────
   useEffect(() => {
     const animate = () => {
       currentRef.current.x += (targetRef.current.x - currentRef.current.x) * 0.15;
@@ -222,7 +318,7 @@ const WholesaleProductDetail = () => {
       const { x, y } = currentRef.current;
       if (lensRef.current) {
         lensRef.current.style.left = `${x * 100}%`;
-        lensRef.current.style.top = `${y * 100}%`;
+        lensRef.current.style.top  = `${y * 100}%`;
       }
       if (zoomRef.current) {
         zoomRef.current.style.backgroundPosition = `${x * 100}% ${y * 100}%`;
@@ -235,7 +331,7 @@ const WholesaleProductDetail = () => {
 
   const updatePosition = (clientX, clientY) => {
     if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
+    const rect    = containerRef.current.getBoundingClientRect();
     const padding = 0.05;
     targetRef.current = {
       x: Math.max(padding, Math.min(1 - padding, (clientX - rect.left) / rect.width)),
@@ -295,80 +391,233 @@ const WholesaleProductDetail = () => {
 
   useEffect(() => { setActiveThumb(0); }, [selectedVariant?._id]);
 
-  // ── Derived values ────────────────────────────────────────────────────────
-  const images = selectedVariant?.images ?? [];
+  // ── Derived values ─────────────────────────────────────────────────────────
+  const images    = selectedVariant?.images ?? [];
   const activeImg = images[activeThumb]?.url ?? product?.image ?? null;
 
+  // ✅ V2: variant properly declared from selectedVariant
+  const variant = selectedVariant || {};
+
   const wholesalePrice = selectedVariant?.finalPrice ?? selectedVariant?.price?.sale ?? product?.wholesalePrice ?? null;
-  const mrp = selectedVariant?.price?.base ?? product?.mrp ?? null;
-  const hasDisc = mrp != null && wholesalePrice != null && mrp > wholesalePrice;
-  const discPct = hasDisc ? Math.round(((mrp - wholesalePrice) / mrp) * 100) : null;
-  const marginPercent = product?.marginPercent ?? (hasDisc ? discPct : null);
+  const mrp            = selectedVariant?.price?.base ?? product?.mrp ?? null;
+  const hasDisc        = mrp != null && wholesalePrice != null && mrp > wholesalePrice;
+  const discPct        = hasDisc ? Math.round(((mrp - wholesalePrice) / mrp) * 100) : null;
+  const marginPercent  = product?.marginPercent ?? (hasDisc ? discPct : null);
 
-  const stock = selectedVariant?.inventory?.quantity ?? product?.stock ?? null;
-  const availability = selectedVariant?.availability || null;
+  // ✅ V2: maxStock properly declared
+  const maxStock = selectedVariant?.inventory?.trackInventory
+    ? (selectedVariant?.inventory?.quantity ?? 0)
+    : Infinity;
+  const stock    = selectedVariant?.inventory?.quantity ?? product?.stock ?? null;
+
+  // ✅ V1: full availability logic with canPurchase
+  const availability     = selectedVariant?.availability || null;
   const availabilityMeta = getAvailabilityMeta(availability);
-  const fallbackInStock = product?.inStock ?? (stock == null || stock > 0);
-  const inStock = availability?.purchasable ?? fallbackInStock;
-  const lowStock = stock != null && stock > 0 && stock <= 10;
+  const fallbackInStock  = product?.inStock ?? (maxStock === Infinity || maxStock > 0);
+  const inStock          = availability?.purchasable ?? fallbackInStock;
+  const lowStock         = stock != null && stock > 0 && stock <= 10;
+  const isAtMaxStock     = currentQty >= maxStock && maxStock !== Infinity;
 
-  const moq = selectedVariant?.minimumOrderQuantity ?? product?.moq ?? 1;
-  const minRequiredQty = availability?.requiredQuantity ?? moq;
-  const casePack = product?.casePack ?? 1;
-  const leadTime = product?.leadTime ?? "3–5 days";
-  const returnPolicy = product?.returnPolicy ?? "7 days";
-
-  const title = product?.title || product?.name || "Product";
-  const rating = product?.rating?.value ?? product?.rating ?? 4.5;
-  const ratingCnt = product?.rating?.count ?? product?.reviewCount ?? 0;
-  const soldInfo = product?.soldInfo?.count ?? product?.soldCount ?? 0;
-  const brand = product?.brand ?? null;
+  // ✅ V1: moq from variant (more specific), V2 fallback from product
+  const moq           = selectedVariant?.minimumOrderQuantity
+    ?? selectedVariant?.price?.minimumOrderQuantity
+    ?? product?.moq
+    ?? 1;
+  const casePack      = product?.casePack ?? 1;
+  const leadTime      = product?.leadTime ?? "3–5 days";
+  const returnPolicy  = product?.returnPolicy ?? "7 days";
+  const title         = product?.title || product?.name || "Product";
+  const rating        = product?.rating?.value ?? product?.rating ?? 4.5;
+  const ratingCnt     = product?.rating?.count ?? product?.reviewCount ?? 0;
+  const soldInfo      = product?.soldInfo?.count ?? product?.soldCount ?? 0;
+  const brand         = product?.brand ?? null;
   const sellingPriceRange = product?.sellingPriceRange ?? null;
-  const earnPerUnit = product?.earnPerUnit ?? null;
+  const earnPerUnit   = product?.earnPerUnit ?? null;
   const volumePricing = product?.volumePricing ?? [];
 
-  // current tier
   const currentTier = volumePricing.find((t) => qty >= t.min && qty <= t.max) || volumePricing[0];
-  const unitPrice = currentTier?.price ?? wholesalePrice;
-  const totalPrice = unitPrice != null ? unitPrice * qty : null;
+  const unitPrice   = currentTier?.price ?? wholesalePrice;
+  const totalPrice  = unitPrice != null ? unitPrice * qty : null;
+
+  // ✅ V1: reset qty to moq when variant/moq changes
+  useEffect(() => {
+    setQty(moq || 1);
+  }, [moq]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
-  const handleAddToCart = (e) => {
+  const handleWishlist = async (e) => {
+    e.stopPropagation();
+    if (!product?.slug || localLoading.wishlist) return;
+    setL("wishlist", true);
+    try {
+      if (isAuthenticated) {
+        if (wishlisted) {
+          await dispatch(removeFromWishlist({ productSlug: product.slug })).unwrap();
+          toast.success("Removed from wishlist", { icon: "💔" });
+        } else {
+          await dispatch(addToWishlist({
+            productSlug: product.slug,
+            variantId:   variant?._id?.toString() || "",
+          })).unwrap();
+          toast.success("Saved to wishlist", { icon: "❤️" });
+        }
+      } else {
+        if (wishlisted) {
+          dispatch(removeGuestItem(product.slug));
+          toast.success("Removed", { icon: "💔" });
+        } else {
+          dispatch(addGuestItem(product.slug));
+          toast.success("Saved to wishlist", { icon: "❤️" });
+        }
+      }
+    } catch (err) {
+      toast.error(err?.message || "Wishlist action failed");
+    } finally {
+      setL("wishlist", false);
+    }
+  };
+
+  // ✅ V1: MOQ_UNMET toast warning added; V2: isAuthenticated branches
+  const handleAddToCart = async (e) => {
     e.stopPropagation();
     if (!inStock) {
       if (availability?.status === "MOQ_UNMET") {
-        toast.warning(`MOQ not met: Min qty ${minRequiredQty}, available ${availability?.quantity ?? stock ?? 0}`);
+        toast.warning(`MOQ not met: Min qty ${moq}, available ${availability?.quantity ?? stock ?? 0}`);
       }
       return;
     }
-    toast.success(`${qty} units added to cart 🛒`);
+    if (isInCart || isProcessing || !product?.slug) return;
+    setL("add", true);
+    try {
+      if (isAuthenticated) {
+        await dispatch(addToCart({
+          productSlug: product.slug,
+          productId:   product._id,
+          variantId:   variant?._id?.toString() || "",
+          quantity:    moq || 1,
+        })).unwrap();
+      } else {
+        dispatch(addGuestCartItem({
+          productId:   product._id,
+          productSlug: product.slug,
+          variantId:   variant?._id?.toString() || "",
+          quantity:    moq || 1,
+        }));
+      }
+      toast.success("Added to cart");
+    } catch (err) {
+      toast.error(err?.message || "Failed to add to cart");
+    } finally {
+      setL("add", false);
+    }
   };
 
-  const handleWishlist = (e) => {
+  // ✅ V2: uses isAtMaxStock (correctly declared above)
+  const handleIncrement = async (e) => {
     e.stopPropagation();
-    setWishlisted((v) => !v);
-    toast.success(wishlisted ? "Removed from wishlist" : "Added to wishlist", {
-      icon: wishlisted ? "💔" : "❤️",
-    });
+    if (isAtMaxStock) { toast.warning(`Max stock: ${maxStock}`); return; }
+    if (isProcessing) return;
+    setL("update", true);
+    try {
+      if (isAuthenticated) {
+        await dispatch(updateCartItem({
+          productId:   product._id,
+          variantId:   variant?._id?.toString() || "",
+          quantity:    currentQty + 1,
+          productSlug: product.slug,
+        })).unwrap();
+      } else {
+        dispatch(updateGuestCartItem({
+          productSlug: product.slug,
+          variantId:   variant?._id?.toString() || "",
+          quantity:    currentQty + 1,
+        }));
+      }
+    } catch (err) {
+      toast.error(err?.message || "Failed to update");
+    } finally {
+      setL("update", false);
+    }
+  };
+
+  // ✅ V1: removes when newQty < moq (not just <= 0); V2: isAuthenticated branches
+  const handleDecrement = async (e) => {
+    e.stopPropagation();
+    if (isProcessing) return;
+    const newQty = currentQty - 1;
+    try {
+      if (newQty < (moq || 1)) {
+        setL("remove", true);
+        if (isAuthenticated) {
+          await dispatch(removeCartItem({
+            productId:   product._id,
+            variantId:   variant?._id?.toString() || "",
+            productSlug: product.slug,
+          })).unwrap();
+        } else {
+          dispatch(removeGuestCartItem({
+            productSlug: product.slug,
+            variantId:   variant?._id?.toString() || "",
+          }));
+        }
+        toast.info("Removed from cart");
+      } else {
+        setL("update", true);
+        if (isAuthenticated) {
+          await dispatch(updateCartItem({
+            productId:   product._id,
+            variantId:   variant?._id?.toString() || "",
+            quantity:    newQty,
+            productSlug: product.slug,
+          })).unwrap();
+        } else {
+          dispatch(updateGuestCartItem({
+            productSlug: product.slug,
+            variantId:   variant?._id?.toString() || "",
+            quantity:    newQty,
+          }));
+        }
+      }
+    } catch (err) {
+      toast.error(err?.message || "Failed to update");
+    } finally {
+      setL("update", false);
+      setL("remove", false);
+    }
   };
 
   const share = (type) => {
-    const url = window.location.href;
+    const url     = window.location.href;
+    const message = `🛒 *OfferWaleBaba* — WHOLESALE & RETAIL\n\n` +
+      `🏭 From Maker | 🛍️ Market & Grow | 📈 E-Business\n\n` +
+      `Check out this product: *${title}*\n` +
+      `💰 Price: ${fmt(unitPrice)}\n\n` +
+      `🔗 ${url}\n\n` +
+      `🌐 https://offerwalebaba.com/\n` +
+      `📞 +91 93706 86008\n` +
+      `📍 Ulhasnagar, Maharashtra - 421004\n\n` +
+      `Wholesale & Retail — Best Deals, Direct Prices! 🔥`;
+
     const map = {
-      whatsapp: `https://wa.me/?text=${encodeURIComponent(url)}`,
-      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
-      telegram: `https://t.me/share/url?url=${encodeURIComponent(url)}`,
+      whatsapp: `https://wa.me/?text=${encodeURIComponent(message)}`,
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(`🛒 OfferWaleBaba — Check out: ${title} | Best Deals, Direct Prices! 🔥`)}`,
+      telegram: `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(`🛒 OfferWaleBaba — ${title}\n💰 ${fmt(unitPrice)}\nWholesale & Retail — Best Deals, Direct Prices! 🔥`)}`,
     };
     if (map[type]) window.open(map[type], "_blank");
-    if (type === "instagram") { navigator?.clipboard?.writeText(url); toast.info("Link copied!"); }
+    if (type === "instagram") {
+      navigator?.clipboard?.writeText(
+        `🛒 OfferWaleBaba — ${title}\n💰 ${fmt(unitPrice)}\n🔗 ${url}\n📞 +91 93706 86008\nWholesale & Retail — Best Deals, Direct Prices! 🔥`
+      );
+      toast.success("Link & details copied! Paste on Instagram 📋");
+    }
   };
 
-  // ── Tab content ───────────────────────────────────────────────────────────
+  // ── Tabs ──────────────────────────────────────────────────────────────────
   const tabs = [
-    { key: "desc", label: "Description" },
-    { key: "specs", label: "Specifications" },
+    { key: "desc",    label: "Description" },
+    { key: "specs",   label: "Specifications" },
     { key: "reviews", label: `Reviews (${ratingCnt})` },
-    { key: "margin", label: "Margin Info" },
+    { key: "margin",  label: "Margin Info" },
   ];
 
   const tabContent = {
@@ -379,8 +628,7 @@ const WholesaleProductDetail = () => {
           <ul className="space-y-2">
             {product.bulletPoints.map((bp, i) => (
               <li key={i} className="flex items-start gap-2 text-xs">
-                <Check size={13} className="text-green-600 shrink-0 mt-0.5" />
-                {bp}
+                <Check size={13} className="text-green-600 shrink-0 mt-0.5" /> {bp}
               </li>
             ))}
           </ul>
@@ -393,6 +641,17 @@ const WholesaleProductDetail = () => {
                 <li key={i}><span className="font-medium">{attr.key}:</span> {attr.value}</li>
               ))}
             </ul>
+          </div>
+        )}
+        {product?.shipping && (
+          <div>
+            <p className="font-semibold text-gray-800 mb-1">Dimensions:</p>
+            <div className="grid grid-cols-2 gap-y-1 text-xs text-gray-600">
+              <span>Weight</span><span>{product.shipping.weight} kg</span>
+              <span>Length</span><span>{product.shipping.dimensions?.length} cm</span>
+              <span>Width</span><span>{product.shipping.dimensions?.width} cm</span>
+              <span>Height</span><span>{product.shipping.dimensions?.height} cm</span>
+            </div>
           </div>
         )}
       </div>
@@ -412,17 +671,6 @@ const WholesaleProductDetail = () => {
           </table>
         ) : (
           <p className="text-sm text-gray-400 p-5">No specifications available.</p>
-        )}
-        {product?.shipping && (
-          <div className="p-5 border-t border-gray-100">
-            <p className="font-semibold text-gray-800 text-sm mb-2">Dimensions</p>
-            <div className="grid grid-cols-2 gap-y-1 text-xs text-gray-600">
-              <span>Weight</span><span>{product.shipping.weight} kg</span>
-              <span>Length</span><span>{product.shipping.dimensions?.length} cm</span>
-              <span>Width</span><span>{product.shipping.dimensions?.width} cm</span>
-              <span>Height</span><span>{product.shipping.dimensions?.height} cm</span>
-            </div>
-          </div>
         )}
       </div>
     ),
@@ -454,13 +702,6 @@ const WholesaleProductDetail = () => {
                 <div className="flex gap-0.5 mb-1">{renderStars(rev.rating)}</div>
                 <h4 className="text-xs font-bold text-gray-800 mb-1">{rev.title}</h4>
                 <p className="text-xs text-gray-600 leading-relaxed mb-3">{rev.text}</p>
-                {rev.tags && (
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {rev.tags.map((tag, j) => (
-                      <span key={j} className="text-[9px] font-semibold text-gray-700 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-full">{tag}</span>
-                    ))}
-                  </div>
-                )}
                 <button className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-700 transition-colors">
                   <ThumbsUp size={11} /> Helpful ({rev.helpfulCount ?? 0})
                 </button>
@@ -508,7 +749,7 @@ const WholesaleProductDetail = () => {
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4">
       <AlertCircle size={32} className="text-red-400" />
       <p className="text-gray-600 text-sm text-center max-w-sm">
-        {(error?.message || "Product not found.") + (error?.data?.message ? ` (${error.data.message})` : "")}
+        {error?.data?.message || error?.message || "Product not found."}
       </p>
       <div className="flex gap-3">
         <button
@@ -531,7 +772,7 @@ const WholesaleProductDetail = () => {
   return (
     <div className="min-h-screen bg-gray-50">
 
-      {/* ── Mobile image lightbox ── */}
+      {/* Mobile image lightbox */}
       {isVisible && (
         <div
           className="fixed inset-0 z-50 md:hidden bg-black/60 backdrop-blur-sm flex items-end"
@@ -550,11 +791,9 @@ const WholesaleProductDetail = () => {
               >✕</button>
             </div>
             <div className="w-full flex items-center justify-center bg-amber-50 rounded-2xl overflow-hidden mb-4 relative" style={{ aspectRatio: "1/1" }}>
-              {activeImg ? (
-                <img src={activeImg} loading="lazy" alt={title} className="w-full h-full object-contain p-4" onContextMenu={(e) => e.preventDefault()} />
-              ) : (
-                <Package size={48} className="text-gray-300" />
-              )}
+              {activeImg
+                ? <img src={activeImg} loading="lazy" alt={title} className="w-full h-full object-contain p-4" onContextMenu={(e) => e.preventDefault()} />
+                : <Package size={48} className="text-gray-300" />}
               {images.length > 1 && (
                 <>
                   <button onClick={() => setActiveThumb((p) => (p - 1 + images.length) % images.length)} className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white shadow flex items-center justify-center text-gray-600">‹</button>
@@ -600,10 +839,9 @@ const WholesaleProductDetail = () => {
           <span className="text-gray-700 font-semibold">{title}</span>
         </nav>
 
-        {/* ═══════════ PDP GRID ═══════════ */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_440px] gap-8 items-start">
 
-          {/* ── LEFT COLUMN ── */}
+          {/* LEFT COLUMN */}
           <div className="flex flex-col gap-5">
 
             {/* Image Card */}
@@ -619,7 +857,7 @@ const WholesaleProductDetail = () => {
                         className="w-8 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition flex-shrink-0"
                       >▲</button>
                     )}
-                    <div id="thumb-list-ws" className="flex flex-col gap-2 overflow-y-auto scrollbar-hide flex-1" style={{ maxHeight: 380 }}>
+                    <div id="thumb-list-ws" className="flex flex-col gap-2 overflow-y-auto scrollbar-hide overflow-x-hidden flex-1" style={{ maxHeight: 380 }}>
                       {images.map((img, i) => (
                         <button key={i} onClick={() => setActiveThumb(i)}
                           className={`flex-shrink-0 w-[56px] h-[56px] rounded-xl overflow-hidden border-2 transition-all duration-200 ${activeThumb === i ? "border-yellow-400 shadow-md scale-[1.04]" : "border-gray-200 hover:border-yellow-300"}`}>
@@ -640,18 +878,17 @@ const WholesaleProductDetail = () => {
                 <div className="flex-1 flex flex-col">
                   <div
                     ref={containerRef}
-                    className="relative w-full cursor-pointer flex items-center justify-center overflow-hidden bg-amber-50"
-                    style={{ aspectRatio: "4/5", maxHeight: 560 }}
+                    className="relative w-full cursor-pointer flex items-center justify-center overflow-hidden"
+                    style={{ maxHeight: 680 }}
                     onClick={() => { if (isMobile) setIsVisible(true); }}
                     onMouseEnter={() => { if (!isMobile) setShowZoom(true); }}
                     onMouseLeave={() => { if (!isMobile) setShowZoom(false); }}
                     onMouseMove={!isMobile ? (e) => updatePosition(e.clientX, e.clientY) : undefined}
                   >
-                    {activeImg ? (
-                      <img src={activeImg} alt={title} className="w-full h-full object-contain p-6 sm:p-8" />
-                    ) : (
-                      <Package size={64} className="text-gray-200" />
-                    )}
+                    {activeImg
+                      ? <img src={activeImg} alt={title} className="w-full h-full rounded-md object-contain p-6 sm:p-8" />
+                      : <Package size={64} className="text-gray-200" />}
+
                     {showZoom && !isMobile && (
                       <div
                         ref={lensRef}
@@ -659,10 +896,10 @@ const WholesaleProductDetail = () => {
                         style={{
                           width: "10rem", height: "11rem",
                           transform: "translate(-50%, -50%)",
-                          backgroundColor: "rgba(234, 179, 8, 0.2)",
+                          backgroundColor: "rgba(173, 93, 248, 0.2)",
                           backgroundImage: "radial-gradient(rgba(0,0,0,0.1) 1px, transparent 1px)",
                           backgroundSize: "6px 6px",
-                          border: "1.5px solid rgba(234,179,8,0.5)",
+                          border: "1.5px solid rgba(186, 124, 236, 0.5)",
                           boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
                         }}
                       />
@@ -681,6 +918,19 @@ const WholesaleProductDetail = () => {
                 </div>
               </div>
             </div>
+
+            {/* Zoom panel (desktop) */}
+            {showZoom && !isMobile && activeImg && (
+              <div
+                ref={zoomRef}
+                className="hidden lg:block fixed left-[60%] top-[26%] z-30 w-[26rem] h-[38rem] rounded-2xl shadow-xl bg-white border border-gray-100 pointer-events-none"
+                style={{
+                  backgroundImage: `url(${activeImg})`,
+                  backgroundRepeat: "no-repeat",
+                  backgroundSize: "250%",
+                }}
+              />
+            )}
 
             {/* Tabs Card */}
             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
@@ -717,25 +967,9 @@ const WholesaleProductDetail = () => {
             )}
           </div>
 
-          {/* ── RIGHT COLUMN — Sticky ── */}
+          {/* RIGHT COLUMN — Sticky */}
           <div className="flex flex-col gap-4 lg:sticky lg:top-[74px]">
 
-            {/* Zoom panel (desktop) */}
-            {showZoom && !isMobile && (
-              <div
-                ref={zoomRef}
-                className="hidden lg:block w-[28rem] fixed z-10 h-[36rem] rounded-2xl shadow-xl bg-white border border-gray-100"
-                style={{
-                  backgroundImage: `url(${activeImg})`,
-                  backgroundRepeat: "no-repeat",
-                  backgroundSize: "250%",
-                  left: "calc(50% - 460px)",
-                  top: "74px",
-                }}
-              />
-            )}
-
-            {/* Main info card */}
             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
 
               {/* Title area */}
@@ -756,12 +990,15 @@ const WholesaleProductDetail = () => {
                   <span className="text-xs font-bold text-gray-800">{rating}</span>
                   <span className="text-xs text-gray-400">({ratingCnt} reviews)</span>
                 </div>
-                <div className="flex items-center gap-3 text-[10px] text-gray-400">
-                  <span className="flex items-center gap-1">
-                    <TrendingUp size={10} /> {formatCount(soldInfo)} sold
-                  </span>
-                  {product?.sku && <span>SKU: {product.sku}</span>}
-                </div>
+                {soldInfo > 0 && (
+                  <div className="flex items-center gap-3 text-[10px] text-gray-400">
+                    <span className="flex items-center gap-1">
+                      <TrendingUp size={10} />
+                      <span className="font-bold text-red-500">{formatCount(soldInfo)} bought</span> in past month
+                    </span>
+                    {product?.sku && <span>SKU: {product.sku}</span>}
+                  </div>
+                )}
               </div>
 
               {/* Price area */}
@@ -780,11 +1017,6 @@ const WholesaleProductDetail = () => {
                     {sellingPriceRange && <>Sell at <span className="font-bold text-gray-800">{sellingPriceRange}</span>{" "}</>}
                     {earnPerUnit && <>· Earn <span className="font-bold text-green-700">{earnPerUnit}</span>/unit</>}
                   </div>
-                )}
-                {soldInfo > 0 && (
-                  <p className="text-xs font-medium text-gray-500 mt-1">
-                    <span className="font-bold text-red-500">{formatCount(soldInfo)} bought</span> in past month
-                  </p>
                 )}
               </div>
 
@@ -850,31 +1082,36 @@ const WholesaleProductDetail = () => {
 
               {/* Quantity + CTA */}
               <div className="px-4 sm:px-5 py-4 space-y-3">
-                {/* Qty row */}
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-gray-700">
-                    Quantity <span className="font-normal text-gray-400">(MOQ: {minRequiredQty})</span>
-                  </span>
-                  {totalPrice != null && (
-                    <span className="text-xs font-extrabold text-gray-900">Total: {fmt(totalPrice)}</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setQty((q) => Math.max(minRequiredQty, q - minRequiredQty))}
-                    className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-lg font-bold text-gray-700 hover:border-yellow-400 transition-colors"
-                  >−</button>
-                  <input
-                    type="number"
-                    value={qty}
-                    onChange={(e) => setQty(Math.max(minRequiredQty, Number(e.target.value)))}
-                    className="flex-1 h-10 text-center border border-gray-200 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-yellow-400"
-                  />
-                  <button
-                    onClick={() => setQty((q) => q + minRequiredQty)}
-                    className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-lg font-bold text-gray-700 hover:border-yellow-400 transition-colors"
-                  >+</button>
-                </div>
+
+                {/* ✅ V2: qty selector only shown when not in cart */}
+                {!isInCart && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-gray-700">
+                        Quantity <span className="font-normal text-gray-400">(MOQ: {moq})</span>
+                      </span>
+                      {totalPrice != null && (
+                        <span className="text-xs font-extrabold text-gray-900">Total: {fmt(totalPrice)}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setQty((q) => Math.max(moq, q - moq))}
+                        className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-lg font-bold text-gray-700 hover:border-yellow-400 transition-colors"
+                      >−</button>
+                      <input
+                        type="number"
+                        value={qty}
+                        onChange={(e) => setQty(Math.max(moq, Number(e.target.value)))}
+                        className="flex-1 h-10 text-center border border-gray-200 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-yellow-400"
+                      />
+                      <button
+                        onClick={() => setQty((q) => q + moq)}
+                        className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-lg font-bold text-gray-700 hover:border-yellow-400 transition-colors"
+                      >+</button>
+                    </div>
+                  </>
+                )}
 
                 {/* Variant attrs */}
                 {attrKeys.length > 0 && (
@@ -889,7 +1126,7 @@ const WholesaleProductDetail = () => {
                         </p>
                         <div className="flex flex-wrap gap-1.5">
                           {getAllValues(key).map((val) => {
-                            const avail = isAvailable(key, val);
+                            const avail  = isAvailable(key, val);
                             const active = selectedAttrs[key] === val;
                             return (
                               <button
@@ -906,44 +1143,78 @@ const WholesaleProductDetail = () => {
                   </div>
                 )}
 
-                {/* CTAs */}
-                <button
-                  onClick={handleAddToCart}
-                  disabled={!inStock}
-                  className="w-full bg-yellow-400 text-gray-900 py-3 rounded-xl font-extrabold text-sm hover:bg-yellow-300 transition-colors flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <ShoppingCart size={16} />
-                  {inStock ? `Add To Cart — ${totalPrice != null ? fmt(totalPrice) : "—"}` : availabilityMeta.label}
-                </button>
+                {/* ADD TO CART / QTY CONTROLS */}
                 {inStock ? (
-                  <Link
-                    to="/checkout"
-                    className="w-full bg-gray-900 text-yellow-400 py-3 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors active:scale-[0.98]"
-                  >
-                    Order Now
-                  </Link>
+                  !isInCart ? (
+                    <button
+                      onClick={handleAddToCart}
+                      disabled={localLoading.add}
+                      className="w-full bg-yellow-400 text-gray-900 py-3 rounded-xl font-extrabold text-sm hover:bg-yellow-300 transition-colors flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
+                    >
+                      {localLoading.add
+                        ? <Loader2 size={16} className="animate-spin" />
+                        : <ShoppingCart size={16} />}
+                      Add To Cart — {totalPrice != null ? fmt(totalPrice) : "—"}
+                    </button>
+                  ) : (
+                    <div className="flex items-center w-full border-2 border-yellow-400 rounded-xl overflow-hidden">
+                      {/* ✅ V1: disabled also when at/below moq */}
+                      <button
+                        onClick={handleDecrement}
+                        disabled={isProcessing || currentQty <= (moq || 1)}
+                        className="w-12 h-12 flex items-center justify-center bg-gray-50 hover:bg-red-500 hover:text-white transition disabled:opacity-40"
+                      >
+                        {localLoading.remove
+                          ? <Loader2 size={14} className="animate-spin" />
+                          : <Minus size={16} />}
+                      </button>
+                      <div className="flex-1 text-center text-sm font-extrabold text-gray-900">
+                        {localLoading.update
+                          ? <Loader2 size={14} className="animate-spin mx-auto" />
+                          : `${currentQty} in cart`}
+                      </div>
+                      <button
+                        onClick={handleIncrement}
+                        disabled={isAtMaxStock || isProcessing}
+                        className="w-12 h-12 flex items-center justify-center bg-yellow-400 hover:bg-yellow-300 transition disabled:opacity-40"
+                      >
+                        {localLoading.update
+                          ? <Loader2 size={14} className="animate-spin" />
+                          : <Plus size={16} />}
+                      </button>
+                    </div>
+                  )
                 ) : (
-                  <button
-                    type="button"
-                    disabled
-                    className="w-full bg-gray-200 text-gray-500 py-3 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 cursor-not-allowed"
-                  >
+                  <div className="w-full bg-gray-100 text-gray-400 py-3 rounded-xl font-extrabold text-sm text-center">
                     {availabilityMeta.label}
-                  </button>
+                  </div>
                 )}
+
+                {/* ✅ V1: MOQ_UNMET warning below CTA */}
                 {availability?.status === "MOQ_UNMET" && (
                   <p className={`text-xs font-semibold ${availabilityMeta.className}`}>
-                    Min qty {minRequiredQty}, available {availability?.quantity ?? stock ?? 0}
+                    Min qty {moq}, available {availability?.quantity ?? stock ?? 0}
                   </p>
                 )}
+
+                {/* ✅ V2: single clean "Order Now" link — no duplicate */}
+                <Link
+                  to="/checkout"
+                  className="w-full bg-gray-900 text-yellow-400 py-3 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors active:scale-[0.98]"
+                >
+                  Order Now
+                </Link>
 
                 {/* Wishlist + Share */}
                 <div className="flex items-center gap-2 pt-1">
                   <button
                     onClick={handleWishlist}
-                    className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border transition-all ${wishlisted ? "border-red-200 text-red-500 bg-red-50" : "border-gray-200 text-gray-500 hover:border-red-200 hover:text-red-400"}`}
+                    disabled={localLoading.wishlist}
+                    className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border transition-all ${wishlisted ? "border-red-200 text-red-500 bg-red-50" : "border-gray-200 text-gray-500 hover:border-red-200 hover:text-red-400"} disabled:opacity-50`}
                   >
-                    <Heart size={14} className={wishlisted ? "fill-red-500 text-red-500" : ""} />
+                    {localLoading.wishlist
+                      ? <Loader2 size={14} className="animate-spin" />
+                      : <Heart size={14} className={wishlisted ? "fill-red-500 text-red-500" : ""} />}
                     {wishlisted ? "Wishlisted" : "Wishlist"}
                   </button>
 
@@ -957,14 +1228,14 @@ const WholesaleProductDetail = () => {
                     {shareOpen && (
                       <div className="absolute bottom-[calc(100%+8px)] right-0 bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-lg z-50 flex gap-3">
                         {[
-                          { type: "whatsapp", Icon: IoLogoWhatsapp, cls: "bg-green-500 hover:bg-green-600" },
-                          { type: "facebook", Icon: IoLogoFacebook, cls: "bg-blue-600 hover:bg-blue-700" },
+                          { type: "whatsapp",  Icon: IoLogoWhatsapp,  cls: "bg-green-500 hover:bg-green-600" },
+                          { type: "facebook",  Icon: IoLogoFacebook,  cls: "bg-blue-600 hover:bg-blue-700" },
                           { type: "instagram", Icon: IoLogoInstagram, cls: "bg-gradient-to-br from-yellow-400 via-pink-500 to-purple-600" },
-                          { type: "telegram", Icon: FaTelegram, cls: "bg-sky-500 hover:bg-sky-600" },
+                          { type: "telegram",  Icon: FaTelegram,      cls: "bg-sky-500 hover:bg-sky-600" },
                         ].map(({ type, Icon, cls }) => (
                           <button key={type} onClick={() => { share(type); setShareOpen(false); }}
-                            className={`w-9 h-9 rounded-full ${cls} text-white flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-sm`}>
-                            {/* <Icon size={16} /> */}
+                            className={`w-9 h-9 rounded-full ${cls} text-white flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-150 shadow-sm`}>
+                            <Icon size={16} />
                           </button>
                         ))}
                       </div>
@@ -976,10 +1247,10 @@ const WholesaleProductDetail = () => {
               {/* Trust strip */}
               <div className="grid grid-cols-4 border-t border-gray-100 text-center divide-x divide-gray-100">
                 {[
-                  { icon: Shield, label: "Secure" },
-                  { icon: Truck, label: "Fast Ship" },
+                  { icon: Shield,    label: "Secure" },
+                  { icon: Truck,     label: "Fast Ship" },
                   { icon: RotateCcw, label: "Easy Return" },
-                  { icon: Check, label: "GST Invoice" },
+                  { icon: Check,     label: "GST Invoice" },
                 ].map((feat, i) => (
                   <div key={i} className="py-3 px-1">
                     <feat.icon size={13} className="mx-auto text-yellow-500 mb-1" />
@@ -996,7 +1267,7 @@ const WholesaleProductDetail = () => {
                 {[
                   { label: "Get Flat ₹100 OFF on orders above ₹2000", code: "100 OFB" },
                   { label: "Get Flat ₹150 OFF on orders above ₹3000", code: "150 OFB" },
-                  { label: "Get Flat ₹50 OFF on orders above ₹1000", code: "50 OFB" },
+                  { label: "Get Flat ₹50 OFF on orders above ₹1000",  code: "50 OFB" },
                 ].map(({ label, code }) => (
                   <div key={code} className="flex items-start justify-between py-3 gap-3">
                     <div className="flex items-start gap-2.5">

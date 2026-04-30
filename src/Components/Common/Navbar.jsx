@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Search, ShoppingCart, Heart, MapPin,
   User, ChevronDown, Menu, X, LogOut,
@@ -10,23 +10,130 @@ import { openModal } from '../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerSl
 import { logout, selectUser, selectIsAuthenticated } from '../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
 import { useLogoutMutation } from '../REDUX_FEATURES/REDUX_SLICES/authApi/authApi';
 import LOGO from "../../assets/logo2.png";
-import { selectCartTotalItems } from '../REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice';
+// import { selectDisplayedData } from 'recharts/types/state/selectors/axisSelectors';
+import { selectDisplayCartCount } from '../REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice';
+import WholesaleCartSidebar from '../HomeComponents/Sidebar/CartSidebar';
+import WishlistSidebar from '../HomeComponents/Sidebar/Wishlist';
+import { selectDisplayWishlistCount } from '../REDUX_FEATURES/REDUX_SLICES/UserWIshlist/userWishlistSLice';
+import { Link, useNavigate } from 'react-router-dom';
+import SearchModal from './Search_Modal/SearchModal';
+import { clearAddressErrors, fetchAddresses, selectDefaultAddress } from '../REDUX_FEATURES/REDUX_SLICES/Useraddressslice';
 
-const Navbar = () => {
+const LocationDisplay = ({ userAddress }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  let navigate = useNavigate();
+  const isLoggedIn = useSelector(selectIsAuthenticated);
+
+  let handleAddress = () => {
+    if(isLoggedIn) {
+      navigate('/account/useraddress');
+    } else {
+      onOpenAuth();
+    }
+  }
+  const getDisplayAddress = () => {
+    if (isLoggedIn && userAddress) {
+      const parts = [];
+      if (userAddress.city) parts.push(userAddress.city);
+      if (userAddress.postalCode) parts.push(userAddress.postalCode);
+      if (parts.length > 0) return parts.join(', ');
+      if (userAddress.addressLine1) return userAddress.addressLine1.substring(0, 20);
+      return "Select Address";
+    }
+    return isLoggedIn ? "SELECT ADDRESS" : "ADDRESS";
+  };
+   let address = getDisplayAddress()
+
+  const destinations = [
+    
+    address === !"ADDRESS" ? getDisplayAddress() : address,
+    "WAREHOUSE 1",
+    "WAREHOUSE 2",
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsAnimating(true);
+      setTimeout(() => {
+        setCurrentIndex((prev) => (prev + 1) % destinations.length);
+        setIsAnimating(false);
+      }, 300);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [isLoggedIn, userAddress]);
+
+  return (
+  <div className="hidden xl:flex items-center gap-3 bg-white cursor-pointer hover:bg-gray-50 px-3 py-2 rounded-xl transition-all hover:border-gray-300 group">
+
+  <MapPin size={20} className="text-red-500 animate-bounce" />
+
+  <div onClick={handleAddress} className="flex flex-col w-44 overflow-hidden">
+    
+    <span className="text-[10px] text-gray-500 font-semibold uppercase leading-none">
+      Deliver to
+    </span>
+
+  <div className="flex items-center mt-1">
+
+  {!isLoggedIn && (
+    <span className="text-sm font-medium text-gray-700 mr-1 whitespace-nowrap">
+      Your
+    </span>
+  )}
+
+  <div className="relative h-[20px] overflow-hidden flex-1">
+    
+    <span
+      className="absolute left-0 w-full text-sm font-semibold text-gray-900 leading-[20px] transition-transform duration-500 ease-in-out"
+      style={{
+        top: 0,
+        transform: isAnimating && !isLoggedIn || isAnimating && ( isLoggedIn && address === "SELECT ADDRESS") ? "translateY(-100%)" : "translateY(0)",
+      }}
+    >
+      { isLoggedIn && !( isLoggedIn && address === "SELECT ADDRESS") ? address : destinations[currentIndex]}
+    </span>
+
+    <span
+      className="absolute left-0 w-full text-sm font-semibold text-gray-900 leading-[20px] transition-transform duration-500 ease-in-out"
+      style={{
+        top: "100%",
+        transform: isAnimating && !isLoggedIn ? "translateY(-100%)" : "translateY(0)",
+        transitionDelay: isAnimating && !isLoggedIn ? "0.25s" : "0s",
+      }}
+    >
+      { isLoggedIn ? address : destinations[(currentIndex + 1) % destinations.length]}
+    </span>
+
+  </div>
+</div>
+  </div>
+</div>
+  );
+};
+
+const Navbar = ({ searchQuery, setSearchQuery }) => {
   const dispatch = useDispatch();
   const user = useSelector(selectUser);
-  const cartCount = useSelector(selectCartTotalItems);
+  const cartCount = useSelector(selectDisplayCartCount);
   const isAuthenticated = useSelector(selectIsAuthenticated);
+  const wishlistCount = useSelector(selectDisplayWishlistCount);
+    const userAddress = useSelector(selectDefaultAddress);
+    console.log(userAddress);
+    
+
   const [logoutMutation] = useLogoutMutation();
   
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+const [wishlistOpen, setWishlistOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  
-  // Ref to track scroll for performance and logic
+  const [isCartOpen, setIsCartOpen] = useState(false);
+   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [showSearchTooltip, setShowSearchTooltip] = useState(false);
   const scrollPos = useRef(0);
-  const ticking = useRef(false);
+const ticking = useRef(false);
 
   // Close mobile menu on resize to desktop
   useEffect(() => {
@@ -36,6 +143,20 @@ const Navbar = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+   useEffect(() => {
+    const hasSeenSearchTooltip = localStorage.getItem('hasSeenSearchTooltip');
+    if (!hasSeenSearchTooltip) {
+      setShowSearchTooltip(true);
+      const timer = setTimeout(() => {
+        setShowSearchTooltip(false);
+        localStorage.setItem('hasSeenSearchTooltip', 'true');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+   const handleSearchFocus = useCallback(() => {
+    setIsSearchModalOpen(true);
+  }, []);
 
   /** * ROBUST SCROLL LOGIC 
    * Uses Hysteresis (buffer) to prevent flickering 
@@ -43,7 +164,6 @@ const Navbar = () => {
   useEffect(() => {
     const handleScroll = () => {
       scrollPos.current = window.scrollY;
-
       if (!ticking.current) {
         window.requestAnimationFrame(() => {
           const currentScroll = scrollPos.current;
@@ -79,6 +199,12 @@ const Navbar = () => {
       setIsLoggingOut(false);
     }
   };
+  // Yeh function add karo existing handlers ke saath (handleLogout ke baad)
+
+const handleOpenAuth = () => {
+  setWishlistOpen(false);
+  dispatch(openModal('login'));  // ✅ openModal is already imported
+};
 
   const handleAccountClick = () => {
     if (!isAuthenticated) {
@@ -98,11 +224,20 @@ const Navbar = () => {
     { label: "Cleaning Supplies", path: "/category/mix-items-daily-use" },
     { label: "Gifts", path: "/category/gifts" }
   ];
+ 
+  useEffect(() => {
+    if (isAuthenticated) {
+      dispatch(fetchAddresses());
+    }
+  }, [dispatch, isAuthenticated]);
+
+  console.log("Navbar address:", userAddress);
 
   const directCategoryLinks = categories.slice(0, 6).map(cat => cat.label);
 
   return (
-    <nav className="sticky top-0 w-full z-[100] font-sans shadow-sm bg-white">
+    <>
+     <nav className="sticky top-0 w-full z-[100] font-sans shadow-sm bg-white">
       {/* TOP UTILITY STRIP */}
       <div className="bg-[#0F172A] text-white/70 py-2 px-6 hidden lg:flex justify-between items-center text-[11px] font-bold tracking-widest border-b border-white/5 uppercase">
         <div className="flex gap-8 items-center">
@@ -141,11 +276,13 @@ const Navbar = () => {
             <div className="absolute left-4 text-slate-400 group-focus-within:text-amber-500 transition-colors">
               <Search size={18} />
             </div>
-            <input
-              type="text"
-              placeholder="Search by SKU, Product Name..."
-              className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 pl-12 pr-32 focus:outline-none focus:border-amber-500/50 focus:bg-white transition-all text-sm font-medium"
-            />
+       <input
+  type="text"
+  placeholder="Search by SKU, Product Name..."
+  onClick={handleSearchFocus}
+  readOnly
+  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 pl-12 pr-32 focus:outline-none focus:border-amber-500/50 focus:bg-white transition-all text-sm font-medium cursor-pointer"
+/>
             <button className="absolute right-2 bg-[#0F172A] text-white px-5 py-1.5 rounded-xl text-[10px] font-bold hover:bg-slate-800 transition-all uppercase tracking-wider">
               Search
             </button>
@@ -154,29 +291,40 @@ const Navbar = () => {
           {/* Action Icons Group */}
           <div className="flex items-center gap-2 lg:gap-6">
             <div className="hidden xl:flex items-center gap-2 cursor-pointer hover:text-amber-500 group">
-              <div className="p-2.5 bg-slate-50 rounded-full group-hover:bg-amber-50 transition-colors">
-                <MapPin size={20} className="text-slate-600 group-hover:text-amber-600" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[9px] font-black text-slate-400 leading-none uppercase">Deliver to</span>
-                <span className="text-xs font-black text-[#0F172A]">WareHouse #4</span>
-              </div>
+            <LocationDisplay userAddress={userAddress} />
             </div>
 
-            <div className="flex items-center gap-1 lg:gap-3">
-              <div className="relative p-2 lg:p-3 bg-amber-500/10 hover:bg-amber-500/20 rounded-full cursor-pointer border border-amber-500/20">
-                <Heart size={22} className="text-slate-700 group-hover:text-amber-600" />
-                <span className="absolute top-1 right-1 bg-amber-500 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full">0</span>
-              </div>
-              <div className="relative p-2 lg:p-3 bg-amber-500/10 hover:bg-amber-500/20 rounded-full cursor-pointer border border-amber-500/20">
-                <ShoppingCart size={22} className="text-amber-600" />
-                {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-[#0F172A] text-white text-[9px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-white">
-                    {cartCount > 99 ? "99+" : cartCount}
-                  </span>
-                )}
-              </div>
-            </div>
+            {/* Heart & Cart */}
+        <div className="flex items-center gap-1 lg:gap-3">
+  
+  {/* Wishlist Button */}
+  <div
+    onClick={() => setWishlistOpen(true)}
+    className="relative p-2 lg:p-3 bg-amber-500/10 hover:bg-amber-500/20 rounded-full cursor-pointer border border-amber-500/20"
+  >
+    <Heart size={22} className="text-slate-700" />
+    {wishlistCount > 0 && (
+      <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full">
+        {wishlistCount > 99 ? "99+" : wishlistCount}
+      </span>
+    )}
+  </div>
+
+  {/* Cart Button */}
+  <div
+    onClick={() => setIsCartOpen(true)}
+    className="relative p-2 lg:p-3 bg-amber-500/10 hover:bg-amber-500/20 rounded-full cursor-pointer border border-amber-500/20"
+  >
+    <ShoppingCart size={22} className="text-amber-600" />
+    {cartCount > 0 && (
+      <span className="absolute top-1 right-1 bg-amber-500 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full">
+        {cartCount > 99 ? "99+" : cartCount}
+      </span>
+    )}
+  </div>
+
+</div>
+   {/* Search Trigger - Perfectly Centered using absolute positioning */}
 
             <div className="h-8 w-[1px] bg-slate-200 mx-1 hidden sm:block"></div>
 
@@ -206,12 +354,12 @@ const Navbar = () => {
                       <p className="font-bold text-slate-900">{user.name || 'User'}</p>
                       <p className="text-slate-500">{user.email || user.phone}</p>
                     </div>
-                    <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
+                    <Link to="/account/userprofile" className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
                       <User size={14} /> My Profile
-                    </button>
-                    <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
+                    </Link>
+                    <Link to="/account/userorders" className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
                       <Package size={14} /> My Orders
-                    </button>
+                    </Link>
                     <button 
                       onClick={handleLogout}
                       disabled={isLoggingOut}
@@ -223,6 +371,7 @@ const Navbar = () => {
                 </div>
               )}
             </div>
+            {/* Search Bar - Desktop Only */}
 
             <button
               className="lg:hidden p-2 text-slate-800 focus:bg-slate-50 rounded-lg"
@@ -318,6 +467,24 @@ const Navbar = () => {
         </div>
       </div>
     </nav>
+      <WholesaleCartSidebar
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        onOpenAuth={handleOpenAuth}
+      />
+        <WishlistSidebar
+      isOpen={wishlistOpen}
+      onClose={() => setWishlistOpen(false)}
+      onOpenAuth={handleOpenAuth}
+    />
+     {/* Search Modal - Reused for both mobile and desktop */}
+      <SearchModal 
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+        initialQuery={searchQuery}
+      />
+    
+    </>
   );
 };
 

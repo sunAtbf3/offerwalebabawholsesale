@@ -86,6 +86,14 @@ const VariantModal = ({
       images: prev.images.map(img => ({ ...img, isMain: (img.id || img.url) === imageId }))
     }));
 
+  const isWholesaleMoqUnmet = () => {
+    if (!variantForm.wholesale) return false;
+    if (variantForm.inventory?.trackInventory === false) return false;
+    const quantity = Number(variantForm.inventory?.quantity ?? 0);
+    const moq = Number(variantForm.minimumOrderQuantity ?? 1);
+    return Number.isFinite(quantity) && Number.isFinite(moq) && moq > quantity;
+  };
+
   // ── Save with validation ──────────────────────────────────────
   const handleSave = () => {
     const ProductCode = (variantForm.ProductCode ?? '').toString().trim();
@@ -349,6 +357,12 @@ const VariantModal = ({
                     className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-400"
                     placeholder="Minimum quantity for wholesale price" />
                 </div>
+                {isWholesaleMoqUnmet() && (
+                  <p className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg px-2 py-1">
+                    Wholesale warning: MOQ ({variantForm.minimumOrderQuantity ?? 1}) is greater than stock (
+                    {variantForm.inventory?.quantity ?? 0})
+                  </p>
+                )}
                 {variantForm.wholesaleBase && variantForm.wholesaleSale &&
                   Number(variantForm.wholesaleSale) < Number(variantForm.wholesaleBase) && (
                   <div className="mt-2 flex items-center gap-2 text-xs text-purple-700 bg-purple-100 px-3 py-1.5 rounded-lg">
