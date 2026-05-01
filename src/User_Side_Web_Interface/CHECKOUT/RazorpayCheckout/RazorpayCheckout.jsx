@@ -339,7 +339,9 @@ const RazorpayCheckout = forwardRef(({
           }
 
           // Now call onSuccess callback
-          onSuccess?.(response);
+         setTimeout(() => {
+    onSuccess?.(response);
+  }, 50); // ← add this delay
         },
         prefill: {
           name: customerName,
@@ -436,6 +438,10 @@ const RazorpayCheckout = forwardRef(({
         }
       }
       razorpayInstance.current = null;
+       const rzpBanner = document.querySelector(".razorpay-container");
+  if (rzpBanner) rzpBanner.remove();
+  const rzpBackdrop = document.querySelector(".razorpay-backdrop");
+  if (rzpBackdrop) rzpBackdrop.remove();
     };
   }, []); // Empty dependency array - run once
 

@@ -268,7 +268,7 @@ const AddressCard = ({ address, isDefault, onEdit, onDelete, onSetDefault, isDel
 // ─────────────────────────────────────────────────────────────────────────────
 // AddressFormModal - COMPLETE VERSION WITH EDIT MODE FIX
 // ─────────────────────────────────────────────────────────────────────────────
-const AddressFormModal = ({ initial, onSubmit, onClose, isSaving, error }) => {
+export const AddressFormModal = ({ initial, onSubmit, onClose, isSaving, error }) => {
   const [form, setForm] = useState({ ...EMPTY_FORM, ...initial });
   const [step, setStep] = useState(1);
   const [formError, setFormError] = useState(null);

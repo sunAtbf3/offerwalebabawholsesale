@@ -30,6 +30,7 @@ import {
   XCircle, Clock, AlertCircle, ArrowLeft, MapPin,
   Loader2, ShoppingBag, CreditCard,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const fmt = (n) =>
   new Intl.NumberFormat("en-IN", {
@@ -185,6 +186,7 @@ const OrderDetail = ({ orderId, onBack, onCancel, isCancelling, cancelError }) =
   const initiatePaymentLoading = useSelector((s) => s.orders.loading.initiatePayment);
   const initiatePaymentError = useSelector((s) => s.orders.error.initiatePayment);
   const paymentVerification = useSelector(selectPaymentVerification);
+  const navigate = useNavigate();
 
   const [showTracking, setShowTracking] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -248,6 +250,9 @@ const OrderDetail = ({ orderId, onBack, onCancel, isCancelling, cancelError }) =
         dispatch(fetchUserOrders());
         dispatch(resetPaymentVerification());
         toast.success("Payment successful! Your order is confirmed.", { theme: "dark", autoClose: 3500 });
+        setTimeout(()=>{
+          navigate("/account/userorders")
+        })
       } catch (e) {
         console.error(e);
         /* verify error surfaced via paymentVerification + modal */

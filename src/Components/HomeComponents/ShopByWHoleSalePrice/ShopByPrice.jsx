@@ -734,6 +734,23 @@ console.log('Sample product price:', products?.[0]?.variants?.[0]?.price);
                 </button>
               </div>
             )}
+            {!pageIsLoading && !hasError && products.length === 0 && (
+  <div className="py-32 flex flex-col items-center text-center animate-in fade-in">
+    <div className="p-4 rounded-full bg-zinc-100 mb-4">
+      <AlertCircle size={28} className="text-zinc-400" />
+    </div>
+    <h2 className="text-xl font-semibold text-zinc-700 mb-2">No Products Found</h2>
+    <p className="text-zinc-400 text-xs uppercase tracking-widest mb-6">
+      No products available in {priceLabel} range
+    </p>
+    <button
+      onClick={() => navigate(-1)}
+      className="flex items-center gap-2 px-6 py-2 text-xs font-semibold uppercase tracking-wider border border-zinc-300 rounded-full hover:bg-black hover:text-white transition"
+    >
+      <ArrowLeft size={14} /> Go Back
+    </button>
+  </div>
+)}
           </div>
         </div>
       </div>

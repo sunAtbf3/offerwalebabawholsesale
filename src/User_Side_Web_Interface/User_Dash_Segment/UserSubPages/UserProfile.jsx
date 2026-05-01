@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { User, Mail, Phone, CheckCircle2, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
-import axiosInstance from '../../../SERVICES/axiosInstance';
+import axiosInstance from '../../../SERVICES/Wholesaleaxios';
 
 // ── FIX: import from the correct new slice paths ───────────────────────────
-import { selectUser, selectAuthLoading, selectAuthError, clearError } from '../../../Components/REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
+import { selectUser, selectAuthLoading, selectAuthError, clearError, selectIsAuthenticated } from '../../../Components/REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
 import { useGetMeQuery } from '../../../Components/REDUX_FEATURES/REDUX_SLICES/authApi/authApi';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -43,6 +43,8 @@ const UserProfile = () => {
   // ── FIX: use selectors from the new authSlice ─────────────────────────────
   const user       = useSelector(selectUser);
   const authError  = useSelector(selectAuthError);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+
 
   // ── FIX: useGetMeQuery replaces the old fetchMe thunk ────────────────────
   // skip=true when user is already in Redux (avoids duplicate network call).
@@ -51,7 +53,7 @@ const UserProfile = () => {
     isFetching: isMeFetching,
     isError:    isMeError,
     refetch:    refetchMe,
-  } = useGetMeQuery(undefined, { skip: !!user });
+  } = useGetMeQuery(undefined, { skip: !!user || !isAuthenticated });
 
   // ── Local form state ──────────────────────────────────────────────────────
   const [name,  setName]  = useState('');

@@ -41,6 +41,7 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.loading = false;
       state.error = null;
+      // state.defaultAddress = null;
       localStorage.removeItem('accessToken');
     },
     clearError: (state) => {

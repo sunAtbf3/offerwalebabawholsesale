@@ -10,6 +10,7 @@ import {
   Package, ShieldCheck, RotateCcw,
   Tag, Share2, ChevronRight, TrendingUp,
   Check, ThumbsUp, MapPin, Shield, Eye, ShoppingBag,
+  Loader,
 } from "lucide-react";
 
 import {
@@ -42,6 +43,9 @@ import {
 
 import { toast } from "react-toastify";
 import { selectIsAuthenticated } from "../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice";
+
+// ✅ WholesaleProductCard import — RelatedCard replaced
+import WholesaleProductCard from "../ProductCard/WholesaleProductCard";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmt = (n) => {
@@ -104,136 +108,6 @@ const Skeleton = () => (
   </div>
 );
 
-// ─── Related Card ─────────────────────────────────────────────────────────────
-const RelatedCard = ({ product }) => {
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
-
-  const cartItem   = useSelector(selectCartItemBySlug(product?.slug));
-  const isInCart   = !!cartItem;
-  const currentQty = cartItem?.quantity ?? 0;
-
-  const variant   = product?.variants?.[0] ?? {};
-  const title     = product?.title || product?.name || "Product";
-  const imgUrl    = variant.images?.[0]?.url ?? product?.image ?? null;
-  const salePrice = variant.finalPrice ?? variant.price?.sale ?? variant.price?.base ?? product?.wholesalePrice ?? null;
-  const basePrice = variant.price?.base ?? product?.mrp ?? null;
-  const disc      = basePrice && salePrice && basePrice > salePrice;
-  const discPct   = disc ? Math.round(((basePrice - salePrice) / basePrice) * 100) : null;
-  const maxStock  = variant.inventory?.trackInventory ? (variant.inventory?.quantity ?? 0) : Infinity;
-  const inStock   = maxStock > 0;
-  const isAtMax   = currentQty >= maxStock && maxStock !== Infinity; // ✅ local var, not main component's
-
-  const [adding, setAdding] = useState(false);
-
-  const handleAdd = (e) => {
-    e.stopPropagation();
-    if (!inStock || !product?.slug || adding) return;
-    setAdding(true);
-    dispatch(addGuestCartItem({
-      productId:   product._id,
-      productSlug: product.slug,
-      variantId:   variant?._id?.toString() || "",
-      quantity:    1,
-    }));
-    toast.success("Added to cart");
-    setTimeout(() => setAdding(false), 400);
-  };
-
-  const handleInc = (e) => {
-    e.stopPropagation();
-    if (isAtMax) { toast.warning(`Max stock: ${maxStock}`); return; } // ✅ uses local isAtMax
-    dispatch(updateGuestCartItem({
-      productSlug: product.slug,
-      variantId:   variant?._id?.toString() || "",
-      quantity:    currentQty + 1,
-    }));
-  };
-
-  const handleDec = (e) => {
-    e.stopPropagation();
-    if (currentQty - 1 <= 0) {
-      dispatch(removeGuestCartItem({ productSlug: product.slug, variantId: variant?._id?.toString() || "" }));
-      toast.info("Removed from cart");
-    } else {
-      dispatch(updateGuestCartItem({
-        productSlug: product.slug,
-        variantId:   variant?._id?.toString() || "",
-        quantity:    currentQty - 1,
-      }));
-    }
-  };
-
-  return (
-    <div
-      onClick={() => navigate(`/product/${product.slug}`)}
-      className="bg-white border border-gray-200 rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer group flex flex-col hover:shadow-md hover:border-yellow-400"
-    >
-      <div className="relative aspect-square bg-amber-50 flex items-center justify-center p-3 overflow-hidden">
-        {discPct && (
-          <span className="absolute top-2 left-2 bg-green-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded z-10">
-            {discPct}% OFF
-          </span>
-        )}
-        {imgUrl ? (
-          <img
-            src={imgUrl}
-            alt={title}
-            loading="lazy"
-            className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500"
-          />
-        ) : (
-          <Package size={36} className="text-gray-300" />
-        )}
-      </div>
-
-      <div className="p-3 flex flex-col flex-grow border-t border-gray-100">
-        <h4 className="text-xs font-semibold text-gray-800 line-clamp-2 mb-2 group-hover:text-yellow-600 transition-colors">
-          {title}
-        </h4>
-        <div className="flex items-baseline gap-1.5 mt-auto mb-3 flex-wrap">
-          <span className="text-sm font-bold text-gray-900">{fmt(salePrice)}</span>
-          {disc && <span className="text-xs text-gray-400 line-through">{fmt(basePrice)}</span>}
-        </div>
-
-        <div onClick={(e) => e.stopPropagation()}>
-          {!inStock ? (
-            <button disabled className="w-full text-xs font-bold py-2 rounded-lg bg-gray-100 text-gray-400 cursor-not-allowed">
-              Out of Stock
-            </button>
-          ) : !isInCart ? (
-            <button
-              onClick={handleAdd}
-              disabled={adding}
-              className="w-full text-gray-900 text-xs font-bold py-2 rounded-lg transition-all bg-yellow-400 hover:bg-yellow-300 active:scale-95 flex items-center justify-center gap-1.5"
-            >
-              {adding ? <Loader2 size={12} className="animate-spin" /> : <ShoppingBag size={12} />}
-              Add to Cart
-            </button>
-          ) : (
-            <div className="flex items-center border-2 border-yellow-400 rounded-xl overflow-hidden">
-              <button
-                onClick={handleDec}
-                className="w-8 h-8 flex items-center justify-center bg-gray-50 hover:bg-red-500 hover:text-white transition"
-              >
-                <Minus size={12} />
-              </button>
-              <div className="flex-1 text-center text-xs font-bold text-gray-900">{currentQty}</div>
-              <button
-                onClick={handleInc}
-                disabled={isAtMax}
-                className="w-8 h-8 flex items-center justify-center bg-yellow-400 hover:bg-yellow-300 transition disabled:opacity-40"
-              >
-                <Plus size={12} />
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // ─── Main WholesaleProductDetail ──────────────────────────────────────────────
 const WholesaleProductDetail = () => {
   const { slug } = useParams();
@@ -261,6 +135,7 @@ const WholesaleProductDetail = () => {
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const isInCart        = !!cartItem;
   const currentQty      = cartItem?.quantity ?? 0;
+  const variantRef = useRef(null);
 
   const [activeThumb, setActiveThumb] = useState(0);
   const [selectedAttrs, setSelectedAttrs] = useState({});
@@ -271,13 +146,12 @@ const WholesaleProductDetail = () => {
   const [isMobile, setIsMobile]       = useState(false);
   const [isVisible, setIsVisible]     = useState(false);
   const [qty, setQty]                 = useState(1);
-
   const [localLoading, setLocalLoading] = useState({
     add: false, update: false, remove: false, wishlist: false,
   });
+  const isLoggedIn  = useSelector(selectIsAuthenticated)
   const setL         = (key, val) => setLocalLoading((p) => ({ ...p, [key]: val }));
   const isProcessing = localLoading.add || localLoading.update || localLoading.remove;
-
   const containerRef = useRef(null);
   const lensRef      = useRef(null);
   const zoomRef      = useRef(null);
@@ -344,6 +218,7 @@ const WholesaleProductDetail = () => {
     () => (product?.variants ?? []).filter((v) => v.isActive === true),
     [product]
   );
+  console.log("productvariant", product?.variants);
 
   const attrKeys = useMemo(() => {
     const s = new Set();
@@ -353,7 +228,7 @@ const WholesaleProductDetail = () => {
 
   const getAllValues = useCallback(
     (key) => {
-      const s = new Set();
+      const s = new Set();      
       activeVariants.forEach((v) =>
         v.attributes?.filter((a) => a.key === key).forEach((a) => s.add(a.value))
       );
@@ -391,11 +266,25 @@ const WholesaleProductDetail = () => {
 
   useEffect(() => { setActiveThumb(0); }, [selectedVariant?._id]);
 
+  // ── Outside click → reset variant ────────────────────────────────────────
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (variantRef.current && !variantRef.current.contains(e.target)) {
+        if (!activeVariants.length) return;
+        const init = {};
+        activeVariants[0].attributes?.forEach((a) => { init[a.key] = a.value; });
+        setSelectedAttrs(init);
+        setActiveThumb(0);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [activeVariants]);
+
   // ── Derived values ─────────────────────────────────────────────────────────
   const images    = selectedVariant?.images ?? [];
   const activeImg = images[activeThumb]?.url ?? product?.image ?? null;
 
-  // ✅ V2: variant properly declared from selectedVariant
   const variant = selectedVariant || {};
 
   const wholesalePrice = selectedVariant?.finalPrice ?? selectedVariant?.price?.sale ?? product?.wholesalePrice ?? null;
@@ -404,13 +293,11 @@ const WholesaleProductDetail = () => {
   const discPct        = hasDisc ? Math.round(((mrp - wholesalePrice) / mrp) * 100) : null;
   const marginPercent  = product?.marginPercent ?? (hasDisc ? discPct : null);
 
-  // ✅ V2: maxStock properly declared
   const maxStock = selectedVariant?.inventory?.trackInventory
     ? (selectedVariant?.inventory?.quantity ?? 0)
     : Infinity;
   const stock    = selectedVariant?.inventory?.quantity ?? product?.stock ?? null;
 
-  // ✅ V1: full availability logic with canPurchase
   const availability     = selectedVariant?.availability || null;
   const availabilityMeta = getAvailabilityMeta(availability);
   const fallbackInStock  = product?.inStock ?? (maxStock === Infinity || maxStock > 0);
@@ -418,7 +305,6 @@ const WholesaleProductDetail = () => {
   const lowStock         = stock != null && stock > 0 && stock <= 10;
   const isAtMaxStock     = currentQty >= maxStock && maxStock !== Infinity;
 
-  // ✅ V1: moq from variant (more specific), V2 fallback from product
   const moq           = selectedVariant?.minimumOrderQuantity
     ?? selectedVariant?.price?.minimumOrderQuantity
     ?? product?.moq
@@ -439,7 +325,6 @@ const WholesaleProductDetail = () => {
   const unitPrice   = currentTier?.price ?? wholesalePrice;
   const totalPrice  = unitPrice != null ? unitPrice * qty : null;
 
-  // ✅ V1: reset qty to moq when variant/moq changes
   useEffect(() => {
     setQty(moq || 1);
   }, [moq]);
@@ -477,7 +362,6 @@ const WholesaleProductDetail = () => {
     }
   };
 
-  // ✅ V1: MOQ_UNMET toast warning added; V2: isAuthenticated branches
   const handleAddToCart = async (e) => {
     e.stopPropagation();
     if (!inStock) {
@@ -512,7 +396,6 @@ const WholesaleProductDetail = () => {
     }
   };
 
-  // ✅ V2: uses isAtMaxStock (correctly declared above)
   const handleIncrement = async (e) => {
     e.stopPropagation();
     if (isAtMaxStock) { toast.warning(`Max stock: ${maxStock}`); return; }
@@ -540,7 +423,6 @@ const WholesaleProductDetail = () => {
     }
   };
 
-  // ✅ V1: removes when newQty < moq (not just <= 0); V2: isAuthenticated branches
   const handleDecrement = async (e) => {
     e.stopPropagation();
     if (isProcessing) return;
@@ -945,7 +827,7 @@ const WholesaleProductDetail = () => {
               {tabContent[activeTab]}
             </div>
 
-            {/* Related Products */}
+            {/* ✅ Related Products — WholesaleProductCard replace kiya RelatedCard se */}
             {related.length > 0 && (
               <div className="pt-4">
                 <div className="flex items-center justify-between mb-4">
@@ -961,7 +843,9 @@ const WholesaleProductDetail = () => {
                   </button>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                  {related.map((p) => <RelatedCard key={p._id || p.slug} product={p} />)}
+                  {related.map((p, i) => (
+                    <WholesaleProductCard key={p._id || p.slug} product={p} index={i} />
+                  ))}
                 </div>
               </div>
             )}
@@ -970,7 +854,9 @@ const WholesaleProductDetail = () => {
           {/* RIGHT COLUMN — Sticky */}
           <div className="flex flex-col gap-4 lg:sticky lg:top-[74px]">
 
-            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden" ref={variantRef}
+
+>
 
               {/* Title area */}
               <div className="p-4 sm:p-5">
@@ -1083,7 +969,6 @@ const WholesaleProductDetail = () => {
               {/* Quantity + CTA */}
               <div className="px-4 sm:px-5 py-4 space-y-3">
 
-                {/* ✅ V2: qty selector only shown when not in cart */}
                 {!isInCart && (
                   <>
                     <div className="flex items-center justify-between">
@@ -1102,7 +987,7 @@ const WholesaleProductDetail = () => {
                       <input
                         type="number"
                         value={qty}
-                        onChange={(e) => setQty(Math.max(moq, Number(e.target.value)))}
+                        onChange={(e) => setQty(Math.max(1, Number(e.target.value)))}
                         className="flex-1 h-10 text-center border border-gray-200 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-yellow-400"
                       />
                       <button
@@ -1113,11 +998,11 @@ const WholesaleProductDetail = () => {
                   </>
                 )}
 
-                {/* Variant attrs */}
+                {/* Variant attrs — ref lagaya hai yahan */}
                 {attrKeys.length > 0 && (
-                  <div className="space-y-3 pt-1">
+                  <div className="space-y-3 w-fit pt-1">
                     {attrKeys.map((key) => (
-                      <div key={key}>
+                      <div className="" key={key}>
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">
                           {key}
                           {selectedAttrs[key] && (
@@ -1131,7 +1016,11 @@ const WholesaleProductDetail = () => {
                             return (
                               <button
                                 key={val}
-                                onClick={() => avail && setSelectedAttrs((p) => ({ ...p, [key]: val }))}
+                                onClick={() => { if (!avail) return;
+  setSelectedAttrs((p) => ({
+    ...p,
+    [key]: p[key] === val ? undefined : val,
+  }));}}
                                 disabled={!avail}
                                 className={`px-3 py-1.5 text-xs rounded-xl border-2 font-medium transition-all duration-150 ${active ? "border-gray-900 bg-gray-900 text-white" : avail ? "border-gray-200 text-gray-700 hover:border-gray-900 bg-white" : "border-gray-100 text-gray-300 cursor-not-allowed line-through bg-gray-50"}`}
                               >{val}</button>
@@ -1158,7 +1047,6 @@ const WholesaleProductDetail = () => {
                     </button>
                   ) : (
                     <div className="flex items-center w-full border-2 border-yellow-400 rounded-xl overflow-hidden">
-                      {/* ✅ V1: disabled also when at/below moq */}
                       <button
                         onClick={handleDecrement}
                         disabled={isProcessing || currentQty <= (moq || 1)}
@@ -1190,19 +1078,46 @@ const WholesaleProductDetail = () => {
                   </div>
                 )}
 
-                {/* ✅ V1: MOQ_UNMET warning below CTA */}
                 {availability?.status === "MOQ_UNMET" && (
                   <p className={`text-xs font-semibold ${availabilityMeta.className}`}>
                     Min qty {moq}, available {availability?.quantity ?? stock ?? 0}
                   </p>
                 )}
 
-                {/* ✅ V2: single clean "Order Now" link — no duplicate */}
                 <Link
                   to="/checkout"
+                   disabled={!inStock || localLoading.add || localLoading.orderNow}
+                   onClick={async () => {
+                                if (isInCart) { navigate("/checkout"); return; }
+                                setL("orderNow", true);
+                                try {
+                                  if (isLoggedIn) {
+                                    await dispatch(addToCart({
+                                      productSlug: product.slug,
+                                      variantId: variant?._id?.toString(),
+                                      quantity: 1,
+                                    })).unwrap();
+                                  } else {
+                                    dispatch(addGuestCartItem({
+                                      productId: product._id,
+                                      productSlug: product.slug,
+                                      variantId: variant?._id?.toString() || "",
+                                      quantity: 1,
+                                    }));
+                                  }
+                                  navigate("/checkout");
+                                } catch (err) {
+                                  toast.error(err?.message || "Failed to proceed");
+                                } finally {
+                                  setL("orderNow", false);
+                                }
+                              }}
                   className="w-full bg-gray-900 text-yellow-400 py-3 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors active:scale-[0.98]"
                 >
-                  Order Now
+                 {localLoading.orderNow
+                                ? <><Loader2 size={16} className="animate-spin" /> Processing...</>
+                                : "Order Now"
+                              }
                 </Link>
 
                 {/* Wishlist + Share */}
@@ -1228,12 +1143,12 @@ const WholesaleProductDetail = () => {
                     {shareOpen && (
                       <div className="absolute bottom-[calc(100%+8px)] right-0 bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-lg z-50 flex gap-3">
                         {[
-                          { type: "whatsapp",  Icon: IoLogoWhatsapp,  cls: "bg-green-500 hover:bg-green-600" },
-                          { type: "facebook",  Icon: IoLogoFacebook,  cls: "bg-blue-600 hover:bg-blue-700" },
-                          { type: "instagram", Icon: IoLogoInstagram, cls: "bg-gradient-to-br from-yellow-400 via-pink-500 to-purple-600" },
-                          { type: "telegram",  Icon: FaTelegram,      cls: "bg-sky-500 hover:bg-sky-600" },
+                         { type: "whatsapp",  Icon: IoLogoWhatsapp,  cls: "bg-green-500 hover:bg-green-600",  link: "https://wa.me/message/72BTQZMTQU2AG1" },
+{ type: "facebook",  Icon: IoLogoFacebook,  cls: "bg-blue-600 hover:bg-blue-700",    link: "https://www.facebook.com/share/1Eej9auTBB/" },
+{ type: "instagram", Icon: IoLogoInstagram, cls: "bg-gradient-to-br from-yellow-400 via-pink-500 to-purple-600", link: "https://www.instagram.com/offer_wale_baba?igsh=Mjd6aG84bXV5dmRn" },
+{ type: "telegram",  Icon: FaTelegram,      cls: "bg-sky-500 hover:bg-sky-600",      link: "https://t.me/OfferWaleBabaRetail" },
                         ].map(({ type, Icon, cls }) => (
-                          <button key={type} onClick={() => { share(type); setShareOpen(false); }}
+                         <button key={type} onClick={() => { window.open(link, "_blank"); setShareOpen(false); }}
                             className={`w-9 h-9 rounded-full ${cls} text-white flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-150 shadow-sm`}>
                             <Icon size={16} />
                           </button>
@@ -1292,7 +1207,6 @@ const WholesaleProductDetail = () => {
                 {product?.hsnCode && (<><span className="text-gray-400">HSN Code</span><span className="font-bold text-gray-800">{product.hsnCode}</span></>)}
                 {product?.gstRate != null && (<><span className="text-gray-400">GST Rate</span><span className="font-bold text-gray-800">{product.gstRate}%</span></>)}
                 <span className="text-gray-400">Origin</span>
-                <span className="font-bold text-gray-800">{product?.origin ?? "India"}</span>
               </div>
             </div>
 

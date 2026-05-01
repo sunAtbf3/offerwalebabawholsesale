@@ -18,6 +18,7 @@ import { selectDisplayWishlistCount } from '../REDUX_FEATURES/REDUX_SLICES/UserW
 import { Link, useNavigate } from 'react-router-dom';
 import SearchModal from './Search_Modal/SearchModal';
 import { clearAddressErrors, fetchAddresses, selectDefaultAddress } from '../REDUX_FEATURES/REDUX_SLICES/Useraddressslice';
+import { setLoggingOut } from '../../SERVICES/Wholesaleaxios';
 
 const LocationDisplay = ({ userAddress }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -189,14 +190,18 @@ const ticking = useRef(false);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
+     setLoggingOut(true);
     try {
-      await logoutMutation().unwrap();
-      dispatch(logout());
+       await logoutMutation().unwrap();
+    dispatch(logout());
+    localStorage.removeItem("accessToken"); // 👈 clear token immediately
     } catch (error) {
       dispatch(logout());
       console.error('[Navbar] Logout error:', error);
+          localStorage.removeItem("accessToken");
     } finally {
       setIsLoggingOut(false);
+      setLoggingOut(false)
     }
   };
   // Yeh function add karo existing handlers ke saath (handleLogout ke baad)
@@ -230,9 +235,6 @@ const handleOpenAuth = () => {
       dispatch(fetchAddresses());
     }
   }, [dispatch, isAuthenticated]);
-
-  console.log("Navbar address:", userAddress);
-
   const directCategoryLinks = categories.slice(0, 6).map(cat => cat.label);
 
   return (

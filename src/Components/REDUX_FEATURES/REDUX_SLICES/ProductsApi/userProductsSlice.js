@@ -1,19 +1,13 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// userProductsSlice.js  — STATE MANAGEMENT ONLY
-// No createAsyncThunk. All API calls are in productsApi.js (RTK Query).
-// This slice only holds UI state that RTK Query cache doesn't manage.
-// ─────────────────────────────────────────────────────────────────────────────
-
+// userProductsSlice.js
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
-  // Active filters per category slug — persisted across "load more" clicks
-  categoryFilters: {},   // { [slug]: { price:[], availability:[], discount:[], onSale:false } }
-
-  // Current page per slug — owned here so usePaginatedFetch can read/write it
-  categoryPage: {},      // { [slug]: number }
-
-  // Current product detail (set manually after RTK Query fetch)
+  categoryFilters: {},
+  categoryPage: {},
+  tagPage: {},
+  tagProducts: {},
+  tagFilters: {},
+  categoryTagPage: {},
   currentProduct: null,
 };
 
@@ -21,29 +15,49 @@ const userProductsSlice = createSlice({
   name: "userProducts",
   initialState,
   reducers: {
-    // ── Pagination ─────────────────────────────────────────────────────────────
+    addProductsForTag: (state, action) => {
+  const { tag, products } = action.payload;
+
+  if (!state.tagProducts[tag]) {
+    state.tagProducts[tag] = [];
+  }
+
+  const existingIds = new Set(
+    state.tagProducts[tag].map((p) => p._id)
+  );
+
+  const newProducts = products.filter(
+    (p) => !existingIds.has(p._id)
+  );
+
+  state.tagProducts[tag].push(...newProducts);
+},
+clearProductsForTag: (state, action) => {
+  state.tagProducts[action.payload] = [];
+},
     setPageForSlug: (state, action) => {
       const { slug, page } = action.payload;
       state.categoryPage[slug] = page;
     },
     resetPageForSlug: (state, action) => {
-      const slug = action.payload;
-      state.categoryPage[slug] = 1;
+      state.categoryPage[action.payload] = 1;
     },
-
-    // ── Filters ───────────────────────────────────────────────────────────────
+    setPageForTag: (state, action) => {
+      const { tag, page } = action.payload;
+      state.tagPage[tag] = page;
+    },
+    resetPageForTag: (state, action) => {
+      state.tagPage[action.payload] = 1;
+    },
     setFiltersForSlug: (state, action) => {
       const { slug, filters } = action.payload;
       state.categoryFilters[slug] = filters;
     },
     clearFiltersForSlug: (state, action) => {
-      const slug = action.payload;
-      state.categoryFilters[slug] = {
+      state.categoryFilters[action.payload] = {
         price: [], availability: [], discount: [], onSale: false,
       };
     },
-
-    // ── Current product ───────────────────────────────────────────────────────
     setCurrentProduct: (state, action) => {
       state.currentProduct = action.payload;
     },
@@ -56,15 +70,22 @@ const userProductsSlice = createSlice({
 export const {
   setPageForSlug,
   resetPageForSlug,
+  setPageForTag,
+  resetPageForTag,
   setFiltersForSlug,
   clearFiltersForSlug,
   setCurrentProduct,
+  addProductsForTag,
+  clearProductsForTag,
   clearCurrentProduct,
 } = userProductsSlice.actions;
 
 // ── Selectors ─────────────────────────────────────────────────────────────────
-export const selectPageForSlug   = (slug) => (state) =>
+export const selectPageForSlug = (slug) => (state) =>
   state.userProducts.categoryPage[slug] ?? 1;
+
+export const selectPageForTag = (tag) => (state) =>
+  state.userProducts.tagPage[tag] ?? 1;
 
 export const selectFiltersForSlug = (slug) => (state) =>
   state.userProducts.categoryFilters[slug] ?? {

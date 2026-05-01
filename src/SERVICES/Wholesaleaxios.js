@@ -31,6 +31,8 @@ wholesaleAxios.interceptors.request.use(
 // ── Response Interceptor — auto-refresh on 401 ───────────────────────────────
 let isRefreshing = false;
 let failedQueue = [];
+let isLoggingOut = false; // 👈 add this flag
+export const setLoggingOut = (val) => { isLoggingOut = val; };
 
 const processQueue = (error, token = null) => {
   failedQueue.forEach((prom) => {
@@ -48,8 +50,10 @@ wholesaleAxios.interceptors.response.use(
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
+      !isLoggingOut &&
       !originalRequest.url.includes("/auth/refresh") &&
-      !originalRequest.url.includes("/auth/login")
+      !originalRequest.url.includes("/auth/login") &&
+       !originalRequest.url.includes("/auth/logout")
     ) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {

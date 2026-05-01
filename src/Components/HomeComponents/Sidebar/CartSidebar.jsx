@@ -29,6 +29,7 @@ import {
   selectCheckoutError,
 } from '../../REDUX_FEATURES/REDUX_SLICES/checkoutSlice/checkoutSlice';
 import { selectIsAuthenticated } from "../../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice";
+import { selectDefaultAddress } from "../../REDUX_FEATURES/REDUX_SLICES/Useraddressslice";
 
 // ─── Price formatter ──────────────────────────────────────────────────────────
 const fmt = (n) => {
@@ -102,11 +103,12 @@ const getWholesaleVariant = (product, variantId) => {
 // ─────────────────────────────────────────────────────────────────────────────
 const GuestCartItem = ({ item, onRemove, onUpdateQty, isUpdating, isRemoving, productPath }) => {
   const productSlug = item.productSlug || item._productSlug;
+  
   const qty         = item.quantity || 1;
   const displayName = item.productName
-    ? item.productName
-    : (productSlug?.replace(/-/g, " ") || "Product");
-
+  ? item.productName
+  : (productSlug?.replace(/-/g, " ") || "Product");
+  
   // Guest items store wholesalePrice snapshot when added to cart
   const price     = item.wholesalePrice ?? item.price ?? null;
   const basePrice = item.wholesaleBasePrice ?? null;
@@ -116,7 +118,6 @@ const GuestCartItem = ({ item, onRemove, onUpdateQty, isUpdating, isRemoving, pr
   const variantLabel = item.variantLabel ?? null;
   const discountPct  = item.discountPercentage ?? 0;
   const path = productPath;
-
   return (
     <div className="flex gap-3 py-3 group">
       <Link to={path} className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border border-gray-100 bg-amber-50 flex items-center justify-center">
@@ -178,13 +179,18 @@ const GuestCartItem = ({ item, onRemove, onUpdateQty, isUpdating, isRemoving, pr
 
         <div className="flex items-center justify-between mt-2">
           <div className="flex items-center border-2 border-yellow-400 rounded-xl overflow-hidden">
-            <button
-              onClick={(e) => { e.stopPropagation(); onUpdateQty(item, qty - 1); }}
-              disabled={qty <= (moq || 1) || isUpdating}
-              className="w-8 h-8 flex items-center justify-center bg-gray-50 hover:bg-red-500 hover:text-white transition-colors disabled:opacity-40"
-            >
-              <Minus size={12} />
-            </button>
+           <button
+  onClick={(e) => { 
+    e.stopPropagation(); 
+    const moq = item.moq ?? 1;
+    if (qty <= moq) return; // ← extra safety guard
+    onUpdateQty(item, qty - 1); 
+  }}
+  disabled={qty <= (item.moq ?? 1) || isUpdating}
+  className="w-8 h-8 flex items-center justify-center bg-gray-50 hover:bg-red-500 hover:text-white transition-colors disabled:opacity-40"
+>
+  <Minus size={12} />
+</button>
             <span className="px-3 text-xs font-bold min-w-[2rem] text-center">
               {isUpdating ? <Loader2 size={11} className="animate-spin mx-auto" /> : qty}
             </span>
@@ -326,7 +332,7 @@ const CartItem = ({ item, onUpdateQty, onRemove, isUpdating, isRemoving, product
           <div className="flex items-center border-2 border-yellow-400 rounded-xl overflow-hidden">
             <button
               onClick={(e) => { e.stopPropagation(); onUpdateQty(item, qty - 1); }}
-              disabled={qty <= 1 || isUpdating}
+              disabled={qty <= moq || isUpdating}
               className="w-8 h-8 flex items-center justify-center bg-gray-50 hover:bg-red-500 hover:text-white transition-colors disabled:opacity-40"
             >
               <Minus size={12} />
@@ -377,49 +383,61 @@ const DeliverySection = ({ isLoggedIn, userPincode }) => {
   const delivery        = useSelector(selectDelivery);
   const checkoutLoading = useSelector(selectCheckoutLoading);
   const checkoutError   = useSelector(selectCheckoutError);
+  
 
-  const [pincode,           setPincode]     = useState('');
-  const [isEditing,         setIsEditing]   = useState(false);
-  const [tempPincode,       setTempPincode] = useState('');
+  const [pincode,           setPincode]           = useState('');
+  const [isEditing,         setIsEditing]         = useState(false);
+  const [tempPincode,       setTempPincode]       = useState('');
   const [isDeliveryLoading, setIsDeliveryLoading] = useState(false);
 
   const hasAutoChecked = useRef(false);
 
   // ── Mount pe Redux se sync karo (reload safe) ──────────────
-  useEffect(() => {
-    if (delivery?.checkedPincode && !pincode) {
-      setPincode(delivery.checkedPincode);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+ // ✅ Mount pe Redux se sync — reload safe
+useEffect(() => {
+  if (delivery?.checkedPincode && !pincode) {
+    setPincode(delivery.checkedPincode);
+  }
+}, []); // eslint-disable-line
 
-  // ── Login/userPincode change pe reset ───────────────────────
-  useEffect(() => {
+// ✅ Sirf actual userPincode change pe reset (not on mount)
+const prevPincodeRef = useRef(userPincode);
+useEffect(() => {
+  // Mount pe skip karo, sirf actual change pe reset
+  if (prevPincodeRef.current === userPincode) return;
+  prevPincodeRef.current = userPincode;
+  
+  hasAutoChecked.current = false;
+  setPincode('');
+  setIsEditing(false);
+  setTempPincode('');
+}, [userPincode]);
+
+// ✅ Logout pe reset
+useEffect(() => {
+  if (!isLoggedIn) {
     setPincode('');
-    setTempPincode('');
     setIsEditing(false);
+    setTempPincode('');
     hasAutoChecked.current = false;
-  }, [isLoggedIn, userPincode]);
+  }
+}, [isLoggedIn]);
 
-  // ── Auto-check saved pincode for logged-in users ────────────
-  useEffect(() => {
-    if (
-      isLoggedIn &&
-      userPincode &&
-      /^\d{6}$/.test(userPincode) &&
-      !hasAutoChecked.current
-    ) {
-      hasAutoChecked.current = true;
-      setPincode(userPincode);
-      setIsDeliveryLoading(true);
-      dispatch(checkDelivery({ pincode: userPincode }))
-        .finally(() => setIsDeliveryLoading(false));
-    }
-  }, [isLoggedIn, userPincode, dispatch]);
-
-  // ── Reset auto-check flag when userPincode changes ──────────
-  useEffect(() => {
-    hasAutoChecked.current = false;
-  }, [userPincode]);
+// ✅ Auto-fetch — login + reload dono pe kaam karega
+useEffect(() => {
+  if (
+    isLoggedIn &&
+    userPincode &&
+    /^\d{6}$/.test(userPincode) &&
+    !hasAutoChecked.current
+  ) {
+    hasAutoChecked.current = true;
+    setPincode(userPincode);
+    setIsDeliveryLoading(true);
+    dispatch(checkDelivery({ pincode: userPincode }))
+      .finally(() => setIsDeliveryLoading(false));
+  }
+}, [isLoggedIn, userPincode, dispatch]);
 
   // ── Handlers ────────────────────────────────────────────────
   const handleCheck = () => {
@@ -437,7 +455,6 @@ const DeliverySection = ({ isLoggedIn, userPincode }) => {
   const handleCancelEdit = () => {
     setIsEditing(false);
     setTempPincode('');
-    // Redux mein jo result hai wahi pincode sync karo
     if (delivery?.checkedPincode) {
       setPincode(delivery.checkedPincode);
     }
@@ -456,18 +473,13 @@ const DeliverySection = ({ isLoggedIn, userPincode }) => {
   };
 
   const isChecking = !!(checkoutLoading?.delivery) || isDeliveryLoading;
+  const hasResult  = delivery?.isDeliverable !== null && !!delivery?.checkedPincode && !isEditing;
 
-  // ── sirf Redux pe based — reload + edit cancel dono safe ────
-  const hasResult =
-    delivery?.isDeliverable !== null &&
-    !!delivery?.checkedPincode &&
-    !isEditing;
-
-  // ── View: spinner ───────────────────────────────────────────
+  // ── Spinner ─────────────────────────────────────────────────
   if (isChecking && !isEditing) {
     return (
       <div className="flex items-center gap-2 rounded-xl px-3.5 py-2.5 bg-gray-50 border border-gray-100">
-        <Loader2 size={14} className="animate-spin text-[#F7A221]" />
+        <Loader2 size={14} className="animate-spin text-yellow-500" />
         <span className="text-[11px] font-medium text-gray-500">
           Checking delivery to {tempPincode || pincode || userPincode}…
         </span>
@@ -475,30 +487,24 @@ const DeliverySection = ({ isLoggedIn, userPincode }) => {
     );
   }
 
-  // ── View: result card ───────────────────────────────────────
+  // ── Result card ─────────────────────────────────────────────
   if (hasResult) {
     return (
       <div className="flex flex-col gap-2">
-        <div
-          className={`flex items-center justify-between rounded-xl px-3.5 py-2.5 border ${
-            delivery.isDeliverable
-              ? 'bg-green-50 border-green-100'
-              : 'bg-red-50 border-red-100'
-          }`}
-        >
+        <div className={`flex items-center justify-between rounded-xl px-3.5 py-2.5 border ${
+          delivery.isDeliverable ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'
+        }`}>
           <div className="flex items-start gap-2.5">
             {delivery.isDeliverable ? (
               <>
                 <Truck size={14} className="text-green-500 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-[11px] font-black text-green-800">
-                    Delivery to{' '}
-                    <span className="text-green-600">{delivery.checkedPincode}</span>
+                    Delivery to <span className="text-green-600">{delivery.checkedPincode}</span>
                   </p>
                   {delivery.estimatedDays && (
                     <p className="text-[10px] text-green-600 font-bold mt-0.5">
-                      Arrives in{' '}
-                      <span className="font-black">{delivery.estimatedDays} business days</span>
+                      Arrives in <span className="font-black">{delivery.estimatedDays} business days</span>
                       {delivery.courierName ? ` via ${delivery.courierName}` : ''}
                     </p>
                   )}
@@ -518,17 +524,13 @@ const DeliverySection = ({ isLoggedIn, userPincode }) => {
               </>
             )}
           </div>
-
           <button
             onClick={handleEditClick}
             className="p-1.5 hover:bg-white/70 rounded-full transition-colors flex-shrink-0 cursor-pointer ml-2"
-            aria-label="Change pincode"
-            title="Check a different pincode"
           >
             <Edit2 size={14} className="text-gray-500" />
           </button>
         </div>
-
         {checkoutError?.delivery && (
           <p className="text-[10px] text-red-500 font-bold flex items-center gap-1">
             <XCircle size={11} /> {checkoutError.delivery.message}
@@ -538,7 +540,7 @@ const DeliverySection = ({ isLoggedIn, userPincode }) => {
     );
   }
 
-  // ── View: input field ───────────────────────────────────────
+  // ── Input field ─────────────────────────────────────────────
   const inputValue    = isEditing ? tempPincode    : pincode;
   const setInputValue = isEditing ? setTempPincode : setPincode;
   const checkHandler  = isEditing ? handleTempCheck : handleCheck;
@@ -548,7 +550,7 @@ const DeliverySection = ({ isLoggedIn, userPincode }) => {
     <div className="flex flex-col gap-2">
       {isEditing && (
         <p className="text-[10px] text-gray-500 font-medium flex items-center gap-1">
-          <MapPin size={10} className="text-[#F7A221]" />
+          <MapPin size={10} className="text-yellow-500" />
           Check delivery for a different pincode
           {userPincode ? ` (saved: ${userPincode})` : ''}
         </p>
@@ -561,10 +563,7 @@ const DeliverySection = ({ isLoggedIn, userPincode }) => {
             type="text"
             inputMode="numeric"
             value={inputValue}
-            onChange={(e) => {
-              const v = e.target.value.replace(/\D/g, '').slice(0, 6);
-              setInputValue(v);
-            }}
+            onChange={(e) => setInputValue(e.target.value.replace(/\D/g, '').slice(0, 6))}
             onKeyDown={(e) => e.key === 'Enter' && !checkDisabled && checkHandler()}
             placeholder="Enter pincode"
             className="bg-transparent text-xs font-bold outline-none w-full placeholder-gray-400"
@@ -576,7 +575,7 @@ const DeliverySection = ({ isLoggedIn, userPincode }) => {
         <button
           onClick={checkHandler}
           disabled={checkDisabled}
-          className="text-xs font-black uppercase tracking-widest text-[#F7A221] hover:text-black disabled:opacity-40 transition-colors cursor-pointer flex-shrink-0"
+          className="text-xs font-black uppercase tracking-widest text-yellow-500 hover:text-gray-900 disabled:opacity-40 transition-colors cursor-pointer flex-shrink-0"
         >
           {isChecking ? <Loader2 size={12} className="animate-spin" /> : 'Check'}
         </button>
@@ -590,7 +589,6 @@ const DeliverySection = ({ isLoggedIn, userPincode }) => {
           </button>
         )}
 
-        {/* Inline result pill — guest/no-address check ke liye */}
         {!isChecking && !isEditing && hasResult && (
           delivery.isDeliverable ? (
             <div className="flex items-center gap-1 text-green-600 flex-shrink-0">
@@ -633,7 +631,15 @@ const WholesaleCartSidebar = ({ isOpen, onClose, onOpenAuth }) => {
   const loading     = useSelector(selectCartLoading);
   const error       = useSelector(selectCartError);
   const isLoggedIn  = useSelector(selectIsAuthenticated);
-
+   const defaultAddress = useSelector(selectDefaultAddress)
+  const userPincode1 = useMemo(() => {
+  if (!isLoggedIn || !defaultAddress) return '';
+  return String(
+    defaultAddress.postalCode ||
+    defaultAddress.pincode ||
+    ''
+  ).trim();
+}, [isLoggedIn, defaultAddress]);
   const [itemLoading, setItemLoading] = useState({});
 
   const setItemState = useCallback((itemId, key, val) =>
@@ -670,7 +676,7 @@ const WholesaleCartSidebar = ({ isOpen, onClose, onOpenAuth }) => {
 
   // ── Fetch cart when sidebar opens ─────────────────────────────────────────
   useEffect(() => {
-    if (isOpen && isLoggedIn && items.length === 0) {
+    if (isOpen && isLoggedIn) {
       dispatch(fetchCart()).unwrap().catch((e) => logError("fetchCart", e));
     }
   }, [isOpen, isLoggedIn, dispatch]);
@@ -719,33 +725,43 @@ const WholesaleCartSidebar = ({ isOpen, onClose, onOpenAuth }) => {
   }, [isLoggedIn, dispatch, getItemId, setItemState]);
 
   // ── Update quantity ───────────────────────────────────────────────────────
-  const handleUpdateQty = useCallback(async (item, newQty) => {
-    if (newQty < 1) { await handleRemove(item); return; }
-    const itemId = getItemId(item);
-    setItemState(itemId, "updating", true);
-    try {
-      if (isLoggedIn) {
-        await dispatch(updateCartItem({
-          productId:   String(item.productId),
-          variantId:   String(item.variantId),
-          quantity:    newQty,
-          productSlug: item.product?.slug || item._productSlug,
-        })).unwrap();
-      } else {
-        dispatch(updateGuestCartItem({
-          productSlug: item.productSlug || item._productSlug,
-          variantId:   String(item.variantId),
-          quantity:    newQty,
-        }));
-        setTimeout(() => setItemState(itemId, "updating", false), 100);
-        return;
-      }
-    } catch (e) {
-      logError("updateCartItem", e, { newQty, itemId });
-    } finally {
-      setItemState(itemId, "updating", false);
+const handleUpdateQty = useCallback(async (item, newQty) => {
+  // ✅ Guest: item.moq use karo, Logged-in: variant se lo
+  const moq = item.product
+    ? (item.product.variants?.find(
+        v => String(v._id) === String(item.variantId)
+      )?.minimumOrderQuantity ?? 1)
+    : (item.moq ?? 1); // ← guest items ke liye
+    console.log("This is our moq item", item);
+    
+
+  if (newQty < moq) return; // ✅ block karo, remove mat karo
+  
+  const itemId = getItemId(item);
+  setItemState(itemId, "updating", true);
+  try {
+    if (isLoggedIn) {
+      await dispatch(updateCartItem({
+        productId:   String(item.productId),
+        variantId:   String(item.variantId),
+        quantity:    newQty,
+        productSlug: item.product?.slug || item._productSlug,
+      })).unwrap();
+    } else {
+      dispatch(updateGuestCartItem({
+        productSlug: item.productSlug || item._productSlug,
+        variantId:   String(item.variantId),
+        quantity:    newQty,
+      }));
+      setTimeout(() => setItemState(itemId, "updating", false), 100);
+      return;
     }
-  }, [isLoggedIn, dispatch, getItemId, setItemState, handleRemove]);
+  } catch (e) {
+    logError("updateCartItem", e, { newQty, itemId });
+  } finally {
+    setItemState(itemId, "updating", false);
+  }
+}, [isLoggedIn, dispatch, getItemId, setItemState]);
 
   const getItemLoading = useCallback((item) => {
     const itemId = getItemId(item);
@@ -813,16 +829,6 @@ const WholesaleCartSidebar = ({ isOpen, onClose, onOpenAuth }) => {
             <X size={20} />
           </button>
         </div>
-
-        {/* ── Wholesale badge strip ── */}
-        {currentItems.length > 0 && (
-          <div className="px-5 py-2 bg-amber-50 border-b border-yellow-100 flex items-center gap-2">
-            <Tag size={11} className="text-yellow-600 flex-shrink-0" />
-            <p className="text-[10px] font-bold text-yellow-700 uppercase tracking-wider">
-              Wholesale pricing applied · GST Invoice included
-            </p>
-          </div>
-        )}
 
         {/* ── Error banner ── */}
         {(fetchFailed || error?.update || error?.remove) && (
@@ -945,14 +951,7 @@ const WholesaleCartSidebar = ({ isOpen, onClose, onOpenAuth }) => {
         {/* ── Footer — only when cart has items ── */}
         {currentItems.length > 0 && (
           <div className="border-t border-gray-100 px-5 py-4 bg-white space-y-3">
-            <DeliverySection isLoggedIn={isLoggedIn} userPincode={fullAuthState.user?.pincode} />
-
-            <div className="bg-green-50 border border-green-100 rounded-xl px-3 py-2.5 flex items-center gap-2">
-              <Tag size={12} className="text-green-600 flex-shrink-0" />
-              <p className="text-[10px] font-bold text-green-700">
-                Use code <span className="text-green-900 font-extrabold">100 OFB</span> for ₹100 OFF on orders above ₹2000
-              </p>
-            </div>
+            <DeliverySection isLoggedIn={isLoggedIn} userPincode={userPincode1} />
 
             <div className="space-y-1">
               <div className="flex justify-between items-center">

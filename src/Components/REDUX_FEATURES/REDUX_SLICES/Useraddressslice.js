@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "../../../SERVICES/Wholesaleaxios";
+import { logout } from "./authApi/authSlice";
 
 // ── Error Logger ──────────────────────────────────────────────────────────────
 const logError = (context, error, info = {}) => {
@@ -94,6 +95,12 @@ export const deleteAddress = createAsyncThunk(
         message: error.response?.data?.message || "Failed to delete address",
         status: error.response?.status,
       });
+      builder.addCase(logout, (state) => {
+  state.defaultAddress = null;
+  state.addresses = [];
+  state.loading = initialState.loading;
+  state.error = initialState.error;
+});
     }
   }
 );
@@ -235,7 +242,6 @@ export const { clearAddressErrors } = userAddressSlice.actions;
 
 // ── Selectors ─────────────────────────────────────────────────────────────────
 export const selectDefaultAddress  = (state) => {
-  console.log("select Default address", state?.userAddress);
   return state?.userAddress?.defaultAddress;
 };
 export const selectOtherAddresses  = (state) => state.userAddress.addresses;

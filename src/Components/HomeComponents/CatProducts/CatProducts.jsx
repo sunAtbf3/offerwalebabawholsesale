@@ -1,9 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // CatProducts.jsx  — Wholesale version
-// Uses RTK Query (productsApi + categoriesApi) instead of createAsyncThunk.
-// usePaginatedFetch is the new hook that wraps RTK Query pagination.
-// WholesaleProductCard replaces ProductCard.
-// Everything else (filters, virtualizer, sort, UI) is identical to ecom.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, {
@@ -13,6 +9,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ArrowLeft, AlertCircle, RefreshCw, ChevronRight,
   Filter, X, SlidersHorizontal, Loader2, ChevronDown,
+  Package
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
@@ -23,7 +20,7 @@ import { useGetProductsByCategoryQuery } from "../../REDUX_FEATURES/REDUX_SLICES
 import { useGetCategoryBySlugQuery } from "../../REDUX_FEATURES/REDUX_SLICES/SHOP_BY_CATEGORY/categoriesApi";
 import usePaginatedFetch from "../../HOOKS/usePaginatedFetch";
 
-// ── Column count helper (must match Tailwind grid below) ─────────────────────
+// ── Column count helper ───────────────────────────────────────────────────────
 const getColumnCount = () => {
   const w = window.innerWidth;
   if (w >= 1280) return 4;
@@ -32,6 +29,32 @@ const getColumnCount = () => {
 };
 
 const LOAD_MORE_SKELETON_COUNT = 12;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+// Variant se sahi price nikaalte hain — sale > base fallback
+const getVariantPrice = (variant) => {
+  if (!variant) return { base: 0, sale: 0 };
+  const base = variant.price?.base ?? 0;
+  const sale = variant.price?.sale ?? variant.finalPrice ?? base;
+  return { base, sale };
+};
+
+// Sahi stock nikaalte hain — trackInventory check + product.inStock fallback
+const getVariantStock = (variant, product) => {
+  if (!variant) return product?.inStock ? Infinity : 0;
+  if (variant.inventory?.trackInventory) {
+    return variant.inventory?.quantity ?? 0;
+  }
+  // trackInventory off hai — inStock field dekho
+  return product?.inStock !== false ? Infinity : 0;
+};
+
+// Discount % calculate karte hain
+const getDiscountPct = (base, sale) => {
+  if (!base || base <= 0 || sale >= base) return 0;
+  return Math.round(((base - sale) / base) * 100);
+};
 
 // ── VirtualizedProductGrid ────────────────────────────────────────────────────
 const VirtualizedProductGrid = ({ products, loadingMore }) => {
@@ -119,14 +142,18 @@ const CatProducts = () => {
     setSortBy("az");
   }, [slug]);
 
-  // ── Category metadata (RTK Query) ──────────────────────────────────────────
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  // ── Category metadata ──────────────────────────────────────────────────────
   const {
     data: currentCategory,
     isLoading: categoryLoading,
     isError: categoryError,
   } = useGetCategoryBySlugQuery(slug, { skip: !slug });
 
-  // ── Paginated products (RTK Query via usePaginatedFetch) ───────────────────
+  // ── Paginated products ─────────────────────────────────────────────────────
   const {
     data: products,
     isLoading,
@@ -142,7 +169,7 @@ const CatProducts = () => {
     baseArgs:  { slug },
     limit:     8,
     dataKey:   "products",
-    skip: !slug, 
+    skip: !slug,
   });
 
   // ── Derived ────────────────────────────────────────────────────────────────
@@ -166,81 +193,101 @@ const CatProducts = () => {
     setFilters({ price: [], availability: [], discount: [], onSale: false });
   }, []);
 
-  // ── Filter logic ───────────────────────────────────────────────────────────
-  const filteredProducts = useMemo(() => {
+  // ── Filter + Sort — single useMemo ─────────────────────────────────────────
+  const sortedProducts = useMemo(() => {
     if (!products?.length) return [];
 
-    return products.filter((product) => {
-      const variant = product.variants?.[0];
-      const base    = variant?.price?.base ?? 0;
-      const sale    = variant?.price?.sale ?? base;
-      const qty     = variant?.inventory?.quantity ?? 0;
-      const discount = base > 0 ? Math.round(((base - sale) / base) * 100) : 0;
-      const isOnSale = sale < base;
+    // ── STEP 1: Filter ────────────────────────────────────────────────────
+    const filtered = products.filter((product) => {
+      const variant          = product.variants?.[0];
+      const { base, sale }   = getVariantPrice(variant);
+      const qty              = getVariantStock(variant, product);
+      const discountPct      = getDiscountPct(base, sale);
+      const isOnSale         = sale < base && base > 0;
 
+      // ── Price filter ─────────────────────────────────────────────────────
+      // Uses `sale` price (what buyer actually pays)
       if (filters.price.length > 0) {
+        const priceToCheck = sale || base; // jo bhi available ho
         const match = filters.price.some((p) => {
-          if (p === "u29")   return base < 29;
-          if (p === "29-49") return base >= 29 && base <= 49;
-          if (p === "49-79") return base >= 49 && base <= 79;
-          if (p === "o99")   return base > 99;
+          if (p === "u500")      return priceToCheck < 500;
+          if (p === "500-999")   return priceToCheck >= 500  && priceToCheck <= 999;
+          if (p === "1000-1999") return priceToCheck >= 1000 && priceToCheck <= 1999;
+          if (p === "o2000")     return priceToCheck >= 2000;
           return false;
         });
         if (!match) return false;
       }
 
+      // ── Availability filter ───────────────────────────────────────────────
+      // trackInventory + inStock field dono check
       if (filters.availability.length > 0) {
+        const inStock = qty > 0;
         const match = filters.availability.some((a) => {
-          if (a === "instock")    return qty > 0;
-          if (a === "outofstock") return qty <= 0;
+          if (a === "instock")    return inStock;
+          if (a === "outofstock") return !inStock;
           return false;
         });
         if (!match) return false;
       }
 
+      // ── Discount filter ───────────────────────────────────────────────────
+      // discountPct sahi calculate hua hai upar
       if (filters.discount.length > 0) {
-        const match = filters.discount.some((d) => discount >= Number(d));
+        const match = filters.discount.some((d) => discountPct >= Number(d));
         if (!match) return false;
       }
 
+      // ── On sale filter ────────────────────────────────────────────────────
       if (filters.onSale && !isOnSale) return false;
 
       return true;
     });
-  }, [products, filters]);
 
-  // ── Sort logic ─────────────────────────────────────────────────────────────
-  const sortedProducts = useMemo(() => {
-    const data = [...filteredProducts];
+    // ── STEP 2: Sort ──────────────────────────────────────────────────────
+    const data = [...filtered];
+
     switch (sortBy) {
       case "priceLowHigh":
         return data.sort((a, b) => {
-          const ap = a.variants?.[0]?.price?.sale ?? a.variants?.[0]?.price?.base ?? 0;
-          const bp = b.variants?.[0]?.price?.sale ?? b.variants?.[0]?.price?.base ?? 0;
-          return ap - bp;
+          const { sale: as } = getVariantPrice(a.variants?.[0]);
+          const { sale: bs } = getVariantPrice(b.variants?.[0]);
+          return as - bs;
         });
+
       case "priceHighLow":
         return data.sort((a, b) => {
-          const ap = a.variants?.[0]?.price?.sale ?? a.variants?.[0]?.price?.base ?? 0;
-          const bp = b.variants?.[0]?.price?.sale ?? b.variants?.[0]?.price?.base ?? 0;
-          return bp - ap;
+          const { sale: as } = getVariantPrice(a.variants?.[0]);
+          const { sale: bs } = getVariantPrice(b.variants?.[0]);
+          return bs - as;
         });
+
       case "discount":
         return data.sort((a, b) => {
-          const getD = (p) => {
-            const base = p.variants?.[0]?.price?.base ?? 0;
-            const sale = p.variants?.[0]?.price?.sale ?? base;
-            return base > 0 ? ((base - sale) / base) * 100 : 0;
-          };
-          return getD(b) - getD(a);
+          const { base: ab, sale: as } = getVariantPrice(a.variants?.[0]);
+          const { base: bb, sale: bs } = getVariantPrice(b.variants?.[0]);
+          return getDiscountPct(bb, bs) - getDiscountPct(ab, as);
         });
-      case "az": return data.sort((a, b) => a.name.localeCompare(b.name));
-      case "za": return data.sort((a, b) => b.name.localeCompare(a.name));
+
+      case "az":
+        return data.sort((a, b) =>
+          (a.title || a.name || "").localeCompare(b.title || b.name || "")
+        );
+
+      case "za":
+        return data.sort((a, b) =>
+          (b.title || b.name || "").localeCompare(a.title || a.name || "")
+        );
+
       case "newest":
-        return data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      default: return data;
+        return data.sort((a, b) =>
+          new Date(b.createdAt) - new Date(a.createdAt)
+        );
+
+      default:
+        return data;
     }
-  }, [filteredProducts, sortBy]);
+  }, [products, filters, sortBy]);
 
   const activeFilterCount = useMemo(() => (
     filters.price.length +
@@ -253,34 +300,34 @@ const CatProducts = () => {
     resetPage();
     refetch();
   }, [resetPage, refetch]);
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [])
 
   // ── Filter Panel ───────────────────────────────────────────────────────────
   const FilterPanel = () => (
     <div className="space-y-7 font-['satoshi']">
 
+      {/* Price */}
       <div>
         <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-800 mb-4">
           Price Range
         </h4>
         <div className="space-y-1.5">
           {[
-            { label: "Under ₹29", val: "u29" },
-            { label: "₹29 - ₹49", val: "29-49" },
-            { label: "₹49 - ₹99", val: "49-99" },
-            { label: "Over ₹99",  val: "o99" },
+            { label: "Under ₹500",      val: "u500"      },
+            { label: "₹500 – ₹999",     val: "500-999"   },
+            { label: "₹1000 – ₹1999",   val: "1000-1999" },
+            { label: "₹2000 & above",   val: "o2000"     },
           ].map(({ label, val }) => (
             <label key={val} className="flex items-center gap-3 cursor-pointer group">
               <div
                 className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-all
-                  ${filters.price.includes(val) ? "bg-zinc-900 border-zinc-900" : "border-zinc-300 group-hover:border-zinc-500"}`}
+                  ${filters.price.includes(val)
+                    ? "bg-zinc-900 border-zinc-900"
+                    : "border-zinc-300 group-hover:border-zinc-500"}`}
                 onClick={() => toggleFilter("price", val)}
               >
                 {filters.price.includes(val) && (
-                  <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 10 8">
-                    <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.5"/>
+                  <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 10 8" fill="none">
+                    <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 )}
               </div>
@@ -295,6 +342,7 @@ const CatProducts = () => {
 
       <div className="h-px bg-zinc-100" />
 
+      {/* Availability */}
       <div>
         <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-800 mb-4">
           Availability
@@ -307,7 +355,9 @@ const CatProducts = () => {
             <label key={val} className="flex items-center gap-3 cursor-pointer group">
               <div
                 className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-all
-                  ${filters.availability.includes(val) ? "bg-zinc-900 border-zinc-900" : "border-zinc-300 group-hover:border-zinc-500"}`}
+                  ${filters.availability.includes(val)
+                    ? "bg-zinc-900 border-zinc-900"
+                    : "border-zinc-300 group-hover:border-zinc-500"}`}
                 onClick={() => toggleFilter("availability", val)}
               >
                 {filters.availability.includes(val) && (
@@ -327,6 +377,7 @@ const CatProducts = () => {
 
       <div className="h-px bg-zinc-100" />
 
+      {/* Discount */}
       <div>
         <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-800 mb-4">
           Discount
@@ -340,7 +391,9 @@ const CatProducts = () => {
             <label key={val} className="flex items-center gap-3 cursor-pointer group">
               <div
                 className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-all
-                  ${filters.discount.includes(val) ? "bg-zinc-900 border-zinc-900" : "border-zinc-300 group-hover:border-zinc-500"}`}
+                  ${filters.discount.includes(val)
+                    ? "bg-zinc-900 border-zinc-900"
+                    : "border-zinc-300 group-hover:border-zinc-500"}`}
                 onClick={() => toggleFilter("discount", val)}
               >
                 {filters.discount.includes(val) && (
@@ -360,6 +413,7 @@ const CatProducts = () => {
 
       <div className="h-px bg-zinc-100" />
 
+      {/* On sale toggle */}
       <div>
         <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-800 mb-4">
           Deals
@@ -367,9 +421,13 @@ const CatProducts = () => {
         <label className="flex items-center gap-3 cursor-pointer">
           <button
             onClick={() => setFilters((prev) => ({ ...prev, onSale: !prev.onSale }))}
-            className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${filters.onSale ? "bg-zinc-900" : "bg-zinc-200"}`}
+            className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${
+              filters.onSale ? "bg-zinc-900" : "bg-zinc-200"
+            }`}
           >
-            <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${filters.onSale ? "translate-x-4" : "translate-x-0"}`} />
+            <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
+              filters.onSale ? "translate-x-4" : "translate-x-0"
+            }`} />
           </button>
           <span className={`text-sm ${filters.onSale ? "text-zinc-900 font-medium" : "text-zinc-800"}`}>
             On sale only
@@ -446,16 +504,6 @@ const CatProducts = () => {
                 </p>
               )}
             </div>
-            {!pageIsLoading && (
-              <div className="hidden md:flex flex-col items-end flex-shrink-0">
-                <span className="text-5xl font-black text-white leading-none">
-                  {pagination?.total || 0}
-                </span>
-                <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-500 mt-1">
-                  Products
-                </span>
-              </div>
-            )}
           </div>
         </div>
       </section>
@@ -524,15 +572,74 @@ const CatProducts = () => {
                   <option value="za">Alphabetically, Z-A</option>
                   <option value="priceLowHigh">Price: Low to High</option>
                   <option value="priceHighLow">Price: High to Low</option>
+                  <option value="discount">Highest Discount</option>
+                  <option value="newest">Newest First</option>
                 </select>
                 <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
               </div>
             </div>
+
+            {/* Filtered count */}
             <div className="hidden sm:flex items-center gap-3 bg-zinc-50 px-4 py-2 rounded-full border border-zinc-200">
-              <span className="text-lg font-semibold text-zinc-800">{filteredProducts.length}</span>
-              <span className="text-[10px] uppercase tracking-widest text-zinc-400">Products</span>
+              <span className="text-lg font-semibold text-zinc-800">{sortedProducts.length}</span>
+              <span className="text-[10px] uppercase tracking-widest text-zinc-400">
+                {activeFilterCount > 0 ? "Filtered" : "Products"}
+              </span>
             </div>
           </div>
+
+          {/* Active filter chips */}
+          {activeFilterCount > 0 && (
+            <div className="flex flex-wrap gap-2 mb-6">
+              {filters.price.map((val) => (
+                <button
+                  key={val}
+                  onClick={() => toggleFilter("price", val)}
+                  className="flex items-center gap-1.5 text-[11px] font-semibold bg-zinc-900 text-white px-3 py-1.5 rounded-full hover:bg-red-500 transition-colors"
+                >
+                  {val === "u500" ? "Under ₹500"
+                    : val === "500-999" ? "₹500–₹999"
+                    : val === "1000-1999" ? "₹1000–₹1999"
+                    : "₹2000+"}
+                  <X size={11} />
+                </button>
+              ))}
+              {filters.availability.map((val) => (
+                <button
+                  key={val}
+                  onClick={() => toggleFilter("availability", val)}
+                  className="flex items-center gap-1.5 text-[11px] font-semibold bg-zinc-900 text-white px-3 py-1.5 rounded-full hover:bg-red-500 transition-colors"
+                >
+                  {val === "instock" ? "In Stock" : "Out of Stock"}
+                  <X size={11} />
+                </button>
+              ))}
+              {filters.discount.map((val) => (
+                <button
+                  key={val}
+                  onClick={() => toggleFilter("discount", val)}
+                  className="flex items-center gap-1.5 text-[11px] font-semibold bg-zinc-900 text-white px-3 py-1.5 rounded-full hover:bg-red-500 transition-colors"
+                >
+                  {val}%+ Off
+                  <X size={11} />
+                </button>
+              ))}
+              {filters.onSale && (
+                <button
+                  onClick={() => setFilters((p) => ({ ...p, onSale: false }))}
+                  className="flex items-center gap-1.5 text-[11px] font-semibold bg-zinc-900 text-white px-3 py-1.5 rounded-full hover:bg-red-500 transition-colors"
+                >
+                  On Sale <X size={11} />
+                </button>
+              )}
+              <button
+                onClick={clearFilters}
+                className="text-[11px] font-semibold text-zinc-400 hover:text-zinc-900 px-3 py-1.5 border border-zinc-200 rounded-full transition-colors"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
 
           {/* Content */}
           <div className="relative min-h-[60vh]">
@@ -569,7 +676,7 @@ const CatProducts = () => {
             )}
 
             {/* Products grid */}
-            {!pageIsLoading && !hasError && filteredProducts.length > 0 && (
+            {!pageIsLoading && !hasError && sortedProducts.length > 0 && (
               <div className="animate-in fade-in duration-700">
                 <VirtualizedProductGrid
                   key={slug}
@@ -604,7 +711,7 @@ const CatProducts = () => {
             )}
 
             {/* No results after filter */}
-            {!pageIsLoading && !hasError && filteredProducts.length === 0 && products.length > 0 && (
+            {!pageIsLoading && !hasError && sortedProducts.length === 0 && products.length > 0 && (
               <div className="py-32 flex flex-col items-center text-center animate-in fade-in">
                 <h2 className="text-xl font-semibold text-zinc-700 mb-2">No products found</h2>
                 <p className="text-zinc-400 text-xs uppercase tracking-widest mb-6">Try different filters</p>
@@ -616,6 +723,23 @@ const CatProducts = () => {
                 </button>
               </div>
             )}
+            {!pageIsLoading && !hasError && products.length === 0 && (
+  <div className="py-32 flex flex-col items-center text-center animate-in fade-in">
+    <div className="p-4 rounded-full bg-zinc-100 mb-4">
+      <Package size={28} className="text-zinc-400" />
+    </div>
+    <h2 className="text-xl font-semibold text-zinc-700 mb-2">No Products Found</h2>
+    <p className="text-zinc-400 text-xs uppercase tracking-widest mb-6">
+      This collection is empty right now
+    </p>
+    <button
+      onClick={() => navigate(-1)}
+      className="flex items-center gap-2 px-6 py-2 text-xs font-semibold uppercase tracking-wider border border-zinc-300 rounded-full hover:bg-black hover:text-white transition"
+    >
+      <ArrowLeft size={14} /> Go Back
+    </button>
+  </div>
+)}
           </div>
         </div>
       </div>
@@ -644,7 +768,7 @@ const CatProducts = () => {
                 onClick={() => setIsFilterOpen(false)}
                 className="w-full bg-zinc-900 text-white py-4 text-xs font-black uppercase tracking-widest"
               >
-                Show {filteredProducts.length} products
+                Show {sortedProducts.length} products
               </button>
             </div>
           </div>
@@ -653,5 +777,6 @@ const CatProducts = () => {
     </div>
   );
 };
+
 
 export default CatProducts;

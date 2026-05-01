@@ -23,6 +23,8 @@ import useWishlistInit from "./Components/HOOKS/useWishlistInit";
 import useCartInit from "./Components/HOOKS/useCartInit";
 import ContactUs from './Components/HomeComponents/Contact';
 import UserDashboard from './User_Side_Web_Interface/User_Dash_Segment/UserDashboard';
+import Checkout from './User_Side_Web_Interface/CHECKOUT/Checkout';
+import TagProducts from './Components/REDUX_FEATURES/REDUX_SLICES/SHOP_BY_CATEGORY/TagProducts';
 
 // ── Layout: hides Navbar & Footer on admin/activate routes ───────────────────
 function Layout({ children }) {
@@ -73,14 +75,12 @@ function AppRoutes() {
       <Route path="/no-access" element={<UserTab />} />
       <Route path="/babapanel" element={<AdminDashboard />} />
       <Route path="/babadash/*" element={<AdminDashboard />} />
+                      <Route path="/checkout" element={<Checkout />} />
+                      <Route path="/:slug" element={<TagProducts/>}/>
     </Routes>
   );
 }
-
-// ── SessionHandler: checks existing session on every app load ─────────────────
-// Runs GET /auth/me once. On success → authSlice populates user + isAuthenticated.
-// On 401 → authSlice quietly sets isAuthenticated = false (no error shown).
-// After session is confirmed, loads the right cart/wishlist source.
+// ✅ Fix — App.jsx SessionHandler mein
 function SessionHandler() {
   const dispatch = useDispatch();
   const isAuthenticated = useSelector(selectIsAuthenticated);
@@ -90,39 +90,65 @@ function SessionHandler() {
     refetchOnMountOrArgChange: false,
     refetchOnReconnect: false,
     refetchOnFocus: false,
-    skip: sessionChecked && isAuthenticated,
+    skip: sessionChecked, // ✅ sirf yeh — ek baar check karo, phir hamesha skip
   });
-     // ── Cart & wishlist — fine here, they drive Navbar badges ────────────────
-    // DO NOT call these again inside any tab component
-    // useWishlistInit();
-    // useCartInit();
-    // In App.jsx — also skip wishlist/cart on admin routes
-    useWishlistInit();  // pass enabled flag
-    useCartInit();
 
-  // Mark session as checked once the query settles (success or error)
   useEffect(() => {
     if (!isLoading) setSessionChecked(true);
   }, [isLoading]);
 
-  // Guest: load cart & wishlist from localStorage
-  // useEffect(() => {
-  //   if (sessionChecked && !isAuthenticated) {
-  //     dispatch(loadGuestCart());
-  //     dispatch(loadGuestWishlist());
-  //   }
-  // }, [sessionChecked, isAuthenticated, dispatch]);
-
-  // Authenticated: fetch cart & wishlist from server
-  // useEffect(() => {
-  //   if (sessionChecked && isAuthenticated) {
-  //     dispatch(fetchCart());
-  //     dispatch(fetchWishlist());
-  //   }
-  // }, [sessionChecked, isAuthenticated, dispatch]);
+  useWishlistInit();
+  useCartInit();
 
   return null;
 }
+
+// ── SessionHandler: checks existing session on every app load ─────────────────
+// Runs GET /auth/me once. On success → authSlice populates user + isAuthenticated.
+// On 401 → authSlice quietly sets isAuthenticated = false (no error shown).
+// After session is confirmed, loads the right cart/wishlist source.
+// function SessionHandler() {
+//   const dispatch = useDispatch();
+//   const isAuthenticated = useSelector(selectIsAuthenticated);
+//   const [sessionChecked, setSessionChecked] = useState(false);
+
+//   const { isLoading } = useGetMeQuery(undefined, {
+//     refetchOnMountOrArgChange: false,
+//     refetchOnReconnect: false,
+//     refetchOnFocus: false,
+//     skip: sessionChecked && isAuthenticated,
+//   });
+//      // ── Cart & wishlist — fine here, they drive Navbar badges ────────────────
+//     // DO NOT call these again inside any tab component
+//     // useWishlistInit();
+//     // useCartInit();
+//     // In App.jsx — also skip wishlist/cart on admin routes
+//     useWishlistInit();  // pass enabled flag
+//     useCartInit();
+
+//   // Mark session as checked once the query settles (success or error)
+//   useEffect(() => {
+//     if (!isLoading) setSessionChecked(true);
+//   }, [isLoading]);
+
+//   // Guest: load cart & wishlist from localStorage
+//   // useEffect(() => {
+//   //   if (sessionChecked && !isAuthenticated) {
+//   //     dispatch(loadGuestCart());
+//   //     dispatch(loadGuestWishlist());
+//   //   }
+//   // }, [sessionChecked, isAuthenticated, dispatch]);
+
+//   // Authenticated: fetch cart & wishlist from server
+//   // useEffect(() => {
+//   //   if (sessionChecked && isAuthenticated) {
+//   //     dispatch(fetchCart());
+//   //     dispatch(fetchWishlist());
+//   //   }
+//   // }, [sessionChecked, isAuthenticated, dispatch]);
+
+//   return null;
+// }
 
 function App() {
   return (

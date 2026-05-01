@@ -153,6 +153,13 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
           productSlug: product.slug,
           variantId:   variant?._id?.toString() || "",
           quantity:    moq || 1,
+           moq:                moq || 1,                                    // ✅ MOQ store karo
+  wholesalePrice:     variant.price?.wholesaleSale ?? variant.price?.wholesaleBase ?? variant.price?.sale ?? null,
+  wholesaleBasePrice: variant.price?.wholesaleBase ?? variant.price?.base ?? null,
+  productName:        product.title || product.name,               // ✅ naam store karo
+  image:              variant.images?.[0]?.url ?? null,            // ✅ image store karo
+  variantLabel:       variant.attributes?.map(a => `${a.key}: ${a.value}`).join(', ') ?? null,
+  discountPercentage: discountPct ?? 0,
         }));
       }
       toast.success("Added to cart");
@@ -397,7 +404,7 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
                 {/* Version 2: disabled when at or below MOQ */}
                 <button
                   onClick={handleDecrement}
-                  disabled={isProcessing || currentQty <= (moq || 1)}
+                  disabled={isProcessing}
                   className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-zinc-100 hover:bg-red-500 hover:text-white transition-colors disabled:opacity-40 flex-shrink-0"
                 >
                   {localLoading.remove

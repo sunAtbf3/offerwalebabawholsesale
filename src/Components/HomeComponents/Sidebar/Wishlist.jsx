@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { X, Heart, ShoppingBag, Trash2, ArrowRight, Star, Ghost, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -48,7 +48,7 @@ const logError = (context, error, info = {}) => {
 // WishlistItem
 // Handles both logged-in (populated productId object) and guest (slug string) shapes
 // ─────────────────────────────────────────────────────────────────────────────
-const WishlistItem = ({ item, isLoggedIn, onRemove, onMoveToCart, isRemoving, isMoving }) => {
+const WishlistItem = ({ item, isLoggedIn, onRemove, onMoveToCart, onClose, isRemoving, isMoving,path }) => {
 
   // ── Data extraction — same pattern as CartSidebar ─────────────────────────
   // Logged-in: item.productId is a populated object from DB
@@ -115,7 +115,7 @@ const price =
       {/* ── Details ── */}
       <div className="flex flex-1 flex-col justify-between py-1 min-w-0">
         <div>
-          <div className="flex justify-between items-start gap-2">
+          <Link to={path} className="flex justify-between items-start gap-2"  onClick={onClose}>
             <h3 className="text-xs font-black text-gray-900 uppercase tracking-tight line-clamp-1 flex-1">
               {name}
             </h3>
@@ -124,8 +124,7 @@ const price =
                 {fmt(price)}
               </p>
             )}
-          </div>
-
+          </Link>
           {/* Brand */}
           {brand && (
             <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1">
@@ -294,6 +293,10 @@ const isLoggedIn = useSelector(selectIsAuthenticated);
       setItemState(slug, 'removing', false);
     }
   };
+   const handleWIshlist = useCallback(() => {
+      if (!isLoggedIn) { onOpenAuth?.(); onClose(); }
+      else { onClose(); navigate("/wishlist"); }
+    }, [isLoggedIn, onOpenAuth, onClose, navigate]);
 
   // ── Move single item to cart ───────────────────────────────────────────────
   const handleMoveToCart = async (item) => {
@@ -468,6 +471,8 @@ const variant   = item.product?.variants?.find(
                     onMoveToCart={handleMoveToCart}
                     isRemoving={!!state.removing}
                     isMoving={!!state.moving}
+                    path={`/product/${item.product?.slug || item.productSlug}`}
+                    onClose={onClose}
                   />
                 );
               })}
@@ -562,8 +567,7 @@ const variant   = item.product?.variants?.find(
 
             {/* View full wishlist page */}
             <Link
-              to="/wishlist"
-              onClick={onClose}
+              onClick={handleWIshlist}
               className="w-full bg-white border-2 border-black text-black py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] flex items-center justify-center hover:bg-gray-50 transition-all cursor-pointer"
             >
               View Full Wishlist

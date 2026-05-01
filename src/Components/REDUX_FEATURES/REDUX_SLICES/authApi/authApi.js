@@ -53,7 +53,7 @@ export const authApi = createApi({
         url: '/auth/logout',
         method: 'POST',
       }),
-      invalidatesTags: ['User'],
+      // invalidatesTags: ['User'],
     }),
 
     // Get current user profile

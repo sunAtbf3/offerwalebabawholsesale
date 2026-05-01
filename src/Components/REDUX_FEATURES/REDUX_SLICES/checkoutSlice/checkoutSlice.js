@@ -401,8 +401,7 @@ export const {
 // Selectors
 // ─────────────────────────────────────────────────────────────────────────────
 export const selectDelivery = (s) => {
-  console.log("Delivery State1:", s);
-  return s.checkout?.delivery;
+    return s.checkout?.delivery;
 };
 export const selectQuote = (s) => s.checkout.quote;
 export const selectQuoteId = (s) => s.checkout.quoteId;

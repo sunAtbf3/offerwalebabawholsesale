@@ -316,21 +316,39 @@ const userCartSlice = createSlice({
       console.log(`🛒 [loadGuestCart] Loaded ${state.guestItems.length} guest items`);
     },
 
-    addGuestCartItem: (state, action) => {
-      const { productId, productSlug, variantId, quantity = 1 } = action.payload;
-      const existing = state.guestItems.find(
-        (i) => i.productSlug === productSlug && i.variantId === variantId
-      );
-      if (existing) {
-        existing.quantity += quantity;
-        console.log(`🛒 [addGuestCartItem] slug="${productSlug}" qty → ${existing.quantity}`);
-      } else {
-        state.guestItems.push({ productId, productSlug, variantId, quantity });
-        console.log(`🛒 [addGuestCartItem] slug="${productSlug}" added qty=${quantity}`);
-      }
-      state.totalItems = state.guestItems.reduce((sum, i) => sum + (i.quantity || 1), 0);
-      saveGuestCart(state.guestItems);
-    },
+   addGuestCartItem: (state, action) => {
+  const { 
+    productId, productSlug, variantId, quantity = 1,
+    moq = 1,                  // ✅ add karo
+    wholesalePrice,
+    wholesaleBasePrice,
+    productName,
+    image,
+    variantLabel,
+    discountPercentage,
+  } = action.payload;
+  
+  const existing = state.guestItems.find(
+    (i) => i.productSlug === productSlug && i.variantId === variantId
+  );
+  
+  if (existing) {
+    existing.quantity += quantity;
+  } else {
+    state.guestItems.push({ 
+      productId, productSlug, variantId, quantity,
+      moq,                    // ✅ localStorage mein save hoga
+      wholesalePrice,
+      wholesaleBasePrice,
+      productName,
+      image,
+      variantLabel,
+      discountPercentage,
+    });
+  }
+  state.totalItems = state.guestItems.reduce((sum, i) => sum + (i.quantity || 1), 0);
+  saveGuestCart(state.guestItems);
+},
     // data store with product slug but backend expect with productid upper code have 
     // addGuestCartItem: (state, action) => {
     //   const { productSlug, variantId, quantity = 1 } = action.payload;
@@ -348,25 +366,28 @@ const userCartSlice = createSlice({
     //   saveGuestCart(state.guestItems);
     // },
 
-    updateGuestCartItem: (state, action) => {
-      const { productSlug, variantId, quantity } = action.payload;
-      const item = state.guestItems.find(
-        (i) => i.productSlug === productSlug && i.variantId === variantId
+ updateGuestCartItem: (state, action) => {
+  const { productSlug, variantId, quantity } = action.payload;
+  console.log("productSlug", productSlug, "variantId", variantId, "quantity", quantity);
+  const item = state.guestItems.find(
+    (i) => i.productSlug === productSlug && i.variantId === variantId
+  );
+  
+  if (item) {
+    const moq = item.moq ?? 1; // ✅ slice level pe bhi guard
+    if (quantity < moq) return; // ← MOQ se kam nahi jaane dena
+    
+    if (quantity <= 0) {
+      state.guestItems = state.guestItems.filter(
+        (i) => !(i.productSlug === productSlug && i.variantId === variantId)
       );
-      if (item) {
-        if (quantity <= 0) {
-          state.guestItems = state.guestItems.filter(
-            (i) => !(i.productSlug === productSlug && i.variantId === variantId)
-          );
-          console.log(`🛒 [updateGuestCartItem] slug="${productSlug}" removed`);
-        } else {
-          item.quantity = quantity;
-          console.log(`🛒 [updateGuestCartItem] slug="${productSlug}" qty=${quantity}`);
-        }
-        state.totalItems = state.guestItems.reduce((sum, i) => sum + (i.quantity || 1), 0);
-        saveGuestCart(state.guestItems);
-      }
-    },
+    } else {
+      item.quantity = quantity;
+    }
+    state.totalItems = state.guestItems.reduce((sum, i) => sum + (i.quantity || 1), 0);
+    saveGuestCart(state.guestItems);
+  }
+},
 
     removeGuestCartItem: (state, action) => {
       const { productSlug, variantId } = action.payload;
