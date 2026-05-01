@@ -3,7 +3,7 @@ import wholesaleAxios, {
   WHOLESALE_ADMIN_ACCESS_TOKEN_KEY,
   AUTH_CONTEXT_ADMIN,
 } from '../../../SERVICES/wholesaleAxios';
-import { ROLES } from '../roles';
+import { ROLES } from '../../ADMIN_SEGMENT/roles';
 
 const ADMIN_ROLES = Object.values(ROLES);
 const ADMIN_WHOLESALE_PORTAL = 'admin-wholesale';

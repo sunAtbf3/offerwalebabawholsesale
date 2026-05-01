@@ -3,7 +3,7 @@ import {
   Share2, Copy, Check, MousePointerClick, 
   Ticket, ShoppingBag, MessageSquare, 
   Search, MessageCircle, Users, QrCode,
-  Facebook, BarChart3, Tag
+  Globe, BarChart3, Tag
 } from 'lucide-react';
 
 const MarketingTab = () => {
@@ -110,7 +110,7 @@ const MarketingTab = () => {
         <h2 className="text-sm font-bold text-slate-900 mb-6 uppercase tracking-wider">Marketing Integrations</h2>
         <div className="flex flex-wrap gap-5">
           {[
-            { label: "Facebook Business", color: "bg-[#7199B9]", icon: Facebook },
+            { label: "Facebook Business", color: "bg-[#7199B9]", icon: Globe },
             { label: "Google Analytics", color: "bg-[#F3921F]", icon: BarChart3 },
             { label: "Tag Manager", color: "bg-[#4B8BF5]", icon: Tag },
           ].map((item, idx) => (
