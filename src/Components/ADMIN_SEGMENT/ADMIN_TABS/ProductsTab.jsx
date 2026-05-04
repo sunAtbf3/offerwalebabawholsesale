@@ -523,7 +523,7 @@ const ProductsTab = ({ onSwitchTab }) => {
 
     setBulkLoading(true);
     try {
-      const res = await axiosInstance.patch("/admin/products/bulk-status", {
+      const res = await wholesaleAxios.patch("/admin/products/bulk-status", {
         status,
         slugs: Array.from(selectedSlugs),
       });

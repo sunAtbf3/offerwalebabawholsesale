@@ -13,6 +13,12 @@ import { useGetMeQuery } from './Components/REDUX_FEATURES/REDUX_SLICES/authApi/
 import { selectIsAuthenticated } from './Components/REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
 import UserTab from "./components/ADMIN_SEGMENT/ADMIN_TABS/USER/UserTab";
 import AdminDashboard from "./components/ADMIN_SEGMENT/Admin_dashboard";
+import AdminLogin from './Components/ADMIN_SEGMENT/ADMIN_LOGIN_SEGMENT/AdminLogin';
+import AdminUnauthorized from './Components/ADMIN_SEGMENT/ADMIN_LOGIN_SEGMENT/AdminUnauthorized';
+import AdminPrivateRoute from './Components/ADMIN_SEGMENT/ADMIN_LOGIN_SEGMENT/AdminPrivateRoute';
+import { adminForceLogout } from './components/ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/adminAuthSlice';
+import { logout } from './Components/REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
+import { WHOLESALE_USER_ACCESS_TOKEN_KEY } from './SERVICES/wholesaleAxios';
 import './App.css';
 import ShopByPrice from './Components/HomeComponents/ShopByWHoleSalePrice/ShopByPrice';
 // import { fetchCart, loadGuestCart } from './Components/REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice';
@@ -71,11 +77,34 @@ function AppRoutes() {
 
       <Route path="/activate" element={<ActivatePage />} />
       <Route path="/shopByCategory/:slug" element={<ShopByPrice />} />
-      <Route path="/contact" element={<ContactUs />} />
+
+      {/* Public admin auth entrypoints for wholesale admin users. */}
+      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin/unauthorized" element={<AdminUnauthorized />} />
+
+      {/*
+       * /no-access is shown to regular users who hit admin URLs.
+       * It stays public so the redirect target can always render.
+       */}
       <Route path="/no-access" element={<UserTab />} />
-      <Route path="/babapanel" element={<AdminDashboard />} />
-      <Route path="/babadash/*" element={<AdminDashboard />} />
-                      <Route path="/checkout" element={<Checkout />} />
+
+      <Route
+        path="/babapanel"
+        element={
+          <AdminPrivateRoute>
+            <AdminDashboard />
+          </AdminPrivateRoute>
+        }
+      />
+      <Route
+        path="/babadash/*"
+        element={
+          <AdminPrivateRoute>
+            <AdminDashboard />
+          </AdminPrivateRoute>
+        }
+      />
+       <Route path="/checkout" element={<Checkout />} />
                       <Route path="/:slug" element={<TagProducts/>}/>
     </Routes>
   );
@@ -85,16 +114,47 @@ function SessionHandler() {
   const dispatch = useDispatch();
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const [sessionChecked, setSessionChecked] = useState(false);
-
-  const { isLoading } = useGetMeQuery(undefined, {
+  const location = useLocation();
+  const isAdminRoute =
+    location.pathname.startsWith('/babapanel') ||
+    location.pathname.startsWith('/babadash') ||
+    location.pathname.startsWith('/admin/login') ||
+    location.pathname.startsWith('/admin/unauthorized') ||
+    location.pathname.startsWith('/no-access');
+  const hasUserToken = Boolean(localStorage.getItem(WHOLESALE_USER_ACCESS_TOKEN_KEY));
+  
+  const { isLoading, error } = useGetMeQuery(undefined, {
+    // Only run once on mount to check existing session
     refetchOnMountOrArgChange: false,
     refetchOnReconnect: false,
     refetchOnFocus: false,
-    skip: sessionChecked, // ✅ sirf yeh — ek baar check karo, phir hamesha skip
+    // Don't auto-refetch, just check once
+    skip: isAdminRoute || !hasUserToken || (sessionChecked && isAuthenticated),
   });
 
   useEffect(() => {
-    if (!isLoading) setSessionChecked(true);
+    const handleUserForceLogout = () => {
+      dispatch(logout());
+    };
+
+    const handleAdminForceLogout = () => {
+      dispatch(adminForceLogout());
+    };
+
+    window.addEventListener('auth:logout:wholesale-user', handleUserForceLogout);
+    window.addEventListener('auth:logout:wholesale-admin', handleAdminForceLogout);
+
+    return () => {
+      window.removeEventListener('auth:logout:wholesale-user', handleUserForceLogout);
+      window.removeEventListener('auth:logout:wholesale-admin', handleAdminForceLogout);
+    };
+  }, [dispatch]);
+
+  useEffect(() => {
+    // Once we have a response (success or error), session check is complete
+    if (!isLoading) {
+      setSessionChecked(true);
+    }
   }, [isLoading]);
 
   useWishlistInit();

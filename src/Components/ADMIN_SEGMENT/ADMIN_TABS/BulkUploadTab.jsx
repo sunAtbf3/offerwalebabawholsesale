@@ -5,7 +5,7 @@ import {
   previewCSV, importWithUrls, importWithZip,
   setImageMode, setCsvFile, setZipFile, goToStep, resetBulkUpload,
 } from '../ADMIN_REDUX_MANAGEMENT/bulkUploadSlice';
-import axiosInstance from "../../../SERVICES/axiosInstance"; 
+import wholesaleAxios from "../../../SERVICES/wholesaleAxios";
 // ─── helpers ─────────────────────────────────────────────────
 const fmt = (n) => Number(n || 0).toLocaleString();
 
@@ -13,7 +13,7 @@ const downloadWithAuth = async (url) => {
   try {
     const toastId = toast.loading('Downloading error report...');
     
-    const response = await axiosInstance.get(url, {
+    const response = await wholesaleAxios.get(url, {
       responseType: 'blob'
     });
     

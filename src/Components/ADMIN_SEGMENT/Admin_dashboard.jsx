@@ -6,6 +6,8 @@ import { useSelector } from "react-redux";
 import { TAB_REGISTRY } from "./TabRegistry";
 import { ROLE_PERMISSIONS, ROLE_LABELS, ROLES } from "./roles";
 import { useNavigate } from "react-router-dom";
+import { selectAdminUser } from "./ADMIN_REDUX_MANAGEMENT/adminAuthSlice";
+import { WHOLESALE_ADMIN_ACCESS_TOKEN_KEY } from "../../SERVICES/wholesaleAxios";
 
 import LOGO from "../../assets/logo2.png";
 // ── Settings dashboard import (used when activeTab === "settings") ─────────
@@ -17,14 +19,25 @@ import SettingsDashboard from "./ADMIN_TABS/SETTINGS/SettingsDashboard";
 // When backend is ready, replace with: user?.role || ROLES.ADMIN
 // const HARDCODED_ROLE = ROLES.ORDER_MANAGER;
 // ─────────────────────────────────────────────────────────────────────────────
-
+const decodeAdminTokenRole = () => {
+  try {
+    const token = localStorage.getItem(WHOLESALE_ADMIN_ACCESS_TOKEN_KEY);
+    if (!token) return null;
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    const role = String(payload?.role || "").trim().toLowerCase();
+    return Object.values(ROLES).includes(role) ? role : null;
+  } catch {
+    return null;
+  }
+};
 
 const AdminDashboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user } = useSelector((state) => state.auth);
-  const HARDCODED_ROLE = user?.role || ROLES.ORDER_MANAGER;
+  const adminUser = useSelector(selectAdminUser);
+  const roleFromToken = decodeAdminTokenRole();
+  const activeRoleFromSession = adminUser?.role || roleFromToken || ROLES.ORDER_MANAGER;
   // ── Role & permissions ────────────────────────────────────────────────────
-  const activeRole    = HARDCODED_ROLE;
+  const activeRole = activeRoleFromSession;
   const allowedTabIds = ROLE_PERMISSIONS[activeRole] || [];
   const allowedTabs   = TAB_REGISTRY.filter((tab) => allowedTabIds.includes(tab.id));
   const defaultTab    = allowedTabs[0]?.id || "products";

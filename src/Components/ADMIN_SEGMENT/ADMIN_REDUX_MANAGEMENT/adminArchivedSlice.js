@@ -1,7 +1,7 @@
 // ADMIN_REDUX_MANAGEMENT/adminArchivedSlice.js
 
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import axiosInstance from "../../../SERVICES/axiosInstance";
+import wholesaleAxios from "../../../SERVICES/wholesaleAxios";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // THUNKS
@@ -12,7 +12,7 @@ export const fetchArchivedProducts = createAsyncThunk(
     "adminArchived/fetch",
     async ({ page = 1, limit = 20 } = {}, { rejectWithValue }) => {
         try {
-            const response = await axiosInstance.get("/admin/products/archived", {
+            const response = await wholesaleAxios.get("/admin/products/archived", {
                 params: { page, limit }
             });
             return response.data; // { success, total, page, limit, count, products }
@@ -27,7 +27,7 @@ export const restoreArchivedProduct = createAsyncThunk(
     "adminArchived/restore",
     async (slug, { rejectWithValue, dispatch }) => {
         try {
-            const response = await axiosInstance.patch(`/admin/products/restore/${slug}`);
+            const response = await wholesaleAxios.patch(`/admin/products/restore/${slug}`);
             
             // Refresh the archived list after successful restore
             dispatch(fetchArchivedProducts());
@@ -44,7 +44,7 @@ export const hardDeleteArchivedProduct = createAsyncThunk(
     "adminArchived/hardDelete",
     async (slug, { rejectWithValue, dispatch }) => {
         try {
-            const response = await axiosInstance.delete(`/admin/products/hard/${slug}`);
+            const response = await wholesaleAxios.delete(`/admin/products/hard/${slug}`);
             
             // Refresh the archived list after successful deletion
             dispatch(fetchArchivedProducts());
@@ -61,7 +61,7 @@ export const bulkRestoreArchivedProducts = createAsyncThunk(
     "adminArchived/bulkRestore",
     async (slugs, { rejectWithValue, dispatch }) => {
         try {
-            const response = await axiosInstance.patch("/admin/products/bulk-restore", { slugs });
+            const response = await wholesaleAxios.patch("/admin/products/bulk-restore", { slugs });
             
             // Refresh the archived list after successful bulk restore
             dispatch(fetchArchivedProducts());
@@ -78,7 +78,7 @@ export const bulkHardDeleteArchivedProducts = createAsyncThunk(
     "adminArchived/bulkHardDelete",
     async (slugs, { rejectWithValue, dispatch }) => {
         try {
-            const response = await axiosInstance.delete("/admin/products/bulk-hard-delete", {
+            const response = await wholesaleAxios.delete("/admin/products/bulk-hard-delete", {
                 data: { slugs }
             });
             

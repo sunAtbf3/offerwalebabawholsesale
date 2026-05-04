@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { User, Mail, Phone, CheckCircle2, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
-import axiosInstance from '../../../SERVICES/Wholesaleaxios';
+import wholesaleAxios from '../../../SERVICES/Wholesaleaxios';
 
 // ── FIX: import from the correct new slice paths ───────────────────────────
 import { selectUser, selectAuthLoading, selectAuthError, clearError, selectIsAuthenticated } from '../../../Components/REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
@@ -15,7 +15,7 @@ const updateProfile = createAsyncThunk(
   'auth/updateProfile',
   async ({ name, phone }, { rejectWithValue }) => {
     try {
-      const res = await axiosInstance.put('/auth/profile', { name, phone });
+      const res = await wholesaleAxios.put('/auth/profile', { name, phone });
       if (!res.data.success)
         throw new Error(res.data.message || 'Failed to update profile');
       return res.data;
