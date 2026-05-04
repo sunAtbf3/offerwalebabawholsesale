@@ -403,7 +403,16 @@ const handleOpenAuth = () => {
             <div className="mb-4">
                <div className="relative">
                   <Search className="absolute left-3 top-3 text-slate-400" size={16}/>
-                  <input type="text" placeholder="Search products..." className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm" />
+                <div
+  onClick={() => {
+    setIsMobileMenuOpen(false);
+    setIsSearchModalOpen(true);
+  }}
+  className="flex items-center gap-3 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer"
+>
+  <Search size={16} className="text-slate-400" />
+  <span className="text-sm text-slate-500">Search products...</span>
+</div>
                </div>
             </div>
 

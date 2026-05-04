@@ -30,7 +30,7 @@ import {
   XCircle, Clock, AlertCircle, ArrowLeft, MapPin,
   Loader2, ShoppingBag, CreditCard,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const fmt = (n) =>
   new Intl.NumberFormat("en-IN", {
@@ -573,11 +573,12 @@ const OrderDetail = ({ orderId, onBack, onCancel, isCancelling, cancelError }) =
 // ─────────────────────────────────────────────────────────────────────────────
 const UserOrders = () => {
   const dispatch = useDispatch();
+  const location = useLocation(); 
   const orders = useSelector(selectOrders);
   const loading = useSelector(selectOrderLoading);
   const error = useSelector(selectOrderError);
 
-  const [activeOrderId, setActiveOrderId] = useState(null);
+  const [activeOrderId, setActiveOrderId] = useState( location.state?.openOrderId ?? null );
 
   useEffect(() => {
     dispatch(fetchUserOrders());

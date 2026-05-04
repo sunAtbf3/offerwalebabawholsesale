@@ -102,7 +102,7 @@ const VirtualizedProductGrid = ({ products, loadingMore }) => {
                 transform: `translateY(${virtualRow.start}px)`,
               }}
             >
-              <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-10 md:gap-x-8 pb-10">
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6 pb-8">
                 {isSkeletonRow
                   ? Array(cols)
                       .fill(null)
@@ -552,7 +552,7 @@ console.log('Sample product price:', products?.[0]?.variants?.[0]?.price);
       </div>
 
       {/* HERO */}
-      <section className="relative h-[40vh] md:h-[50vh] flex items-end overflow-hidden bg-gray-900">
+      <section className="relative h-[35vh] sm:h-[40vh] md:h-[50vh] flex items-end overflow-hidden bg-gray-900">
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
         <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#F7A221]" />
         <div className="relative z-10 w-full max-w-7xl mx-auto px-4 md:px-8 pb-10 md:pb-14">
@@ -562,7 +562,7 @@ console.log('Sample product price:', products?.[0]?.variants?.[0]?.price);
                 <span className="w-6 h-[2px] bg-[#F7A221] inline-block" />
                 Wholesale Deals
               </p>
-              <h1 className="text-5xl md:text-7xl font-black text-white uppercase leading-none tracking-tighter">
+              <h1 className="text-3xl sm:text-5xl md:text-7xl font-black text-white uppercase leading-none tracking-tighter">
                 {priceLabel}  {/* "Under ₹299" etc */}
               </h1>
               <p className="mt-4 max-w-md text-gray-400 text-sm leading-relaxed font-medium">
@@ -584,7 +584,7 @@ console.log('Sample product price:', products?.[0]?.variants?.[0]?.price);
       </section>
 
       {/* MAIN CONTENT */}
-      <div className="max-w-[1600px] mx-auto px-4 md:px-8 py-12 flex flex-col md:flex-row gap-10">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-12 flex flex-col md:flex-row gap-6 sm:gap-10">
 
         {/* SIDEBAR */}
         <aside className="hidden md:block w-64 flex-shrink-0">
@@ -608,8 +608,8 @@ console.log('Sample product price:', products?.[0]?.variants?.[0]?.price);
         <div className="flex-grow">
 
           {/* Toolbar */}
-          <div className="flex items-center justify-between mb-10">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 sm:mb-10">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
               <p className="text-xs font-semibold uppercase text-zinc-800 tracking-[0.1em]">
                 Sort By:
               </p>
@@ -632,7 +632,7 @@ console.log('Sample product price:', products?.[0]?.variants?.[0]?.price);
                 />
               </div>
             </div>
-            <div className="hidden sm:flex items-center gap-3 bg-zinc-50 px-4 py-2 rounded-full border border-zinc-200">
+            <div className="flex sm:flex items-center gap-2 sm:gap-3 bg-zinc-50 px-3 sm:px-4 py-2 rounded-full border border-zinc-200 self-start sm:self-auto">
               <span className="text-lg font-semibold text-zinc-800">
                 {sortedProducts.length}
               </span>
@@ -665,7 +665,7 @@ console.log('Sample product price:', products?.[0]?.variants?.[0]?.price);
 
             {/* Loading skeleton */}
             {pageIsLoading && (
-              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
                 {[...Array(8)].map((_, i) => (
                   <div key={i} className="animate-pulse space-y-3">
                     <div className="aspect-[4/5] bg-gradient-to-br from-zinc-100 to-zinc-200 rounded-lg" />
@@ -692,7 +692,7 @@ console.log('Sample product price:', products?.[0]?.variants?.[0]?.price);
                       <button
                         onClick={handleLoadMore}
                         disabled={loadingMore}
-                        className="px-10 py-3 rounded-full hover:bg-[#F7A221] duration-300 bg-zinc-800 text-zinc-100 transition-all disabled:opacity-60"
+                        className="px-6 sm:px-10 py-2.5 sm:py-3 text-xs sm:text-sm rounded-full hover:bg-[#F7A221] duration-300 bg-zinc-800 text-zinc-100 transition-all disabled:opacity-60"
                       >
                         <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest">
                           {loadingMore ? (

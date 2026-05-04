@@ -50,6 +50,7 @@ const TagProducts = () => {
     discount: [],
     sort: "default",
   });
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   // ───────── API ─────────
   const { data, isFetching, isLoading } = useGetProductsByTagQuery({
@@ -185,12 +186,29 @@ return (
   <div className="bg-white min-h-screen">
 
     {/* CENTER WRAPPER */}
-    <div className="max-w-7xl mx-auto px-4 flex gap-10">
+    <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 flex flex-col lg:flex-row gap-6 lg:gap-10">
+      {isFilterOpen && (
+  <div
+    onClick={() => setIsFilterOpen(false)}
+    className="fixed inset-0 bg-black/40 z-[998] lg:hidden"
+  />
+)}
 
       {/* ───────── SIDEBAR ───────── */}
-      <aside className="w-64 shrink-0 border-r pr-6 py-6 sticky top-0 h-screen overflow-y-auto bg-white">
-
-        <h2 className="font-bold mb-6 text-sm tracking-wider uppercase">
+      <aside className={`
+    fixed lg:static top-0 right-0 h-full w-[85%] max-w-[320px] bg-white z-[999]
+    transform transition-transform duration-300
+    ${isFilterOpen ? "translate-x-0" : "translate-x-full"}
+    lg:translate-x-0 lg:w-64 lg:h-screen
+    border-l lg:border-r
+    overflow-y-auto
+  `}>
+    <div className="flex items-center justify-between px-4 py-3 border-b lg:hidden">
+  <span className="font-bold text-sm">Filters</span>
+  <button onClick={() => setIsFilterOpen(false)}>✕</button>
+</div>
+<div className="px-4 py-4">
+     <h2 className="font-bold mb-4 lg:mb-6 text-xs sm:text-sm tracking-wider uppercase">
           Filters
         </h2>
 
@@ -251,7 +269,7 @@ return (
           </h3>
 
           <select
-            className="border w-full p-2 text-sm rounded"
+            className="border w-full p-2 text-xs sm:text-sm rounded"
             value={filters.sort}
             onChange={(e) =>
               setFilters((p) => ({ ...p, sort: e.target.value }))
@@ -262,28 +280,35 @@ return (
             <option value="price_high">Price High</option>
           </select>
         </div>
+</div>
       </aside>
 
       {/* ───────── MAIN CONTENT ───────── */}
       <main className="flex-1 py-6">
 
         {/* HEADER */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <div>
-            <h1 className="text-3xl font-black tracking-tight">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight">
               {meta.title}
             </h1>
             <p className="text-gray-500 text-sm">{meta.subtitle}</p>
           </div>
 
-          <div className="text-xs border px-4 py-1.5 rounded-full">
+          <div className="text-[10px] sm:text-xs border px-3 sm:px-4 py-1.5 rounded-full self-start sm:self-auto">
             {sortedProducts.length} PRODUCTS
           </div>
+          <button
+  onClick={() => setIsFilterOpen(true)}
+  className="lg:hidden flex items-center gap-2 border px-4 py-2 rounded-lg text-xs font-bold uppercase"
+>
+  ⚙️ Filters
+</button>
         </div>
 
         {/* GRID */}
         {isLoading && storedProducts.length === 0 ? (
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
             {Array.from({ length: 8 }).map((_, i) => (
               <div
                 key={i}
@@ -298,7 +323,7 @@ return (
         ) : (
           <>
             {/* CENTER GRID ALIGN FIX */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
               {sortedProducts.map((p, i) => (
                 <ProductCard key={p._id} product={p} index={i} />
               ))}
@@ -310,8 +335,7 @@ return (
                 <button
                   onClick={handleLoadMore}
                   disabled={isFetching}
-                  className="px-8 py-3 bg-black text-white text-xs uppercase tracking-widest rounded hover:opacity-90"
-                >
+className="px-6 sm:px-8 py-2.5 sm:py-3 bg-black text-white text-[10px] sm:text-xs uppercase tracking-widest rounded hover:opacity-90"                >
                   {isFetching ? "Loading..." : "Load More"}
                 </button>
               </div>

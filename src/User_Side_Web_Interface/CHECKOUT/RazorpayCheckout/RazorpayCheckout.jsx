@@ -223,6 +223,7 @@
 // 
 import React, { useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { Loader2, AlertCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 /**
  * RazorpayCheckout Component
@@ -453,7 +454,9 @@ RazorpayCheckout.displayName = "RazorpayCheckout";
 // ─────────────────────────────────────────────────────────────────────────────
 // PaymentErrorModal
 // ─────────────────────────────────────────────────────────────────────────────
-export const PaymentErrorModal = ({ error, onRetry, onClose }) => (
+export const PaymentErrorModal = ({ error, onRetry, onClose, orderId }) => {
+    const navigate = useNavigate();
+  return (
   <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4">
     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
     <div className="relative bg-white rounded-[32px] w-full max-w-md p-6 shadow-2xl text-center">
@@ -472,7 +475,11 @@ export const PaymentErrorModal = ({ error, onRetry, onClose }) => (
           Cancel
         </button>
         <button
-          onClick={onRetry}
+          onClick={()=> {navigate("/account/userorders", {
+            state: { openOrderId: orderId },
+          });
+          onClose();
+          }}
           className="flex-1 py-3 bg-black text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-[#F7A221] hover:text-black transition-all cursor-pointer"
         >
           Try Again
@@ -480,7 +487,7 @@ export const PaymentErrorModal = ({ error, onRetry, onClose }) => (
       </div>
     </div>
   </div>
-);
+);}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PaymentLoadingModal

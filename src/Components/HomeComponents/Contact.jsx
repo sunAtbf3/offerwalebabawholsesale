@@ -1,626 +1,14 @@
-import React, { useState, useRef } from "react";
-import {
-  Mail, Phone, Globe, MessageCircle, MapPin, Clock,
-  ArrowRight, ArrowLeft, Package, Star, CheckCircle2,
-  Upload, Check, User, Building2, Truck, Store,
-  Tag, IndianRupee, FileText, Loader2,
-} from "lucide-react";
-import { toast } from "react-toastify";
+import React, { useState } from "react";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CONSTANTS
-// ─────────────────────────────────────────────────────────────────────────────
-const FORMSUBMIT_ENDPOINT =
-  "https://formsubmit.co/ajax/43189e22c68124815ee9f188d7c6e0d9";
-
-const CATEGORIES = [
-  "Electronics", "Smart Life Gadgets", "Home & Kitchen",
-  "Fashion World", "Sports & Fitness", "Stationary",
-  "Baby Items", "Car Accessories", "Cleaning Supplies",
-  "Gifts", "Tours & Travels", "Mix / General",
-];
-
-const INITIAL_FORM = {
-  // Step 1
-  fullName: "", email: "", mobileNumber: "", whatsappNumber: "",
-  // Step 2
-  permanentAddress: "", haveShop: false, businessAddress: "", deliveryAddress: "",
-  // Step 3
-  sellingPlaceFrom: "", sellingZoneCity: "", productCategory: "",
-  monthlyEstimatedPurchase: "", idProofFile: null, businessAddressProofFile: null,
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// VALIDATORS
-// ─────────────────────────────────────────────────────────────────────────────
-const validateStep1 = (d) => {
-  const e = {};
-  if (!d.fullName.trim())                                    e.fullName       = "Full name is required";
-  if (!d.email.trim())                                       e.email          = "Email is required";
-  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email))     e.email          = "Enter a valid email";
-  if (!d.mobileNumber.trim())                                e.mobileNumber   = "Mobile number is required";
-  else if (!/^\d{10}$/.test(d.mobileNumber.trim()))          e.mobileNumber   = "Enter a valid 10-digit number";
-  if (!d.whatsappNumber.trim())                              e.whatsappNumber = "WhatsApp number is required";
-  else if (!/^\d{10}$/.test(d.whatsappNumber.trim()))        e.whatsappNumber = "Enter a valid 10-digit number";
-  return e;
-};
-
-const validateStep2 = (d) => {
-  const e = {};
-  if (!d.permanentAddress.trim()) e.permanentAddress = "Permanent address is required";
-  if (!d.businessAddress.trim())  e.businessAddress  = "Business address is required";
-  if (!d.deliveryAddress.trim())  e.deliveryAddress  = "Delivery address is required";
-  return e;
-};
-
-const validateStep3 = (d) => {
-  const e = {};
-  if (!d.sellingPlaceFrom.trim())   e.sellingPlaceFrom = "Selling place is required";
-  if (!d.sellingZoneCity.trim())    e.sellingZoneCity  = "City / zone is required";
-  if (!d.productCategory.trim())    e.productCategory  = "Please select a category";
-  if (!d.monthlyEstimatedPurchase || isNaN(Number(d.monthlyEstimatedPurchase)) || Number(d.monthlyEstimatedPurchase) <= 0)
-                                    e.monthlyEstimatedPurchase = "Enter a valid monthly purchase amount";
-  if (!d.idProofFile)               e.idProofFile               = "ID proof document is required";
-  if (!d.businessAddressProofFile)  e.businessAddressProofFile  = "Business address proof is required";
-  return e;
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SHARED UI PRIMITIVES
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Text / email / tel / number input */
-const Field = ({ label, icon: Icon, error, required, ...props }) => (
-  <div className="flex flex-col gap-1.5">
-    <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-      {label} {required && <span className="text-red-500">*</span>}
-    </label>
-    <div className="relative">
-      {Icon && (
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-          <Icon size={16} />
-        </div>
-      )}
-      <input
-        {...props}
-        className={`w-full ${Icon ? "pl-9" : "pl-4"} pr-4 py-3 rounded-xl border-2 text-sm font-medium
-          bg-slate-50 focus:bg-white focus:outline-none transition-all duration-200
-          ${error
-            ? "border-red-400 focus:border-red-500"
-            : "border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10"
-          }`}
-      />
-    </div>
-    {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
-  </div>
-);
-
-/** Textarea */
-const TextAreaField = ({ label, icon: Icon, error, required, hint, ...props }) => (
-  <div className="flex flex-col gap-1.5">
-    <label className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
-      {Icon && <Icon size={13} className="text-slate-400" />}
-      {label} {required && <span className="text-red-500">*</span>}
-    </label>
-    {hint && <p className="text-[11px] text-slate-400">{hint}</p>}
-    <textarea
-      {...props}
-      rows={2}
-      className={`w-full px-4 py-3 rounded-xl border-2 text-sm font-medium bg-slate-50 focus:bg-white
-        focus:outline-none transition-all duration-200 resize-none
-        ${error
-          ? "border-red-400 focus:border-red-500"
-          : "border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10"
-        }`}
-    />
-    {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
-  </div>
-);
-
-/** File upload button — accepts images + PDF */
-const FileUpload = ({ label, hint, file, onFileChange, error }) => {
-  const inputRef = useRef(null);
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-        {label} <span className="text-red-500">*</span>
-      </label>
-      {hint && <p className="text-[11px] text-slate-400">{hint}</p>}
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 border-dashed transition-all duration-200
-          ${error
-            ? "border-red-400 bg-red-50"
-            : file
-            ? "border-amber-400 bg-amber-50"
-            : "border-slate-300 bg-slate-50 hover:border-amber-400 hover:bg-amber-50"
-          }`}
-      >
-        {file
-          ? <CheckCircle2 size={18} className="text-amber-600 shrink-0" />
-          : <Upload size={18} className="text-slate-400 shrink-0" />
-        }
-        <span className={`text-sm font-medium truncate ${file ? "text-amber-700" : "text-slate-500"}`}>
-          {file ? file.name : "Click to upload (PDF / JPG / PNG)"}
-        </span>
-        {file && (
-          <span className="ml-auto text-[10px] font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full shrink-0">
-            {(file.size / 1024).toFixed(0)} KB
-          </span>
-        )}
-      </button>
-      <input
-        ref={inputRef}
-        type="file"
-        accept=".pdf,.jpg,.jpeg,.png,.webp"
-        className="hidden"
-        onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
-      />
-      {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
-    </div>
-  );
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// STEP INDICATOR
-// ─────────────────────────────────────────────────────────────────────────────
-const STEPS = [
-  { number: 1, label: "Personal Info" },
-  { number: 2, label: "Address Info" },
-  { number: 3, label: "Business Info" },
-];
-
-const StepIndicator = ({ currentStep }) => (
-  <div className="flex items-center justify-center w-full mb-8 px-4">
-    {STEPS.map((step, idx) => {
-      const isCompleted = currentStep > step.number;
-      const isActive    = currentStep === step.number;
-      const isLast      = idx === STEPS.length - 1;
-      return (
-        <React.Fragment key={step.number}>
-          <div className="flex flex-col items-center gap-1.5">
-            <div
-              className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-sm border-2 transition-all duration-300
-                ${isCompleted
-                  ? "bg-amber-500 border-amber-500 text-white"
-                  : isActive
-                  ? "bg-[#0F172A] border-[#0F172A] text-white"
-                  : "bg-white border-slate-300 text-slate-400"
-                }`}
-            >
-              {isCompleted ? <Check size={16} strokeWidth={3} /> : step.number}
-            </div>
-            <span
-              className={`text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-colors duration-300
-                ${isActive ? "text-[#0F172A]" : isCompleted ? "text-amber-600" : "text-slate-400"}`}
-            >
-              {step.label}
-            </span>
-          </div>
-          {!isLast && (
-            <div className="flex-1 mx-3 mb-5">
-              <div className="h-0.5 w-full bg-slate-200 relative overflow-hidden rounded-full">
-                <div
-                  className="absolute left-0 top-0 h-full bg-amber-500 transition-all duration-500 rounded-full"
-                  style={{ width: isCompleted ? "100%" : "0%" }}
-                />
-              </div>
-            </div>
-          )}
-        </React.Fragment>
-      );
-    })}
-  </div>
-);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// STEP 1 — PERSONAL INFO
-// ─────────────────────────────────────────────────────────────────────────────
-const Step1 = ({ formData, onChange, onNext }) => {
-  const [errors, setErrors]   = useState({});
-  const [touched, setTouched] = useState({});
-
-  const handleChange = (field) => (e) => {
-    onChange(field, e.target.value);
-    if (touched[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
-  };
-
-  const handleBlur = (field) => () => {
-    setTouched((prev) => ({ ...prev, [field]: true }));
-    setErrors((prev) => ({ ...prev, [field]: validateStep1(formData)[field] }));
-  };
-
-  const handleNext = () => {
-    const allErrors = validateStep1(formData);
-    if (Object.keys(allErrors).length > 0) {
-      setErrors(allErrors);
-      setTouched({ fullName: true, email: true, mobileNumber: true, whatsappNumber: true });
-      return;
-    }
-    onNext();
-  };
-
-  return (
-    <div className="flex flex-col gap-5">
-      <div>
-        <h2 className="text-xl font-black text-[#0F172A]">Personal Information</h2>
-        <p className="text-sm text-slate-500 mt-0.5">Tell us who you are</p>
-      </div>
-
-      <Field
-        label="Full Name" icon={User} required
-        type="text" placeholder="Enter your full name"
-        value={formData.fullName}
-        onChange={handleChange("fullName")}
-        onBlur={handleBlur("fullName")}
-        error={errors.fullName}
-      />
-
-      <Field
-        label="Email Address" icon={Mail} required
-        type="email" placeholder="your@email.com"
-        value={formData.email}
-        onChange={handleChange("email")}
-        onBlur={handleBlur("email")}
-        error={errors.email}
-      />
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field
-          label="Mobile Number" icon={Phone} required
-          type="tel" placeholder="10-digit mobile" maxLength={10}
-          value={formData.mobileNumber}
-          onChange={handleChange("mobileNumber")}
-          onBlur={handleBlur("mobileNumber")}
-          error={errors.mobileNumber}
-        />
-        <Field
-          label="WhatsApp Number" icon={MessageCircle} required
-          type="tel" placeholder="10-digit WhatsApp" maxLength={10}
-          value={formData.whatsappNumber}
-          onChange={handleChange("whatsappNumber")}
-          onBlur={handleBlur("whatsappNumber")}
-          error={errors.whatsappNumber}
-        />
-      </div>
-
-      <button
-        onClick={handleNext}
-        className="mt-2 w-full flex items-center justify-center gap-2 bg-[#0F172A] hover:bg-slate-800
-          text-white font-black py-3.5 rounded-xl transition-all duration-200 uppercase tracking-wider text-sm"
-      >
-        Continue <ArrowRight size={16} />
-      </button>
-    </div>
-  );
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// STEP 2 — ADDRESS INFO
-// ─────────────────────────────────────────────────────────────────────────────
-const Step2 = ({ formData, onChange, onNext, onBack }) => {
-  const [errors, setErrors]   = useState({});
-  const [touched, setTouched] = useState({});
-
-  const handleChange = (field) => (e) => {
-    onChange(field, e.target.value);
-    if (touched[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
-  };
-
-  const handleBlur = (field) => () => {
-    setTouched((prev) => ({ ...prev, [field]: true }));
-    setErrors((prev) => ({ ...prev, [field]: validateStep2(formData)[field] }));
-  };
-
-  const handleNext = () => {
-    const allErrors = validateStep2(formData);
-    if (Object.keys(allErrors).length > 0) {
-      setErrors(allErrors);
-      setTouched({ permanentAddress: true, businessAddress: true, deliveryAddress: true });
-      return;
-    }
-    onNext();
-  };
-
-  return (
-    <div className="flex flex-col gap-5">
-      <div>
-        <h2 className="text-xl font-black text-[#0F172A]">Address Information</h2>
-        <p className="text-sm text-slate-500 mt-0.5">We need your location details</p>
-      </div>
-
-      <TextAreaField
-        label="Permanent Address" icon={MapPin} required
-        placeholder="Your home / permanent address"
-        value={formData.permanentAddress}
-        onChange={handleChange("permanentAddress")}
-        onBlur={handleBlur("permanentAddress")}
-        error={errors.permanentAddress}
-      />
-
-      {/* Have Shop Toggle */}
-      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border-2 border-slate-200">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-amber-100 rounded-lg">
-            <Store size={18} className="text-amber-600" />
-          </div>
-          <div>
-            <p className="text-sm font-black text-[#0F172A]">Do you have a shop?</p>
-            <p className="text-xs text-slate-500">Physical retail location</p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => onChange("haveShop", !formData.haveShop)}
-          className={`relative w-12 h-6 rounded-full transition-all duration-300
-            ${formData.haveShop ? "bg-amber-500" : "bg-slate-300"}`}
-        >
-          <span
-            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-300
-              ${formData.haveShop ? "translate-x-6" : "translate-x-0"}`}
-          />
-        </button>
-      </div>
-
-      <TextAreaField
-        label="Business Address" icon={Building2} required
-        hint={formData.haveShop ? "Your shop address" : "Where you operate from"}
-        placeholder="Your business operating address"
-        value={formData.businessAddress}
-        onChange={handleChange("businessAddress")}
-        onBlur={handleBlur("businessAddress")}
-        error={errors.businessAddress}
-      />
-
-      <TextAreaField
-        label="Delivery Address" icon={Truck} required
-        hint="Where should we deliver your wholesale orders?"
-        placeholder="Delivery / warehouse address"
-        value={formData.deliveryAddress}
-        onChange={handleChange("deliveryAddress")}
-        onBlur={handleBlur("deliveryAddress")}
-        error={errors.deliveryAddress}
-      />
-
-      <div className="flex gap-3 mt-2">
-        <button
-          onClick={onBack}
-          className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border-2 border-slate-200
-            text-slate-600 font-black text-sm hover:bg-slate-50 transition-all duration-200 uppercase tracking-wider"
-        >
-          <ArrowLeft size={16} /> Back
-        </button>
-        <button
-          onClick={handleNext}
-          className="flex-1 flex items-center justify-center gap-2 bg-[#0F172A] hover:bg-slate-800
-            text-white font-black py-3.5 rounded-xl transition-all duration-200 uppercase tracking-wider text-sm"
-        >
-          Continue <ArrowRight size={16} />
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// STEP 3 — BUSINESS INFO + SUBMIT
-// ─────────────────────────────────────────────────────────────────────────────
-const Step3 = ({ formData, onChange, onFileChange, onBack, onSubmitSuccess }) => {
-  const [errors, setErrors]   = useState({});
-  const [touched, setTouched] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleChange = (field) => (e) => {
-    onChange(field, e.target.value);
-    if (touched[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
-  };
-
-  const handleSelectChange = (field) => (e) => {
-    onChange(field, e.target.value);
-    if (touched[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
-  };
-
-  const handleFileChange = (field) => (file) => {
-    onFileChange(field, file);
-    if (touched[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
-  };
-
-  const handleBlur = (field) => () => {
-    setTouched((prev) => ({ ...prev, [field]: true }));
-    setErrors((prev) => ({ ...prev, [field]: validateStep3(formData)[field] }));
-  };
-
-  const handleSubmit = async () => {
-    const allErrors = validateStep3(formData);
-    if (Object.keys(allErrors).length > 0) {
-      setErrors(allErrors);
-      setTouched({
-        sellingPlaceFrom: true, sellingZoneCity: true,
-        productCategory: true, monthlyEstimatedPurchase: true,
-        idProofFile: true, businessAddressProofFile: true,
-      });
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const fd = new FormData();
-      // Personal
-      fd.append("fullName",                 formData.fullName.trim());
-      fd.append("email",                    formData.email.trim().toLowerCase());
-      fd.append("mobileNumber",             formData.mobileNumber.trim());
-      fd.append("whatsappNumber",           formData.whatsappNumber.trim());
-      // Address
-      fd.append("permanentAddress",         formData.permanentAddress.trim());
-      fd.append("haveShop",                 String(formData.haveShop));
-      fd.append("businessAddress",          formData.businessAddress.trim());
-      fd.append("deliveryAddress",          formData.deliveryAddress.trim());
-      // Business
-      fd.append("sellingPlaceFrom",         formData.sellingPlaceFrom.trim());
-      fd.append("sellingZoneCity",          formData.sellingZoneCity.trim());
-      fd.append("productCategory",          formData.productCategory.trim());
-      fd.append("monthlyEstimatedPurchase", String(Number(formData.monthlyEstimatedPurchase)));
-      // Files
-      fd.append("idProof",                  formData.idProofFile);
-      fd.append("businessAddressProof",     formData.businessAddressProofFile);
-
-      const res = await fetch(FORMSUBMIT_ENDPOINT, {
-        method: "POST",
-        headers: { Accept: "application/json" },
-        body: fd,
-      });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body?.message || `Server responded with ${res.status}`);
-      }
-
-      toast.success(
-        "🎉 Application submitted! We'll contact you within 24 hours.",
-        { autoClose: 6000 }
-      );
-      onSubmitSuccess();
-
-    } catch (err) {
-      console.error("[ContactUs] submit error:", err);
-      toast.error(
-        err?.message || "Something went wrong. Please try again.",
-        { autoClose: 5000 }
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="flex flex-col gap-5">
-      <div>
-        <h2 className="text-xl font-black text-[#0F172A]">Business Information</h2>
-        <p className="text-sm text-slate-500 mt-0.5">Tell us about your business</p>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field
-          label="Selling Place From" icon={MapPin} required
-          type="text" placeholder="e.g. Home, Shop, Market"
-          value={formData.sellingPlaceFrom}
-          onChange={handleChange("sellingPlaceFrom")}
-          onBlur={handleBlur("sellingPlaceFrom")}
-          error={errors.sellingPlaceFrom}
-        />
-        <Field
-          label="Selling Zone / City" icon={MapPin} required
-          type="text" placeholder="e.g. Delhi, Mumbai"
-          value={formData.sellingZoneCity}
-          onChange={handleChange("sellingZoneCity")}
-          onBlur={handleBlur("sellingZoneCity")}
-          error={errors.sellingZoneCity}
-        />
-      </div>
-
-      {/* Product Category */}
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-          Product Category <span className="text-red-500">*</span>
-        </label>
-        <div className="relative">
-          <Tag size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          <select
-            value={formData.productCategory}
-            onChange={handleSelectChange("productCategory")}
-            onBlur={handleBlur("productCategory")}
-            className={`w-full pl-9 pr-4 py-3 rounded-xl border-2 text-sm font-medium bg-slate-50 focus:bg-white
-              focus:outline-none transition-all duration-200 appearance-none cursor-pointer
-              ${errors.productCategory
-                ? "border-red-400 focus:border-red-500"
-                : "border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10"
-              }`}
-          >
-            <option value="">Select a category</option>
-            {CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-        </div>
-        {errors.productCategory && (
-          <p className="text-xs text-red-500 font-medium">{errors.productCategory}</p>
-        )}
-      </div>
-
-      <Field
-        label="Monthly Estimated Purchase (₹)" icon={IndianRupee} required
-        type="number" min="1" placeholder="e.g. 50000"
-        value={formData.monthlyEstimatedPurchase}
-        onChange={handleChange("monthlyEstimatedPurchase")}
-        onBlur={handleBlur("monthlyEstimatedPurchase")}
-        error={errors.monthlyEstimatedPurchase}
-      />
-
-      {/* Document info banner */}
-      <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
-        <div className="flex items-center gap-2 mb-1">
-          <FileText size={15} className="text-blue-600" />
-          <p className="text-xs font-bold text-blue-700 uppercase tracking-wider">Document Upload</p>
-        </div>
-        <p className="text-xs text-blue-600">Accepted: PDF, JPG, JPEG, PNG, WEBP — max 10 MB each</p>
-      </div>
-
-      <FileUpload
-        label="ID Proof"
-        hint="Aadhaar, PAN, Voter ID or Passport"
-        file={formData.idProofFile}
-        onFileChange={handleFileChange("idProofFile")}
-        error={errors.idProofFile}
-      />
-
-      <FileUpload
-        label="Business Address Proof"
-        hint="Utility bill, rent agreement or GST certificate"
-        file={formData.businessAddressProofFile}
-        onFileChange={handleFileChange("businessAddressProofFile")}
-        error={errors.businessAddressProofFile}
-      />
-
-      <div className="flex gap-3 mt-2">
-        <button
-          onClick={onBack}
-          disabled={isLoading}
-          className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border-2 border-slate-200
-            text-slate-600 font-black text-sm hover:bg-slate-50 transition-all duration-200 uppercase tracking-wider
-            disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <ArrowLeft size={16} /> Back
-        </button>
-        <button
-          onClick={handleSubmit}
-          disabled={isLoading}
-          className="flex-1 flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600
-            text-[#0F172A] font-black py-3.5 rounded-xl transition-all duration-200 uppercase tracking-wider text-sm
-            disabled:opacity-70 disabled:cursor-not-allowed"
-        >
-          {isLoading
-            ? <><Loader2 size={16} className="animate-spin" /> Submitting...</>
-            : "Submit Application"
-          }
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// LEFT PANEL — unchanged design
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Floating particle background ─────────────────────────────────────────────
 const Particles = () => {
   const dots = Array.from({ length: 18 }, (_, i) => ({
     id: i,
-    size: 2 + (((i * 7) % 4) + 1),
-    x: (i * 17 + 5) % 100,
-    y: (i * 23 + 10) % 100,
-    delay: (i * 0.4) % 6,
-    dur: 4 + (i % 5),
+    size: 3 + Math.random() * 5,
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    delay: Math.random() * 6,
+    dur: 4 + Math.random() * 5,
   }));
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -629,8 +17,10 @@ const Particles = () => {
           key={d.id}
           className="absolute rounded-full bg-amber-400/20 animate-ping"
           style={{
-            width: d.size, height: d.size,
-            left: `${d.x}%`, top: `${d.y}%`,
+            width: d.size,
+            height: d.size,
+            left: `${d.x}%`,
+            top: `${d.y}%`,
             animationDelay: `${d.delay}s`,
             animationDuration: `${d.dur}s`,
           }}
@@ -640,155 +30,474 @@ const Particles = () => {
   );
 };
 
-const StatBadge = ({ icon: Icon, value, label }) => (
-  <div className="flex items-center gap-3 bg-white/5 hover:bg-white/10 transition-all rounded-2xl px-4 py-3 border border-white/10">
-    <div className="w-9 h-9 rounded-xl bg-amber-400/20 flex items-center justify-center">
-      <Icon size={16} className="text-amber-400" />
-    </div>
-    <div>
-      <div className="text-white font-bold text-sm">{value}</div>
-      <div className="text-gray-400 text-[10px]">{label}</div>
-    </div>
-  </div>
-);
-
-const InfoRow = ({ icon: Icon, label, value, href }) => (
+// ── Info Row ──────────────────────────────────────────────────────────────────
+const InfoRow = ({ icon, label, value, href }) => (
   <a
     href={href || "#"}
     target={href?.startsWith("http") ? "_blank" : undefined}
     rel="noreferrer"
-    className="group flex items-start gap-4 py-3 border-b border-white/10 last:border-0"
+    className="group flex items-start gap-3 py-2.5 border-b border-white/8 last:border-0 hover:pl-1 transition-all duration-200"
   >
-    <div className="w-8 h-8 rounded-lg bg-amber-400/15 border border-amber-400/20 flex items-center justify-center mt-0.5">
-      <Icon size={14} className="text-amber-400" />
+    <div className="w-8 h-8 rounded-lg bg-amber-400/15 border border-amber-400/20 flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-amber-400/25 transition-colors">
+      <span className="text-amber-400 text-sm">{icon}</span>
     </div>
-    <div>
-      <p className="text-[12px] text-gray-500 uppercase tracking-widest font-semibold">{label}</p>
-      <p className="text-gray-200 group-hover:text-amber-300">{value}</p>
+    <div className="flex-1 min-w-0">
+      <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">{label}</p>
+      <p className="text-gray-300 text-[13px] mt-0.5 group-hover:text-amber-300 transition-colors leading-snug">{value}</p>
     </div>
-    <ArrowRight size={13} className="ml-auto mt-2 text-gray-600 group-hover:text-amber-400" />
   </a>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MAIN COMPONENT
-// ─────────────────────────────────────────────────────────────────────────────
-export default function ContactUs() {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData]       = useState(INITIAL_FORM);
-  const [submitted, setSubmitted]     = useState(false);
+// ── Stat Badge ────────────────────────────────────────────────────────────────
+const StatBadge = ({ icon, value, label }) => (
+  <div className="flex items-center gap-2.5 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5">
+    <div className="w-8 h-8 rounded-lg bg-amber-400/20 flex items-center justify-center flex-shrink-0 text-base">{icon}</div>
+    <div>
+      <div className="text-white font-bold text-sm leading-none">{value}</div>
+      <div className="text-gray-400 text-[10px] mt-0.5">{label}</div>
+    </div>
+  </div>
+);
 
-  /** Generic field updater for text/select/boolean values */
-  const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+// ── Field Label ───────────────────────────────────────────────────────────────
+const Label = ({ children, required }) => (
+  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5">
+    {children} {required && <span className="text-red-400">*</span>}
+  </p>
+);
+
+// ── Input ─────────────────────────────────────────────────────────────────────
+const inputCls = (err) =>
+  `w-full pl-9 pr-4 py-[11px] rounded-xl border-[1.5px] bg-gray-50 text-[13px] text-gray-900 outline-none transition-all duration-200 font-sans
+  ${err ? "border-red-300 bg-red-50" : "border-gray-200 focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-400/10"}`;
+
+const Input = ({ icon, err, ...props }) => (
+  <div className="relative flex items-center">
+    {icon && <span className="absolute left-3 text-gray-400 text-sm pointer-events-none">{icon}</span>}
+    <input {...props} className={inputCls(err) + (!icon ? " pl-4" : "")} />
+  </div>
+);
+
+const Textarea = ({ icon, err, ...props }) => (
+  <div className="relative">
+    {icon && <span className="absolute left-3 top-3 text-gray-400 text-sm pointer-events-none">{icon}</span>}
+    <textarea
+      {...props}
+      className={
+        `w-full py-[11px] pr-4 rounded-xl border-[1.5px] bg-gray-50 text-[13px] text-gray-900 outline-none transition-all duration-200 resize-none font-sans leading-relaxed
+        ${icon ? "pl-9" : "pl-4"}
+        ${err ? "border-red-300 bg-red-50" : "border-gray-200 focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-400/10"}`
+      }
+    />
+  </div>
+);
+
+
+// ── Upload Box ────────────────────────────────────────────────────────────────
+const UploadBox = ({ label, subLabel, file, setFile, err }) => (
+  <div className="field">
+    <Label required>{label}</Label>
+    <label
+      className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-4 cursor-pointer transition-all duration-200 text-center
+        ${file ? "border-amber-400 bg-amber-50" : err ? "border-red-300 bg-red-50" : "border-gray-200 bg-gray-50 hover:border-amber-300 hover:bg-amber-50/50"}`}
+    >
+      <span className={`text-2xl mb-1 ${file ? "opacity-100" : "opacity-40"}`}>📎</span>
+      <span className={`text-[12px] font-semibold ${file ? "text-amber-600" : "text-gray-400"}`}>
+        {file ? file.name : "Click to upload (PDF / JPG / PNG)"}
+      </span>
+      {subLabel && <span className="text-[10px] text-gray-400 mt-0.5">{subLabel}</span>}
+      <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={(e) => setFile(e.target.files[0])} />
+    </label>
+  </div>
+);
+
+// ── Steps Header ──────────────────────────────────────────────────────────────
+const Steps = ({ step }) => {
+  const labels = ["Personal Info", "Address Info", "Business Info"];
+  return (
+    <div className="flex items-center mb-6">
+      {[1, 2, 3].map((s, i) => (
+        <React.Fragment key={s}>
+          <div className="flex flex-col items-center gap-1">
+            <div
+              className={`w-[38px] h-[38px] rounded-full flex items-center justify-center font-bold text-[13px] transition-all duration-300
+              ${step > s ? "bg-amber-400 text-white" : step === s ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-400 border-[1.5px] border-gray-200"}`}
+            >
+              {step > s ? "✓" : s}
+            </div>
+            <span className={`text-[9px] font-bold uppercase tracking-wider ${step > s ? "text-amber-500" : step === s ? "text-gray-900" : "text-gray-400"}`}>
+              {labels[i]}
+            </span>
+          </div>
+          {i !== 2 && (
+            <div className={`flex-1 h-[2px] mx-2 mb-3.5 transition-all duration-300 ${step > s + 1 || (step > s) ? "bg-amber-400" : "bg-gray-200"}`} />
+          )}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+};
+
+// ── MAIN ──────────────────────────────────────────────────────────────────────
+const INIT = {
+  fullName: "", email: "", mobile: "", whatsapp: "",
+  permAddr: "", haveShop: false, shopAddr: "", deliveryAddr: "",
+  sellingPlace: "", sellingCity: "", inquiryType: "", monthlyPurchase: "",
+  idProof: null, bizProof: null,
+};
+
+export default function WholesalerPage() {
+  const [step, setStep] = useState(1);
+  const [data, setData] = useState(INIT);
+  const [err, setErr] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [submitErr, setSubmitErr] = useState(false);
+
+  const set = (k, v) => { setData((d) => ({ ...d, [k]: v })); setErr((e) => ({ ...e, [k]: null })); };
+
+  const validate = (s) => {
+    const e = {};
+    if (s === 1) {
+      if (!data.fullName.trim()) e.fullName = true;
+      if (!/^\S+@\S+\.\S+$/.test(data.email)) e.email = true;
+      if (!/^\d{10}$/.test(data.mobile)) e.mobile = true;
+      if (!/^\d{10}$/.test(data.whatsapp)) e.whatsapp = true;
+    }
+    if (s === 2) {
+      if (!data.permAddr.trim()) e.permAddr = true;
+      if (!data.deliveryAddr.trim()) e.deliveryAddr = true;
+      if (data.haveShop && !data.shopAddr.trim()) e.shopAddr = true;
+    }
+    if (s === 3) {
+      if (!data.sellingPlace.trim()) e.sellingPlace = true;
+      if (!data.sellingCity.trim()) e.sellingCity = true;
+      if (!data.inquiryType) e.inquiryType = true;
+      if (!data.monthlyPurchase) e.monthlyPurchase = true;
+      if (!data.idProof) e.idProof = true;
+      if (!data.bizProof) e.bizProof = true;
+    }
+    setErr(e);
+    return Object.keys(e).length === 0;
   };
 
-  /** File-specific updater */
-  const handleFileChange = (field, file) => {
-    setFormData((prev) => ({ ...prev, [field]: file }));
+  const next = () => { if (validate(step)) setStep((s) => s + 1); };
+  const back = () => setStep((s) => s - 1);
+
+  const submit = async () => {
+    if (!validate(3)) return;
+    setLoading(true);
+    setSubmitErr(false);
+    try {
+      const fd = new FormData();
+      fd.append("name", data.fullName);
+      fd.append("email", data.email);
+      fd.append("mobile", data.mobile);
+      fd.append("whatsapp", data.whatsapp);
+      fd.append("permanent_address", data.permAddr);
+      fd.append("have_shop", data.haveShop ? "Yes" : "No");
+      if (data.haveShop) fd.append("shop_address", data.shopAddr);
+      fd.append("delivery_address", data.deliveryAddr);
+      fd.append("selling_place", data.sellingPlace);
+      fd.append("selling_city", data.sellingCity);
+      fd.append("inquiry_type", data.inquiryType);
+      fd.append("monthly_purchase", data.monthlyPurchase);
+      if (data.idProof) fd.append("id_proof", data.idProof);
+      if (data.bizProof) fd.append("business_proof", data.bizProof);
+
+      const res = await fetch("https://formspree.io/f/xlgavvnv", {
+        method: "POST",
+        body: fd,
+        headers: { Accept: "application/json" },
+      });
+      if (res.ok) { setSubmitted(true); }
+      else { setSubmitErr(true); }
+    } catch { setSubmitErr(true); }
+    finally { setLoading(false); }
   };
 
-  const handleSubmitSuccess = () => {
-    setSubmitted(true);
-    setFormData(INITIAL_FORM);
-    setCurrentStep(1);
-  };
+  const reset = () => { setData(INIT); setErr({}); setStep(1); setSubmitted(false); setSubmitErr(false); };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
+    <div className="min-h-screen bg-gray-100 font-sans">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+        .font-sans { font-family: 'DM Sans', sans-serif !important; }
+        .font-display { font-family: 'Syne', sans-serif !important; }
+      `}</style>
+
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
 
-        {/* Header */}
-        <div className="mb-10">
-          <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold px-3 py-1.5 rounded-full mb-4">
+        {/* ── Page Header ── */}
+        <div className="mb-8">
+          <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-bold px-3 py-1.5 rounded-full mb-3 uppercase tracking-wider">
             <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
-            We're here to help
+            B2B Wholesale
           </div>
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900">
-            Get in <span className="text-amber-500">Touch</span>
+          <h1 className=" text-4xl sm:text-5xl font-extrabold text-gray-900 leading-tight">
+            Become a <span className="text-amber-500">Wholesaler</span>
           </h1>
-          <p className="text-gray-500 mt-3 max-w-md">
-            Wholesale, retail, or bulk orders — we reply fast.
+          <p className="text-gray-500 text-sm mt-2 max-w-md">
+            Join thousands of retailers across India. Fast approval, best prices, PAN India delivery.
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-5 gap-6">
+        {/* ── Grid ── */}
+        <div className="grid lg:grid-cols-[300px_1fr] gap-5 items-start">
 
-          {/* ── LEFT PANEL ── */}
-          <div className="lg:col-span-2 space-y-5">
-            <div className="relative bg-gray-900 rounded-3xl p-7 overflow-hidden">
+          {/* ══════════ LEFT PANEL ══════════ */}
+          <div className="flex flex-col gap-4">
+            <div className="relative bg-gray-900 rounded-3xl overflow-hidden p-7">
+              {/* Top accent */}
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
               <Particles />
-              <h2 className="text-2xl font-bold text-white">Offer Wale Baba</h2>
-              <p className="text-amber-400 text-xs mb-5">Wholesale &amp; Retail</p>
-              <InfoRow icon={Phone}  label="Call"    value="+91 93706 86008"          href="tel:+919370686008" />
-              <InfoRow icon={Mail}   label="Email"   value="offerwalebaba1@gmail.com" href="mailto:offerwalebaba1@gmail.com" />
-              <InfoRow icon={Globe}  label="Website" value="offerwalebaba.com"        href="https://offerwalebaba.com/" />
-              <InfoRow icon={MapPin} label="Address" value="Ulhasnagar, MH"           href="https://maps.google.com" />
-              <InfoRow icon={Clock}  label="Hours"   value="Tue–Sun, 1 PM – 11 PM" />
-              <div className="grid grid-cols-2 gap-2 mt-5">
-                <StatBadge icon={Package} value="10K+" label="Orders" />
-                <StatBadge icon={Star}    value="4.8★"  label="Rating" />
+              <div className="relative z-10">
+                <h2 className=" text-xl font-extrabold text-white">Offer Wale Baba</h2>
+                <p className="text-amber-400 text-[11px] font-bold uppercase tracking-widest mt-0.5 mb-5">Wholesale &amp; Retail — B2B</p>
+
+                <div className="space-y-0.5">
+                  <InfoRow icon="📞" label="Call Us"   value="+91 93706 86008"          href="tel:+919370686008" />
+                  <InfoRow icon="✉️" label="Email"     value="offerwalebaba1@gmail.com"  href="mailto:offerwalebaba1@gmail.com" />
+                  <InfoRow icon="🌐" label="Website"   value="offerwalebaba.com"          href="https://offerwalebaba.com" />
+                  <InfoRow icon="📍" label="Address"   value="Sambhaji Chowk, Ulhasnagar, MH 421004" href="https://maps.google.com/?q=Ulhasnagar,Maharashtra" />
+                  <InfoRow icon="🕐" label="Hours"     value="Tue–Sun, 1 PM – 11 PM" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 mt-4">
+                  <StatBadge icon="📦" value="10,000+" label="Orders Delivered" />
+                  <StatBadge icon="⭐" value="4.8★"    label="Avg. Rating" />
+                </div>
+
+                <a
+                  href="https://wa.me/919370686008"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-4 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-400 text-white font-bold text-[13px] py-3 rounded-2xl transition-all duration-200"
+                >
+                  💬 Chat on WhatsApp
+                </a>
+                <a
+                  href="https://linktr.ee/offerwalebaba1"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 flex items-center justify-center gap-2 bg-white/8 hover:bg-white/14 border border-white/10 text-gray-300 hover:text-white font-semibold text-[13px] py-2.5 rounded-2xl transition-all duration-200"
+                >
+                  All Links &amp; Catalogue →
+                </a>
               </div>
-              <a
-                href="https://wa.me/919370686008"
-                className="mt-5 block text-center bg-green-500 text-white py-3 rounded-xl font-bold"
-              >
-                WhatsApp Us
-              </a>
+            </div>
+
+            {/* Trust badges */}
+            <div className="grid grid-cols-3 gap-2">
+              {[["✅","Verified Supplier"],["🚚","PAN India Delivery"],["💰","Best Price"]].map(([em, txt]) => (
+                <div key={txt} className="bg-white border border-gray-200 rounded-2xl p-3 text-center hover:border-amber-300 hover:shadow-sm transition-all duration-200">
+                  <div className="text-xl mb-1">{em}</div>
+                  <p className="text-[10px] font-bold text-gray-600 leading-tight">{txt}</p>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* ── RIGHT PANEL ── */}
-          <div className="lg:col-span-3 bg-white border border-gray-200 rounded-3xl p-7 sm:p-9">
+          {/* ══════════ RIGHT PANEL ══════════ */}
+          <div className="bg-white rounded-3xl border border-gray-200 p-7 sm:p-8">
+
             {submitted ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                  <CheckCircle2 size={32} className="text-green-600" />
-                </div>
-                <h2 className="text-xl font-bold">Application Submitted!</h2>
-                <p className="text-gray-500 text-sm mt-2">
-                  We will contact you within 24 hours.
-                </p>
-                <button
-                  onClick={() => setSubmitted(false)}
-                  className="mt-6 px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-[#0F172A] font-black
-                    text-sm rounded-xl transition-all duration-200 uppercase tracking-wider"
-                >
+                <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center text-3xl mb-4">✅</div>
+                <h3 className="font-display text-xl font-bold text-gray-900 mb-2">Application Submitted!</h3>
+                <p className="text-gray-500 text-sm max-w-xs">Our team will review your details and contact you within 24–48 hours.</p>
+                <button onClick={reset} className="mt-6 px-6 py-2.5 bg-gray-900 hover:bg-amber-500 text-white text-sm font-bold rounded-xl transition-colors">
                   Submit Another
                 </button>
               </div>
             ) : (
               <>
-                <StepIndicator currentStep={currentStep} />
+                <Steps step={step} />
 
-                {currentStep === 1 && (
-                  <Step1
-                    formData={formData}
-                    onChange={handleChange}
-                    onNext={() => setCurrentStep(2)}
-                  />
+                {/* ── STEP 1: Personal ── */}
+                {step === 1 && (
+                  <div>
+                    <h2 className="font-display text-[18px] font-bold text-gray-900">Personal Information</h2>
+                    <p className="text-gray-400 text-[12px] mt-0.5 mb-5">Tell us who you are</p>
+
+                    <div className="mb-3.5">
+                      <Label required>Full Name</Label>
+                      <Input icon="👤" placeholder="Your full name" value={data.fullName} err={err.fullName}
+                        onChange={(e) => set("fullName", e.target.value)} />
+                    </div>
+
+                    <div className="mb-3.5">
+                      <Label required>Email Address</Label>
+                      <Input icon="✉️" type="email" placeholder="you@example.com" value={data.email} err={err.email}
+                        onChange={(e) => set("email", e.target.value)} />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 mb-3.5">
+                      <div>
+                        <Label required>Mobile Number</Label>
+                        <Input icon="📞" placeholder="10-digit number" value={data.mobile} err={err.mobile} maxLength={10}
+                          onChange={(e) => set("mobile", e.target.value.replace(/\D/g, ""))} />
+                      </div>
+                      <div>
+                        <Label required>WhatsApp Number</Label>
+                        <Input icon="💬" placeholder="10-digit number" value={data.whatsapp} err={err.whatsapp} maxLength={10}
+                          onChange={(e) => set("whatsapp", e.target.value.replace(/\D/g, ""))} />
+                      </div>
+                    </div>
+
+                    <button onClick={next}
+                      className="w-full mt-2 bg-gray-900 hover:bg-amber-500 text-white font-bold text-[13px] py-3 rounded-xl flex items-center justify-center gap-2 transition-all duration-200">
+                      Continue →
+                    </button>
+                  </div>
                 )}
-                {currentStep === 2 && (
-                  <Step2
-                    formData={formData}
-                    onChange={handleChange}
-                    onNext={() => setCurrentStep(3)}
-                    onBack={() => setCurrentStep(1)}
-                  />
+
+                {/* ── STEP 2: Address ── */}
+                {step === 2 && (
+                  <div>
+                    <h2 className="font-display text-[18px] font-bold text-gray-900">Address Information</h2>
+                    <p className="text-gray-400 text-[12px] mt-0.5 mb-5">We need your location details</p>
+
+                    <div className="mb-3.5">
+                      <Label required>Permanent Address</Label>
+                      <Textarea icon="📍" rows={2} placeholder="Enter your permanent address" value={data.permAddr} err={err.permAddr}
+                        onChange={(e) => set("permAddr", e.target.value)} />
+                    </div>
+
+                    {/* Shop Toggle */}
+                    <div
+                      onClick={() => set("haveShop", !data.haveShop)}
+                      className={`flex items-center gap-3 border-[1.5px] rounded-xl p-3.5 cursor-pointer mb-3.5 transition-all duration-200
+                        ${data.haveShop ? "border-amber-400 bg-amber-50" : "border-gray-200 bg-gray-50 hover:border-amber-300"}`}
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-base flex-shrink-0">🏪</div>
+                      <div className="flex-1">
+                        <div className="text-[13px] font-semibold text-gray-900">Do you have a shop?</div>
+                        <div className="text-[11px] text-gray-400">Physical retail location</div>
+                      </div>
+                      {/* Toggle switch */}
+                      <div className={`w-11 h-6 rounded-full relative transition-all duration-300 flex-shrink-0 ${data.haveShop ? "bg-amber-400" : "bg-gray-300"}`}>
+                        <div className={`absolute top-[3px] w-[18px] h-[18px] rounded-full bg-white shadow transition-all duration-300 ${data.haveShop ? "left-[22px]" : "left-[3px]"}`} />
+                      </div>
+                    </div>
+
+                    {data.haveShop && (
+                      <div className="mb-3.5">
+                        <Label required>Business Address</Label>
+                        <Textarea icon="🏪" rows={2} placeholder="Your shop / business address" value={data.shopAddr} err={err.shopAddr}
+                          onChange={(e) => set("shopAddr", e.target.value)} />
+                      </div>
+                    )}
+
+                    <div className="mb-4">
+                      <Label required>Delivery Address</Label>
+                      <Textarea icon="🚚" rows={2} placeholder="Where should we deliver your wholesale orders?" value={data.deliveryAddr} err={err.deliveryAddr}
+                        onChange={(e) => set("deliveryAddr", e.target.value)} />
+                    </div>
+
+                    <div className="flex gap-2.5">
+                      <button onClick={back} className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[13px] px-5 py-3 rounded-xl transition-colors">
+                        ← Back
+                      </button>
+                      <button onClick={next} className="flex-1 bg-gray-900 hover:bg-amber-500 text-white font-bold text-[13px] py-3 rounded-xl flex items-center justify-center gap-2 transition-all duration-200">
+                        Continue →
+                      </button>
+                    </div>
+                  </div>
                 )}
-                {currentStep === 3 && (
-                  <Step3
-                    formData={formData}
-                    onChange={handleChange}
-                    onFileChange={handleFileChange}
-                    onBack={() => setCurrentStep(2)}
-                    onSubmitSuccess={handleSubmitSuccess}
-                  />
+
+                {/* ── STEP 3: Business ── */}
+                {step === 3 && (
+                  <div>
+                    <h2 className="font-display text-[18px] font-bold text-gray-900">Business Information</h2>
+                    <p className="text-gray-400 text-[12px] mt-0.5 mb-5">Tell us about your business</p>
+
+                    <div className="grid grid-cols-2 gap-3 mb-3.5">
+                      <div>
+                        <Label required>Selling Place From</Label>
+                        <Input icon="🏠" placeholder="e.g. Home, Shop, Market" value={data.sellingPlace} err={err.sellingPlace}
+                          onChange={(e) => set("sellingPlace", e.target.value)} />
+                      </div>
+                      <div>
+                        <Label required>Selling Zone / City</Label>
+                        <Input icon="📍" placeholder="e.g. Delhi, Mumbai" value={data.sellingCity} err={err.sellingCity}
+                          onChange={(e) => set("sellingCity", e.target.value)} />
+                      </div>
+                    </div>
+
+                    <div className="mb-3.5">
+                      <Label required>Type of Inquiry</Label>
+                      <div className="relative flex items-center">
+                        <span className="absolute left-3 text-gray-400 text-sm pointer-events-none z-10">🔍</span>
+                        <select
+                          value={data.inquiryType}
+                          onChange={(e) => set("inquiryType", e.target.value)}
+                          className={inputCls(err.inquiryType) + " appearance-none cursor-pointer"}
+                        >
+                          <option value="">Select inquiry type...</option>
+                          <option value="wholesale">Wholesale Order</option>
+                          <option value="retail">Retail Order</option>
+                          <option value="bulk">Bulk / Custom Order</option>
+                          <option value="partnership">Business Partnership</option>
+                          <option value="other">Other</option>
+                        </select>
+                        <span className="absolute right-3 text-gray-400 pointer-events-none">▾</span>
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <Label required>Monthly Estimated Purchase (₹)</Label>
+                      <Input icon="₹" placeholder="e.g. 50000" type="number" value={data.monthlyPurchase} err={err.monthlyPurchase}
+                        onChange={(e) => set("monthlyPurchase", e.target.value)} />
+                    </div>
+
+                    {/* Doc banner */}
+                    <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 mb-4">
+                      <span className="text-blue-500 text-base">📄</span>
+                      <div>
+                        <p className="text-[12px] font-bold text-blue-700">Document Upload</p>
+                        <p className="text-[10px] text-blue-500">Accepted: PDF, JPG, JPEG, PNG, WEBP — max 10MB each</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <UploadBox
+                        label="ID Proof"
+                        subLabel="Aadhaar, PAN, Voter ID or Passport"
+                        file={data.idProof}
+                        err={err.idProof}
+                        setFile={(f) => set("idProof", f)}
+                      />
+                      <UploadBox
+                        label="Business Address Proof"
+                        subLabel="Utility bill, rent agreement or GST certificate"
+                        file={data.bizProof}
+                        err={err.bizProof}
+                        setFile={(f) => set("bizProof", f)}
+                      />
+                    </div>
+
+                    {submitErr && (
+                      <div className="flex items-center gap-2.5 bg-red-50 border border-red-200 text-red-700 text-[12px] px-4 py-3 rounded-xl mb-3">
+                        ⚠️ Failed to submit. Please try again or WhatsApp us directly.
+                      </div>
+                    )}
+
+                    <div className="flex gap-2.5">
+                      <button onClick={back} disabled={loading} className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[13px] px-5 py-3 rounded-xl transition-colors disabled:opacity-50">
+                        ← Back
+                      </button>
+                      <button onClick={submit} disabled={loading} className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold text-[13px] py-3 rounded-xl flex items-center justify-center gap-2 transition-all duration-200">
+                        {loading ? (
+                          <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> Submitting...</>
+                        ) : "✓ Submit Application"}
+                      </button>
+                    </div>
+                  </div>
                 )}
               </>
             )}
           </div>
-
         </div>
       </div>
     </div>
