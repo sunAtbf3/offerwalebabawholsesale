@@ -25,7 +25,7 @@ const SaleIsLive = () => {
       tag: 'on-sale',
       page,
       limit: 4,
-      _cb: '1',
+      // _cb: '1',
     });
 
   const hasMore = data?.hasNextPage ?? false;
@@ -77,7 +77,7 @@ const SaleIsLive = () => {
             <Zap size={14} className="text-[#F59E0B]" fill="currentColor" />
           </p>
           </div>
-          <Link to="/on-sale"
+          <Link to="/TagProducts/on-sale"
   className="w-full sm:w-auto text-center flex items-center justify-center gap-2 text-xs sm:text-sm font-bold text-yellow-500 uppercase tracking-widest bg-white px-4 py-2 rounded-lg transition-all cursor-pointer shadow-sm hover:bg-yellow-500 hover:text-white">View All</Link>
           </div>
       </div>

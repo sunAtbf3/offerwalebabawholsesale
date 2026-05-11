@@ -146,6 +146,18 @@ const WholesaleProductDetail = () => {
   const [isMobile, setIsMobile]       = useState(false);
   const [isVisible, setIsVisible]     = useState(false);
   const [qty, setQty]                 = useState(1);
+  const volumetricWeight =
+  product?.shipping?.dimensions?.length &&
+  product?.shipping?.dimensions?.width &&
+  product?.shipping?.dimensions?.height
+    ? (
+        (
+          product.shipping.dimensions.length *
+          product.shipping.dimensions.width *
+          product.shipping.dimensions.height
+        ) / 5000
+      ).toFixed(2)
+    : null;
   const [localLoading, setLocalLoading] = useState({
     add: false, update: false, remove: false, wishlist: false,
   });
@@ -313,7 +325,15 @@ const WholesaleProductDetail = () => {
   const leadTime      = product?.leadTime ?? "3–5 days";
   const returnPolicy  = product?.returnPolicy ?? "7 days";
   const title         = product?.title || product?.name || "Product";
-  const rating        = product?.rating?.value ?? product?.rating ?? 4.5;
+  // const rating        = product?.rating?.value ?? product?.rating ?? 4.5;
+  const rating =
+  typeof product?.rating === "object"
+    ? (
+        typeof product?.rating?.value === "object"
+          ? product?.rating?.value?.value
+          : product?.rating?.value
+      ) ?? 4.5
+    : product?.rating ?? 4.5;
   const ratingCnt     = product?.rating?.count ?? product?.reviewCount ?? 0;
   const soldInfo      = product?.soldInfo?.count ?? product?.soldCount ?? 0;
   const brand         = product?.brand ?? null;
@@ -533,6 +553,12 @@ const WholesaleProductDetail = () => {
               <span>Length</span><span>{product.shipping.dimensions?.length} cm</span>
               <span>Width</span><span>{product.shipping.dimensions?.width} cm</span>
               <span>Height</span><span>{product.shipping.dimensions?.height} cm</span>
+          {volumetricWeight && (
+  <>
+    <span>Vol. Weight</span>
+    <span>{volumetricWeight} kg</span>
+  </>
+)}
             </div>
           </div>
         )}
@@ -606,11 +632,11 @@ const WholesaleProductDetail = () => {
             </div>
             <div>
               <span className="text-gray-500">Sell at</span>
-              <div className="text-gray-900 font-extrabold text-lg">{sellingPriceRange ?? "—"}</div>
+              <div className="text-gray-900 font-extrabold text-lg">{sellingPriceRange?.value ?? "—"}</div>
             </div>
             <div>
               <span className="text-gray-500">Earn per unit</span>
-              <div className="text-green-700 font-extrabold text-lg">{earnPerUnit ?? "—"}</div>
+              <div className="text-green-700 font-extrabold text-lg">{earnPerUnit?.value ?? earnPerUnit ?? "—"}</div>
             </div>
             <div>
               <span className="text-gray-500">Margin</span>
@@ -898,12 +924,34 @@ const WholesaleProductDetail = () => {
                     </span>
                   )}
                 </div>
-                {(sellingPriceRange || earnPerUnit) && (
-                  <div className="text-xs text-gray-600">
-                    {sellingPriceRange && <>Sell at <span className="font-bold text-gray-800">{sellingPriceRange}</span>{" "}</>}
-                    {earnPerUnit && <>· Earn <span className="font-bold text-green-700">{earnPerUnit}</span>/unit</>}
-                  </div>
-                )}
+              {(sellingPriceRange || earnPerUnit) && (
+  <div className="text-xs text-gray-600">
+
+    {sellingPriceRange && (
+      <>
+        Sell at{" "}
+        <span className="font-bold text-gray-800">
+          {typeof sellingPriceRange === "object"
+            ? sellingPriceRange?.value
+            : sellingPriceRange}
+        </span>{" "}
+      </>
+    )}
+
+    {earnPerUnit && (
+      <>
+        · Earn{" "}
+        <span className="font-bold text-green-700">
+          {typeof earnPerUnit === "object"
+            ? earnPerUnit?.value
+            : earnPerUnit}
+        </span>
+        /unit
+      </>
+    )}
+
+  </div>
+)}
               </div>
 
               {/* Volume pricing */}

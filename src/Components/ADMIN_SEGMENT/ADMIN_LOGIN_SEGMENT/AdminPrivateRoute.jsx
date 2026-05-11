@@ -30,7 +30,7 @@ import {
   selectAdminUser,
 }                                from "../ADMIN_REDUX_MANAGEMENT/adminAuthSlice";
 import { ROLES }                 from "../roles";
-import { WHOLESALE_ADMIN_ACCESS_TOKEN_KEY } from "../../../SERVICES/wholesaleAxios";
+import { WHOLESALE_ADMIN_ACCESS_TOKEN_KEY } from "../../../SERVICES/Wholesaleaxios";
 
 const VALID_ADMIN_ROLES = Object.values(ROLES); // all roles from roles.js
 const USER_ROLE         = "user";               // regular customer role

@@ -139,6 +139,10 @@ const CategorySection = ({ slug, title }) => {
   const initialLoad  = isFetching && products.length === 0;
   const loadingMore  = isFetching && products.length > 0;
 
+  useEffect(()=>{
+    window.scrollTo({top:0, behavior: "smooth"})
+  },[])
+
   const loadMore = () => {
     if (isFetching || loadingMoreRef.current || !hasNextPage) return;
     loadingMoreRef.current = true;
@@ -241,7 +245,7 @@ const CategorySection = ({ slug, title }) => {
           ) : (
             // /* EMPTY STATE */
             <div className="py-20 text-center">
-              <p className="text-sm text-muted mb-4">No products found</p>
+              <p className="text-sm text-muted mb-4">Coming Soon...</p>
               <button
                 onClick={() => navigate('/')}
                 className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold bg-black text-white rounded-lg hover:opacity-80 transition"

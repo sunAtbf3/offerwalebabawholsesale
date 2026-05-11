@@ -1,7 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { adminAuthApi } from './adminAuthApi';
 import { ROLES } from '../roles';
-import { WHOLESALE_ADMIN_ACCESS_TOKEN_KEY } from '../../../SERVICES/wholesaleAxios';
+import { WHOLESALE_ADMIN_ACCESS_TOKEN_KEY } from '../../../SERVICES/Wholesaleaxios';
 
 const VALID_ROLES = Object.values(ROLES);
 

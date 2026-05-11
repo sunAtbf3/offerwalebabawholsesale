@@ -156,6 +156,9 @@ const TagProducts = () => {
 
     return arr;
   }, [filteredProducts, filters.sort]);
+  useEffect(()=>{
+    window.scrollTo({ top: 0, behavior:"smooth"})
+  })
 
   // ───────── HANDLERS ─────────
   const toggleFilter = (type, value) => {
@@ -196,7 +199,7 @@ return (
 
       {/* ───────── SIDEBAR ───────── */}
       <aside className={`
-    fixed lg:static top-0 right-0 h-full w-[85%] max-w-[320px] bg-white z-[999]
+    fixed lg:static top-0 right-0 h-full w-[85%] max-w-[320px] bg-white
     transform transition-transform duration-300
     ${isFilterOpen ? "translate-x-0" : "translate-x-full"}
     lg:translate-x-0 lg:w-64 lg:h-screen

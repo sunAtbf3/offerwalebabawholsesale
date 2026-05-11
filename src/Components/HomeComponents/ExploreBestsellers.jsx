@@ -19,7 +19,7 @@ const ExploreBestsellers = () => {
 
   const { data: apiData, isFetching } = useGetFeaturedProductsQuery({
     page,
-    limit: 8,
+    limit: 6,
   });
 
   // ── Sync products safely (pagination aware) ─────────────
@@ -66,10 +66,6 @@ const ExploreBestsellers = () => {
             Best bulk pricing tiers for your business
           </p>
         </div>
-
-        <button className="text-[12px] font-bold text-gold-dark flex items-center gap-1 hover:text-gold transition-colors">
-          VIEW ALL <ArrowRight size={14} />
-        </button>
       </div>
 
       {/* GRID */}

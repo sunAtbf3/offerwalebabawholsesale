@@ -5,7 +5,7 @@ import {
   previewCSV, importWithUrls, importWithZip,
   setImageMode, setCsvFile, setZipFile, goToStep, resetBulkUpload,
 } from '../ADMIN_REDUX_MANAGEMENT/bulkUploadSlice';
-import wholesaleAxios from "../../../SERVICES/wholesaleAxios";
+import wholesaleAxios from "../../../SERVICES/Wholesaleaxios";
 // ─── helpers ─────────────────────────────────────────────────
 const fmt = (n) => Number(n || 0).toLocaleString();
 

@@ -24,7 +24,7 @@ const TodayArrival = () => {
     useGetProductsByTagQuery({
       tag: 'today-arrival',
       page,
-      limit: 8,
+      limit: 22,
       _cb: '1',
     });
 
@@ -41,6 +41,12 @@ const TodayArrival = () => {
       );
     }
   }, [data, dispatch]);
+//   useEffect(() => {
+//   return () => {
+//     dispatch(clearTagProducts('on-sale'));
+//     dispatch(setPageForTag({ tag: 'on-sale', page: 1 }));
+//   };
+// }, []);
 
   const handleLoadMore = () => {
     dispatch(setPageForTag({ tag: 'today-arrival', page: page + 1 }));
@@ -78,7 +84,7 @@ const TodayArrival = () => {
                     <Zap size={14} className="text-[#F59E0B]" fill="currentColor" />
                   </p>
                   </div>
-                  <Link to="/today-arrival" className='w-full sm:w-auto text-center flex items-center justify-center gap-2 text-xs sm:text-sm font-bold text-yellow-500 uppercase tracking-widest bg-white px-4 py-2 rounded-lg transition-all cursor-pointer shadow-sm hover:bg-yellow-500 hover:text-white'>View All</Link>
+                  <Link to="/TagProducts/today-arrival" className='w-full sm:w-auto text-center flex items-center justify-center gap-2 text-xs sm:text-sm font-bold text-yellow-500 uppercase tracking-widest bg-white px-4 py-2 rounded-lg transition-all cursor-pointer shadow-sm hover:bg-yellow-500 hover:text-white'>View All</Link>
                   </div>
       </div>
 

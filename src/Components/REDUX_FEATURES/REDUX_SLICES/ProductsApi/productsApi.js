@@ -5,7 +5,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { createApi } from "@reduxjs/toolkit/query/react";
-import wholesaleAxios from "../../../../SERVICES/wholesaleAxios";    //right path
+import wholesaleAxios from "../../../../SERVICES/Wholesaleaxios";    //right path
 
 // ── Custom baseQuery wrapping wholesaleAxios ──────────────────────────────────
 const axiosBaseQuery =

@@ -10,6 +10,7 @@ import { openModal } from '../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerSl
 import { logout, selectUser, selectIsAuthenticated } from '../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
 import { useLogoutMutation } from '../REDUX_FEATURES/REDUX_SLICES/authApi/authApi';
 import LOGO from "../../assets/logo2.png";
+import LOGO2 from "../../assets/home (3).png";
 // import { selectDisplayedData } from 'recharts/types/state/selectors/axisSelectors';
 import { selectDisplayCartCount } from '../REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice';
 import WholesaleCartSidebar from '../HomeComponents/Sidebar/CartSidebar';
@@ -227,7 +228,8 @@ const handleOpenAuth = () => {
     { label: "Baby Items", path: "/category/baby-items" },
     { label: "Car Accessories", path: "/category/car-accessories" },
     { label: "Cleaning Supplies", path: "/category/mix-items-daily-use" },
-    { label: "Gifts", path: "/category/gifts" }
+    { label: "Gifts", path: "/category/gifts" },
+    { label: "Mix-Items-daily-use", path: "/category/mix-items-daily-use" }
   ];
  
   useEffect(() => {
@@ -255,7 +257,7 @@ const handleOpenAuth = () => {
         </div>
         <div className="flex gap-6 items-center">
           <a href="#" className="hover:text-amber-500 transition-colors">Taxes & Invoicing</a>
-          <a href="#" className="hover:text-amber-500 transition-colors text-amber-500">Support: +1 800-WHOLESALE</a>
+          <a href="#" className="hover:text-amber-500 transition-colors text-amber-500">Support: +91 93706 86008</a>
         </div>
       </div>
 
@@ -264,14 +266,45 @@ const handleOpenAuth = () => {
         <div className="max-w-[1440px] mx-auto px-4 lg:px-10 flex items-center justify-between gap-2 lg:gap-10">
           
           {/* Logo Section */}
-          <div className="flex-shrink-0 flex items-center cursor-pointer min-w-[120px] lg:min-w-[180px]">
-            <img
-              src={LOGO}
-              alt="Offer Wale Baba"
-              onClick={() => window.location.href = "/"}
-              className={`transition-all duration-500 ease-in-out object-contain ${scrolled ? 'h-10 lg:h-14' : 'h-14 lg:h-24'}`}
-            />
-          </div>
+         <div
+  className="relative flex-shrink-0 flex items-center cursor-pointer min-w-[120px] lg:min-w-[180px]"
+  onClick={() => (window.location.href = "/")}
+>
+
+  {/* LOGO */}
+  <img
+    src={LOGO}
+    alt="Offer Wale Baba"
+    className={`
+      transition-all duration-500 ease-in-out object-contain
+      ${scrolled ? "h-10 lg:h-14" : "h-14 lg:h-24"}
+    `}
+  />
+
+  {/* TOP RIGHT LABEL */}
+  <div
+    className="
+      absolute
+      top-1
+      right-0
+      hidden lg:flex
+      items-center
+      rounded-full
+      border border-amber-500/30
+      bg-amber-50
+      px-3
+      py-[4px]
+      text-[9px]
+      font-bold
+      uppercase
+      tracking-[2px]
+      text-amber-600
+      shadow-sm
+    "
+  >
+    Wholesale
+  </div>
+</div>
 
           {/* Desktop Search */}
           <div className="hidden md:flex flex-grow max-w-2xl relative group items-center">
@@ -434,49 +467,132 @@ const handleOpenAuth = () => {
       </div>
 
       {/* DESKTOP CATEGORY BAR */}
-      <div className="bg-white border-b border-slate-100 hidden lg:block shadow-sm">
-        <div className="max-w-[1440px] mx-auto px-10 flex items-center">
-          <div
-            className="relative"
-            onMouseEnter={() => setIsMegaMenuOpen(true)}
-            onMouseLeave={() => setIsMegaMenuOpen(false)}
-          >
-            <button className={`flex items-center gap-3 px-8 py-4 text-sm font-black transition-all uppercase tracking-wider ${isMegaMenuOpen ? 'bg-amber-500 text-[#0F172A]' : 'bg-[#0F172A] text-white'}`}>
-              <Menu size={18} /> All Categories
-            </button>
+   <div className="bg-white border-b border-slate-100 hidden lg:block shadow-sm">
+  <div className="max-w-[1440px] mx-auto px-10 flex items-center justify-between">
 
-            <div className={`absolute top-full left-0 w-[800px] bg-white shadow-2xl rounded-br-[2.5rem] border-x border-b border-slate-100 p-10 transition-all duration-300 origin-top ${isMegaMenuOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-4'}`}>
-              <div className="grid grid-cols-2 gap-x-12 gap-y-4">
-                {categories.map((category, idx) => (
-                  <a
-                    key={idx}
-                    href={category.path}
-                    className="flex items-center gap-4 p-3 rounded-2xl hover:bg-amber-50 transition-all group"
-                  >
-                    <div className="w-1.5 h-1.5 rounded-full bg-slate-300 group-hover:bg-amber-500 group-hover:scale-150 transition-all"></div>
-                    <span className="text-sm font-bold text-slate-700 group-hover:text-amber-600 uppercase tracking-tight">
-                      {category.label}
-                    </span>
-                  </a>
-                ))}
-              </div>
-            </div>
-          </div>
+    {/* LEFT NAV */}
+    <div className="flex items-center">
 
-          <div className="flex items-center gap-8 ml-10 overflow-hidden">
-            {directCategoryLinks.map((link) => (
-              <a
-                key={link}
-                href="#"
-                className="text-[11px] font-black text-slate-600 hover:text-amber-600 transition-colors uppercase tracking-widest relative group py-5 whitespace-nowrap"
+      {/* HOME */}
+      <Link
+        to="/"
+        className="
+          px-6 py-5 text-sm font-black uppercase tracking-wider
+          text-slate-700 hover:text-amber-500
+          transition-all duration-300 flex items-center gap-2
+        "
+      >
+         <img className='w-4 h-4 object-cover animate-bounce' src={LOGO2} alt="" />  Home
+      </Link>
+
+      {/* ABOUT */}
+      <Link
+        to="/wholesale/about"
+        className="
+          px-6 py-5 text-sm font-black uppercase tracking-wider
+          text-slate-700 hover:text-amber-500
+          transition-all duration-300
+        "
+      >
+        About
+      </Link>
+
+      {/* DISCOVER PRODUCTS */}
+      <div
+        className="relative"
+        onMouseEnter={() => setIsMegaMenuOpen(true)}
+        onMouseLeave={() => setIsMegaMenuOpen(false)}
+      >
+        <button
+          className={`
+            flex items-center gap-3 px-8 py-5 text-sm font-black
+            uppercase tracking-wider transition-all duration-300
+            ${
+              isMegaMenuOpen
+                ? "bg-amber-500 text-[#0F172A]"
+                : "text-slate-700 hover:text-amber-500"
+            }
+          `}
+        >
+          Discover Products
+        </button>
+
+        {/* MEGA MENU */}
+        <div
+          className={`
+            absolute top-full left-0 w-[800px]
+            bg-white shadow-2xl rounded-br-[2.5rem]
+            border-x border-b border-slate-100
+            p-10 transition-all duration-300 origin-top z-50
+            ${
+              isMegaMenuOpen
+                ? "opacity-100 visible translate-y-0"
+                : "opacity-0 invisible -translate-y-4"
+            }
+          `}
+        >
+          <div className="grid grid-cols-2 gap-x-12 gap-y-4">
+            {categories.map((category, idx) => (
+              <Link
+                key={idx}
+                to={category.path}
+                className="
+                  flex items-center gap-4 p-3 rounded-2xl
+                  hover:bg-amber-50 transition-all group
+                "
               >
-                {link}
-                <span className="absolute bottom-4 left-0 w-0 h-0.5 bg-amber-500 group-hover:w-full transition-all duration-300"></span>
-              </a>
+                <div
+                  className="
+                    w-1.5 h-1.5 rounded-full bg-slate-300
+                    group-hover:bg-amber-500
+                    group-hover:scale-150 transition-all
+                  "
+                />
+
+                <span
+                  className="
+                    text-sm font-bold text-slate-700
+                    group-hover:text-amber-600
+                    uppercase tracking-tight
+                  "
+                >
+                  {category.label}
+                </span>
+              </Link>
             ))}
           </div>
         </div>
       </div>
+
+      {/* CONTACT */}
+      <Link
+        to="/contact"
+        className="
+          px-6 py-5 text-sm font-black uppercase tracking-wider
+          text-slate-700 hover:text-amber-500
+          transition-all duration-300
+        "
+      >
+        Contact Us
+         </Link>
+    </div>
+
+    {/* OPTIONAL RIGHT SIDE */}
+    <div className="flex items-center gap-4">
+      <button
+        className="
+          px-7 py-3 rounded-full
+          bg-amber-500 text-[#0F172A]
+          text-sm font-black uppercase tracking-wider
+          hover:bg-amber-400
+          transition-all duration-300
+        "
+      >
+        Start Shopping
+      </button>
+    </div>
+  </div>
+</div>
     </nav>
       <WholesaleCartSidebar
         isOpen={isCartOpen}
@@ -502,7 +618,7 @@ const handleOpenAuth = () => {
 export default Navbar;
 // try to fix the flicking issue of navbar 
 
-// import React, { useState, useEffect } from 'react';
+//  import React, { useState, useEffect } from 'react';
 // import {
 //   Search, ShoppingCart, Heart, MapPin,
 //   User, ChevronDown, Menu, X, LogOut,

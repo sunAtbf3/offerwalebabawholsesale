@@ -13,7 +13,7 @@
 
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 // import axiosInstance from "../../../SERVICES/wholesaleAxios";
-import wholesaleAxios from "../../../SERVICES/wholesaleAxios";
+import wholesaleAxios from "../../../SERVICES/Wholesaleaxios";
 
 // CRITICAL: backend checks if (!price.base) — rejects 0, undefined, missing key
 const toNum = (raw) => {

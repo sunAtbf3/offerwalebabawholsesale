@@ -2,7 +2,7 @@
 // REDUX_SLICES/authApi/authSlice.js
 import { createSlice } from '@reduxjs/toolkit';
 import { authApi } from './authApi';
-import { WHOLESALE_USER_ACCESS_TOKEN_KEY } from '../../../../SERVICES/wholesaleAxios';
+import { WHOLESALE_USER_ACCESS_TOKEN_KEY } from '../../../../SERVICES/Wholesaleaxios';
 
 const logError = (context, error) => {
   console.error(`[authSlice][${context}]`, {

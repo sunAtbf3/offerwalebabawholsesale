@@ -19,9 +19,6 @@ const ShopByWholesalePrice = () => {
           </h2>
           <p className="text-[12px] text-muted mt-1 ml-3">Best bulk pricing tiers for your business</p>
         </div>
-        <button className="text-[12px] font-bold text-gold-dark flex items-center gap-1 hover:text-gold transition-colors">
-          VIEW ALL <ArrowRight size={14} />
-        </button>
       </div>
 
       {/* Top Row — 4 cards */}

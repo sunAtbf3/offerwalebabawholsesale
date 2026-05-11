@@ -2,7 +2,7 @@ import { createApi } from '@reduxjs/toolkit/query/react';
 import wholesaleAxios, {
   WHOLESALE_ADMIN_ACCESS_TOKEN_KEY,
   AUTH_CONTEXT_ADMIN,
-} from '../../../SERVICES/wholesaleAxios';
+} from '../../../SERVICES/Wholesaleaxios';
 import { ROLES } from '../../ADMIN_SEGMENT/roles';
 
 const ADMIN_ROLES = Object.values(ROLES);

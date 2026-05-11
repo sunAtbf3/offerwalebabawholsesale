@@ -1,7 +1,7 @@
 // ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/wholesalerApi.js
 
 import { createApi } from '@reduxjs/toolkit/query/react';
-import wholesaleAxios from "../../../../SERVICES/wholesaleAxios";
+import wholesaleAxios from "../../../../SERVICES/Wholesaleaxios";
 
 const logError = (context, error) => {
   console.error(`[wholesalerApi] ${context}`, {

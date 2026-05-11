@@ -3,7 +3,7 @@
 
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 // import axiosInstance from "../../../SERVICES/wholesaleAxios";
-import wholesaleAxios from "../../../SERVICES/wholesaleAxios"; // adjust path
+import wholesaleAxios from "../../../SERVICES/Wholesaleaxios"; // adjust path
 
 // ─────────────────────────────────────────────────────────────
 //  ASYNC THUNKS

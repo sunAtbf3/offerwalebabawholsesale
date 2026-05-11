@@ -512,13 +512,10 @@ const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
           <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-[#F7A221]/5 to-transparent">
             <div className="flex items-center gap-2">
               <Search size={20} className="text-[#F7A221]" />
-              <h2 className="text-lg font-black uppercase tracking-tighter">
-                Search Wholesale Products
+              <h2 className="text-lg font-black ml-10 uppercase tracking-tighter">
+                Search Products
               </h2>
               {/* Wholesale channel indicator */}
-              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
-                WHOLESALE ONLY
-              </span>
             </div>
             <button
               onClick={onClose}

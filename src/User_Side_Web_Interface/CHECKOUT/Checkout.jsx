@@ -20,24 +20,24 @@ import {
   getRazorpayKey, selectRazorpayKey, selectRazorpayKeyLoading,
   selectRazorpayKeyError, verifyRazorpayPayment,
   selectPaymentVerification, resetPaymentVerification,
-} from "../../Components/REDUX_FEATURES/REDUX_SLICES/checkoutSlice/checkoutSlice";
+} from "../../components/REDUX_FEATURES/REDUX_SLICES/checkoutSlice/checkoutSlice";
 
 // Redux — address
 import {
   selectDefaultAddress, selectOtherAddresses,
   addAddress, selectAddressLoading, selectAddressError,
   clearAddressErrors,
-} from "../../Components/REDUX_FEATURES/REDUX_SLICES/Useraddressslice";
+} from "../../components/REDUX_FEATURES/REDUX_SLICES/Useraddressslice";
 
 // Redux — cart
 import {
   selectCartItems, selectDisplayCartCount,
   updateCartItem, removeCartItem,
   selectCartLoading,
-} from "../../Components/REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice";
+} from "../../components/REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice";
 
 // Redux — auth
-import { selectUser } from "../../Components/REDUX_FEATURES/REDUX_SLICES/authApi/authSlice";
+import { selectUser } from "../../components/REDUX_FEATURES/REDUX_SLICES/authApi/authSlice";
 
 // Components
 import AddressSelector from "./AddressSelector/AddressSelector";
@@ -230,20 +230,14 @@ const OrderSummaryCard = ({
   const delivery = quote?.deliveryCharges ?? 0;
   const gst = quote?.taxes ?? 0;
   const total = quote?.amountPayable ?? subtotal;
-  console.log(cartItems);
-  
+
   const handleUpdateQty = useCallback(async (item, delta) => {
     const productId = String(item.productId?._id || item.productId);
     const variantId = String(item.variantId);
     const newQty = item.quantity + delta;
     const key = `${productId}-${variantId}`;
-     const variant = item.product?.variants?.find(
-  v => String(v._id) === variantId
-) ?? item.product?.variants?.[0];
 
-const moq = variant?.minimumOrderQuantity ?? 1; // ← get MOQ from variant
-
-    if (newQty < moq) return; // use remove for qty = 0
+    if (newQty < 1) return; // use remove for qty = 0
     setUpdatingId(key);
     try {
       await dispatch(updateCartItem({
@@ -389,14 +383,14 @@ const moq = variant?.minimumOrderQuantity ?? 1; // ← get MOQ from variant
                       }}>
                       <button
                         onClick={() => handleUpdateQty(item, -1)}
-                        disabled={isUpdating || item.quantity <= item.moq}
+                        disabled={isUpdating || item.quantity <= 1}
                         className="flex items-center justify-center cursor-pointer transition-all active:scale-95"
                         style={{
                           width: 24, height: 24, borderRadius: 6,
-                          background: item.quantity <= item.moq ? "#f9f9f9" : "#f0e8d8",
+                          background: item.quantity <= 1 ? "#f9f9f9" : "#f0e8d8",
                           border: "none",
-                          opacity: isUpdating || item.quantity <= item.moq ? 0.4 : 1,
-                          cursor: item.quantity <= item.moq ? "not-allowed" : "pointer",
+                          opacity: isUpdating || item.quantity <= 1 ? 0.4 : 1,
+                          cursor: item.quantity <= 1 ? "not-allowed" : "pointer",
                         }}
                       >
                         <Minus size={10} style={{ color: "#111" }} />
@@ -505,12 +499,12 @@ const Checkout = () => {
 
   // ── Local state ────────────────────────────────────────────────────────────
   const [step, setStep] = useState(1);
+  const [showAdvanceDropdown, setShowAdvanceDropdown] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [showRazorpay, setShowRazorpay] = useState(false);
   const [razorpayOrderData, setRazorpayOrderData] = useState(null);
   const [paymentError, setPaymentError] = useState(null);
   const [showPaymentErrorModal, setShowPaymentErrorModal] = useState(false);
-  const [isConfirmingOrder, setIsConfirmingOrder] = useState(false);
 
   // Payment state machine
   const [razorpayPaymentState, setRazorpayPaymentState] = useState(PAYMENT_STATE.IDLE);
@@ -581,6 +575,16 @@ const Checkout = () => {
       toast.error(e?.message || "Could not get delivery quote", { theme: "dark" });
     }
   };
+  const getPartialAmount = () => {
+  const total = quote?.amountPayable ?? 0;
+
+  switch (paymentPlan) {
+    case "advance": return Math.round(total * 0.25);
+    case "half": return Math.round(total * 0.5);
+    case "seventy": return Math.round(total * 0.75);
+    default: return total;
+  }
+};
 
   const handleQuoteRefreshAfterCartMutation = useCallback(async () => {
     checkoutAttemptKeyRef.current = null;
@@ -660,112 +664,94 @@ const Checkout = () => {
   };
 
   // ── Place order — guarded against double-fire ─────────────────────────────
- const handlePlaceOrder = async () => {
-  if (placeOrderInFlight.current || isPlacingOrder) return;
-  if (!quoteId || !selectedAddressId) {
-    toast.error("Missing quote or address. Please refresh.", { theme: "dark" });
-    return;
-  }
-  if (!paymentMethod) {
-    toast.error("Please select a payment method before placing your order.", { theme: "dark" });
-    return;
-  }
+  const handlePlaceOrder = async () => {
+    // Guard: prevent double-click / multiple calls
+    if (placeOrderInFlight.current || isPlacingOrder) return;
+    if (!quoteId || !selectedAddressId) {
+      toast.error("Missing quote or address. Please refresh.", { theme: "dark" });
+      return;
+    }
+    if (!paymentMethod) {
+      toast.error("Please select a payment method before placing your order.", { theme: "dark" });
+      return;
+    }
 
-  placeOrderInFlight.current = true;
-  setIsPlacingOrder(true);
+    placeOrderInFlight.current = true;
+    setIsPlacingOrder(true);
 
-  try {
-    const idempotencyKey =
-      checkoutAttemptKeyRef.current || createCheckoutAttemptKey();
-    checkoutAttemptKeyRef.current = idempotencyKey;
+    try {
+      const idempotencyKey =
+        checkoutAttemptKeyRef.current || createCheckoutAttemptKey();
+      checkoutAttemptKeyRef.current = idempotencyKey;
 
-    // Step 1: Confirm quote
-    const confirmResult = await dispatch(confirmCheckoutQuote({
-      quoteId, paymentMethod, paymentPlan,
-    })).unwrap();
+      // Step 1: Confirm quote
+      const confirmResult = await dispatch(confirmCheckoutQuote({
+        quoteId, paymentMethod, paymentPlan,
+      })).unwrap();
 
-    // Step 2: Place order
-    const orderResult = await dispatch(placeOrder({
-      addressId: selectedAddressId,
-      paymentMethod,
-      quoteId: confirmResult.quoteId || quoteId,
-      onlinePaymentMode: paymentPlan,
-      idempotencyKey,
-    })).unwrap();
+      // Step 2: Place order
+      const orderResult = await dispatch(placeOrder({
+        addressId: selectedAddressId,
+        paymentMethod,
+        quoteId: confirmResult.quoteId || quoteId,
+        onlinePaymentMode: paymentPlan,
+        idempotencyKey,
+      })).unwrap();
 
-    // Step 3: Handle by payment method
-    if (paymentMethod === "cod") {
-      // Keep loader visible for 2 seconds to simulate "processing"
-      await new Promise(resolve => setTimeout(resolve, 4000))
-
-      toast.success("🎉 Order placed successfully!", { theme: "dark", autoClose: 3000 });
-      checkoutAttemptKeyRef.current = null;
-      dispatch(resetCheckout());
-navigate("/account/userorders", {
-  state: { justPlaced: true }
-});    } else if (paymentMethod === "online") {
-      if (!orderResult.razorpayOrder) {
-        throw new Error("Failed to initiate payment. Please try again.");
+      // Step 3: Handle by payment method
+      if (paymentMethod === "cod") {
+              await new Promise(resolve => setTimeout(resolve, 4000))
+        toast.success("🎉 Order placed successfully!", { theme: "dark", autoClose: 3000 });
+        checkoutAttemptKeyRef.current = null;
+        setTimeout(() => {
+          dispatch(resetCheckout());
+          navigate("/account/userorders", {
+            state: { justPlaced: true }
+          });
+        }, 1500);
+      } else if (paymentMethod === "online") {
+        if (!orderResult.razorpayOrder) {
+          throw new Error(
+            orderResult.razorpayErrorDetail?.description ||
+            "Failed to initiate payment. Please try again."
+          );
+        }
+        if (!razorpayKey && !razorpayKeyLoading) {
+          await dispatch(getRazorpayKey()).unwrap();
+        }
+        if (!razorpayKey && razorpayKeyError) {
+          throw new Error("Payment gateway not configured. Please use COD.");
+        }
+        setRazorpayPaymentState(PAYMENT_STATE.IDLE);
+        setRazorpayOrderData(orderResult.razorpayOrder);
+        setShowRazorpay(true);
       }
-      setRazorpayPaymentState(PAYMENT_STATE.IDLE);
-      setRazorpayOrderData(orderResult.razorpayOrder);
-      setShowRazorpay(true);
+    } catch (e) {
+      const msg = e?.message || "Failed to place order";
+      if (isQuoteRefreshError(e?.code)) {
+        checkoutAttemptKeyRef.current = null;
+        toast.info(msg, { theme: "dark" });
+        dispatch(fetchCheckoutQuote({
+          addressId: selectedAddressId,
+          paymentMethodHint: paymentMethod || undefined,
+        }));
+      } else if (e?.code === "IDEMPOTENCY_REQUEST_IN_PROGRESS") {
+        toast.info("Your order is already being processed. Please wait a moment.", { theme: "dark" });
+      } else if (e?.code === "IDEMPOTENCY_KEY_REUSED") {
+        checkoutAttemptKeyRef.current = null;
+        toast.error("Checkout session changed. Please place the order again.", { theme: "dark" });
+      } else if (e?.code === "MISSING_RAZORPAY_ENV") {
+        toast.error("Payment not configured. Please use COD for now.", { theme: "dark" });
+      } else {
+        toast.error(msg, { theme: "dark" });
+      }
+      setPaymentError(msg);
+      setShowPaymentErrorModal(true);
+    } finally {
+      setIsPlacingOrder(false);
+      placeOrderInFlight.current = false;
     }
-  } catch (e) {
-    const msg = e?.message || "Failed to place order";
-    toast.error(msg, { theme: "dark" });
-    setPaymentError(msg);
-    setShowPaymentErrorModal(true);
-  } finally {
-    setIsPlacingOrder(false);
-    placeOrderInFlight.current = false;
-  }
-};
-const handleConfirmOrder = async () => {
-  if (!quoteId || !selectedAddressId || !paymentMethod) return;
-
-  setIsConfirmingOrder(true);
-
-  try {
-    // Simulate backend processing / loader for 2 seconds
-    await new Promise(resolve => setTimeout(resolve, 8000));
-
-    // Dispatch place order action
-    const idempotencyKey =
-      checkoutAttemptKeyRef.current || createCheckoutAttemptKey();
-    checkoutAttemptKeyRef.current = idempotencyKey;
-
-    const orderResult = await dispatch(placeOrder({
-      addressId: selectedAddressId,
-      paymentMethod,
-      quoteId,
-      onlinePaymentMode: paymentPlan,
-      idempotencyKey,
-    })).unwrap();
-
-    // COD success
-    if (paymentMethod === "cod") {
-      toast.success("🎉 Order confirmed!", { theme: "dark", autoClose: 8000 });
-      navigate("/account/userorders");
-      dispatch(resetCheckout());
-      navigate("/account/userorders", {
-  state: { justPlaced: true }
-}
-);
-    }
-
-    // Online payment
-    if (paymentMethod === "online") {
-      setRazorpayOrderData(orderResult.razorpayOrder);
-      setShowRazorpay(true);
-      setRazorpayPaymentState(PAYMENT_STATE.IDLE);
-    }
-  } catch (e) {
-    toast.error(e?.message || "Could not confirm order", { theme: "dark" });
-  } finally {
-    setIsConfirmingOrder(false);
-  }
-};
+  };
 
   // ── Razorpay callbacks ─────────────────────────────────────────────────────
 
@@ -787,8 +773,10 @@ const handleConfirmOrder = async () => {
       setRazorpayPaymentState(PAYMENT_STATE.VERIFIED);
       checkoutAttemptKeyRef.current = null;
       toast.success("🎉 Payment verified! Order confirmed.", { theme: "dark", autoClose: 3000 });
-      navigate("/account/userorders");
-  setTimeout(() => dispatch(resetCheckout()), 100);
+      setTimeout(() => {
+        dispatch(resetCheckout());
+        navigate("/account/userorders");
+      }, 1500);
     } catch (err) {
       setRazorpayPaymentState(PAYMENT_STATE.FAILED);
       const verificationMessage = err?.code === "PAYMENT_NOT_CAPTURED_YET"
@@ -799,26 +787,10 @@ const handleConfirmOrder = async () => {
     }
   };
 
- const handleRazorpayClose = () => {
-  setShowRazorpay(false);
-  setRazorpayPaymentState(PAYMENT_STATE.CANCELLED);
-  
-  // Remove any lingering Razorpay DOM elements
-  document.querySelector(".razorpay-container")?.remove();
-  document.querySelector(".razorpay-backdrop")?.remove();
-  
-  toast.info("Payment cancelled. Choose COD or try again.", { theme: "dark" });
-  navigate("/account/userorders");
-  setTimeout(() => dispatch(resetCheckout()), 100);
-};
-const handleRazorpayFailure = (error) => {
+ const handleRazorpayFailure = (error) => {
   // Close the Razorpay modal
   setShowRazorpay(false);
   setRazorpayPaymentState(PAYMENT_STATE.FAILED);
-
-  // Clean up any lingering DOM elements from Razorpay
-  document.querySelector(".razorpay-container")?.remove();
-  document.querySelector(".razorpay-backdrop")?.remove();
 
   // Show a toast or modal
   const msg = error?.error?.description || "Payment failed. Please try again.";
@@ -829,6 +801,15 @@ const handleRazorpayFailure = (error) => {
 
   // Optionally, reset checkout state or let user retry
   checkoutAttemptKeyRef.current = null;
+};
+
+ const handleRazorpayClose = () => {
+  setShowRazorpay(false);
+  setRazorpayPaymentState(PAYMENT_STATE.CANCELLED);
+  
+  toast.info("Payment cancelled. Choose COD or try again.", { theme: "dark" });
+  navigate("/account/userorders");
+  setTimeout(() => dispatch(resetCheckout()), 100);
 };
 
   const handleRetryPayment = () => {
@@ -851,14 +832,6 @@ const handleRazorpayFailure = (error) => {
 
   // ── Success screens ────────────────────────────────────────────────────────
   if (placedOrder?.order && paymentMethod === "cod" && !paymentVerification.loading) {
-    return (
-      <OrderSuccess
-        order={{ ...placedOrder.order, paymentMethod: placedOrder.paymentMethod }}
-        onViewOrders={() => { dispatch(resetCheckout()); navigate("/account/userorders"); }}
-      />
-    );
-  }
-  if (placedOrder?.order && paymentMethod === "online" && paymentVerification.success) {
     return (
       <OrderSuccess
         order={{ ...placedOrder.order, paymentMethod: placedOrder.paymentMethod }}
@@ -994,7 +967,7 @@ const handleRazorpayFailure = (error) => {
                   <div className="flex items-center gap-2">
                     <div className="flex items-center justify-center font-black"
                       style={{
-                        width: 22, height: 22,  borderRadius: "50%",
+                        width: 22, height: 22, borderRadius: "50%",
                         background: "#111", color: "#F7A221", fontSize: 11,
                       }}>
                       ✓
@@ -1150,25 +1123,84 @@ const handleRazorpayFailure = (error) => {
                     style={{ fontSize: 10, color: "#9ca3af", letterSpacing: "0.06em" }}>
                     Payment Plan
                   </p>
-                  <div className="flex gap-3">
-                    {[
-                      { key: "full", label: "Pay Full", sub: fmt(quote?.amountPayable) },
-                      { key: "advance", label: "Pay 25%", sub: `${fmt(advanceAmount)} now` },
-                    ].map(({ key, label, sub }) => (
-                      <button key={key}
-                        onClick={() => handlePaymentPlanSelect(key)}
-                        className="flex-1 cursor-pointer transition-all active:scale-95"
-                        style={{
-                          padding: 12, borderRadius: 12,
-                          border: `2px solid ${paymentPlan === key ? "#111" : "#f0e8d8"}`,
-                          background: paymentPlan === key ? "#111" : "#fff",
-                          color: paymentPlan === key ? "#F7A221" : "#374151",
-                        }}>
-                        <span className="font-black block" style={{ fontSize: 12 }}>{label}</span>
-                        <span className="block mt-0.5 opacity-80" style={{ fontSize: 11 }}>{sub}</span>
-                      </button>
-                    ))}
-                  </div>
+                 <div className="flex gap-3 relative">
+
+  {/* ✅ PAY FULL */}
+  <button
+    onClick={() => {
+      handlePaymentPlanSelect("full");
+      setShowAdvanceDropdown(false);
+    }}
+    className="flex-1 cursor-pointer transition-all active:scale-95"
+    style={{
+      padding: 12,
+      borderRadius: 12,
+      border: `2px solid ${paymentPlan === "full" ? "#111" : "#f0e8d8"}`,
+      background: paymentPlan === "full" ? "#111" : "#fff",
+      color: paymentPlan === "full" ? "#F7A221" : "#374151",
+    }}
+  >
+    <span className="font-black block text-xs">Pay Full</span>
+    <span className="block mt-0.5 text-[11px] opacity-80">
+      {fmt(quote?.amountPayable)}
+    </span>
+  </button>
+
+  {/* ✅ PAY PARTIAL (WITH DROPDOWN) */}
+  <div className="flex-1 relative">
+
+    <button
+      onClick={() => setShowAdvanceDropdown((prev) => !prev)}
+      className="w-full flex items-center justify-between cursor-pointer transition-all active:scale-95"
+      style={{
+        padding: 12,
+        borderRadius: 12,
+        border: `2px solid ${paymentPlan !== "full" ? "#111" : "#f0e8d8"}`,
+        background: paymentPlan !== "full" ? "#111" : "#fff",
+        color: paymentPlan !== "full" ? "#F7A221" : "#374151",
+      }}
+    >
+      <div className="text-left">
+        <span className="font-black block text-xs">
+          {paymentPlan === "advance" && "Pay 25%"}
+          {paymentPlan === "half" && "Pay 50%"}
+          {paymentPlan === "seventy" && "Pay 75%"}
+        </span>
+
+        <span className="block text-[11px] opacity-80">
+          {fmt(getPartialAmount())} now
+        </span>
+      </div>
+
+      <ChevronDown size={14} />
+    </button>
+
+    {/* 🔽 DROPDOWN */}
+    {showAdvanceDropdown && (
+      <div
+        className="absolute top-full mt-2 w-full rounded-xl shadow-lg z-20"
+        style={{ background: "#fff", border: "1px solid #f0e8d8" }}
+      >
+        {[
+          { key: "advance", label: "Pay 25%" },
+          { key: "half", label: "Pay 50%" },
+          { key: "seventy", label: "Pay 75%" },
+        ].map((opt) => (
+          <button
+            key={opt.key}
+            onClick={() => {
+              handlePaymentPlanSelect(opt.key);
+              setShowAdvanceDropdown(false);
+            }}
+            className="w-full text-left px-3 py-2 text-xs font-semibold hover:bg-gray-50 transition"
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    )}
+  </div>
+</div>
                   {paymentPlan === "advance" && (
                     <p className="text-center mt-2" style={{ fontSize: 10, color: "#3b82f6" }}>
                       Pay 25% now · Balance {fmt(quote?.amountPayable - advanceAmount)} at delivery
@@ -1235,13 +1267,12 @@ const handleRazorpayFailure = (error) => {
                 ) : (
                   <>
                     Place Order —{" "}
-                    {paymentMethod === "online" && paymentPlan === "advance"
-                      ? fmt(advanceAmount)
-                      : fmt(quote?.amountPayable)}
+                    {paymentMethod === "online" && paymentPlan !== "full"
+  ? fmt(getPartialAmount())
+  : fmt(quote?.amountPayable)}
                   </>
                 )}
               </button>
-                {/* CONFIRM ORDER — shows fake loader */}
 
               {/* Security line */}
               <p className="text-center flex items-center justify-center gap-1"
@@ -1293,17 +1324,17 @@ const handleRazorpayFailure = (error) => {
       )}
 
       {/* ── Payment Error Modal ── */}
-      {showPaymentErrorModal && (
-        <PaymentErrorModal
-          error={paymentError}
-          orderId={placedOrder?.order?.orderId} 
-          onRetry={handleRetryPayment}
-          onClose={() => {
-            setShowPaymentErrorModal(false);
-            setPaymentError(null);
-          }}
-        />
-      )}
+    {showPaymentErrorModal && (
+  <PaymentErrorModal
+    error={paymentError}
+    orderId={placedOrder?.order?.orderId}  // ← add this
+    onRetry={handleRetryPayment}
+    onClose={() => {
+      setShowPaymentErrorModal(false);
+      setPaymentError(null);
+    }}
+  />
+)}
     </div>
   );
 };

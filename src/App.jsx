@@ -21,6 +21,7 @@ import { logout } from './Components/REDUX_FEATURES/REDUX_SLICES/authApi/authSli
 import { WHOLESALE_USER_ACCESS_TOKEN_KEY } from './SERVICES/wholesaleAxios';
 import './App.css';
 import ShopByPrice from './Components/HomeComponents/ShopByWHoleSalePrice/ShopByPrice';
+import  WhatsAppFloat  from './Components/WHATSAPP_FLOAT/WhatsAppFloat'
 // import { fetchCart, loadGuestCart } from './Components/REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice';
 // import { fetchWishlist, loadGuestWishlist } from './Components/REDUX_FEATURES/REDUX_SLICES/UserWIshlist/userWishlistSLice';
 
@@ -31,6 +32,10 @@ import ContactUs from './Components/HomeComponents/Contact';
 import UserDashboard from './User_Side_Web_Interface/User_Dash_Segment/UserDashboard';
 import Checkout from './User_Side_Web_Interface/CHECKOUT/Checkout';
 import TagProducts from './Components/REDUX_FEATURES/REDUX_SLICES/SHOP_BY_CATEGORY/TagProducts';
+import AboutUs from './Components/Common/AboutUs';
+import PolicyPage from './Components/Common/Policy';
+import CustomerCare from './Components/Common/CustomerCare';
+import InfluencerFormPage from './Components/Common/Influencer';
 
 // ── Layout: hides Navbar & Footer on admin/activate routes ───────────────────
 function Layout({ children }) {
@@ -45,6 +50,7 @@ function Layout({ children }) {
       {!shouldHide && <Navbar />}
       {children}
       {!shouldHide && <Footer />}
+         <WhatsAppFloat />
     </>
   );
 }
@@ -63,6 +69,7 @@ function AppRoutes() {
       <Route path="/" element={<Home />} />
       <Route path="/product/:slug" element={<ProductDetail />} />
       <Route path="/category/:slug" element={<CatProducts />} />
+      <Route path='/contact' element={<ContactUs />} />
 
       {/* Redirect bare /account to default tab */}
       <Route path="/account" element={<Navigate to="/account/userprofile" replace />} />
@@ -74,9 +81,13 @@ function AppRoutes() {
           </PrivateRoute>
         }
       />
+      <Route path="/wholesale/about" element={<AboutUs/>}/>
 
       <Route path="/activate" element={<ActivatePage />} />
       <Route path="/shopByCategory/:slug" element={<ShopByPrice />} />
+                      <Route path="/policies/:slug" element={<PolicyPage/>}/>
+                      <Route path='/wholesale/customer-care' element={<CustomerCare/>}/>
+                      <Route path='/wholesale/influencer' element={<InfluencerFormPage/>}/>
 
       {/* Public admin auth entrypoints for wholesale admin users. */}
       <Route path="/admin/login" element={<AdminLogin />} />
@@ -105,7 +116,7 @@ function AppRoutes() {
         }
       />
        <Route path="/checkout" element={<Checkout />} />
-                      <Route path="/:slug" element={<TagProducts/>}/>
+                      <Route path="/TagProducts/:slug" element={<TagProducts/>}/>
     </Routes>
   );
 }

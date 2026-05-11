@@ -1,6 +1,6 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 // import axiosInstance from '../../../../SERVICES/axiosInstance';
-import wholesaleAxios from "../../../../SERVICES/wholesaleAxios";
+import wholesaleAxios from "../../../../SERVICES/Wholesaleaxios";
 
 /**
  * Axios adapter for RTK Query — matches userAnalyticsApi pattern; never use raw axios in components.

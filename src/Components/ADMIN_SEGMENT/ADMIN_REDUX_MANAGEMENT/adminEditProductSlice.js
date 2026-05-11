@@ -18,7 +18,7 @@
 
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 // import axiosInstance from "../../../SERVICES/wholesaleAxios";
-import wholesaleAxios from "../../../SERVICES/wholesaleAxios"; // ← use wholesaleAxios to get interceptor benefits
+import wholesaleAxios from "../../../SERVICES/Wholesaleaxios"; // ← use wholesaleAxios to get interceptor benefits
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS

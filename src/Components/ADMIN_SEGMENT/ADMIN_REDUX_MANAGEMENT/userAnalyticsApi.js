@@ -1,6 +1,6 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 // import wholesaleAxios from '../../../SERVICES/wholesaleAxios';
-import wholesaleAxios from "../../../SERVICES/wholesaleAxios";
+import wholesaleAxios from "../../../SERVICES/Wholesaleaxios";
 
 // Custom axios base query for RTK Query
 const axiosBaseQuery = ({ baseUrl } = { baseUrl: '' }) => 
