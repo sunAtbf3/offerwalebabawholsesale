@@ -274,7 +274,7 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
 
         {discountPct && canPurchase && (
           <div className="absolute top-2 left-2 z-10">
-            <span className="text-[10px] bg-[#EB4C4C] text-white px-2 py-0.5 rounded-md shadow-sm font-bold">
+            <span className="text-[14px] bg-[#EB4C4C] text-white px-2 py-0.5 rounded-md shadow-sm font-bold">
               {discountPct}% OFF
             </span>
           </div>
@@ -282,9 +282,8 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
 
         {moq && (
           <div className={`absolute ${discountPct ? "top-8" : "top-2"} left-2 z-10`}>
-            <span className="flex items-center gap-1 text-[10px] bg-[#F7A221] text-white px-2 py-0.5 rounded-md shadow-sm font-bold">
-              <Package size={9} />
-              MOQ: {moq}
+            <span className="flex items-center gap-1 text-[12px] bg-[#08CB00] text-zinc-900 px-2 py-0.5 mt-2 rounded-md shadow-sm font-['sans-serif'] font-bold">
+              MOQ: <span className="font-bold"> {moq}</span>
             </span>
           </div>
         )}

@@ -130,7 +130,7 @@ const handleCaptchaChange = (e) => {
     setStatus("loading");
     const data = new FormData(e.target);
     try {
-      const res = await fetch("https://formspree.io/f/xlgavvnv", {
+      const res = await fetch("https://api.web3forms.com/submit", {
         method: "POST",
         body: data,
         headers: { Accept: "application/json" },
@@ -282,6 +282,24 @@ const handleCaptchaChange = (e) => {
                 </div>
               ) : (
                 <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
+                  {/* Web3Forms Hidden Inputs */}
+<input
+  type="hidden"
+  name="access_key"
+  value="0403211c-ab2e-4654-87ec-b8ad05866eea"
+/>
+
+<input
+  type="hidden"
+  name="subject"
+  value="New Contact Inquiry - Offer Wale Baba"
+/>
+
+<input
+  type="hidden"
+  name="from_name"
+  value="Offer Wale Baba Contact Form"
+/>
 
                   <div className="grid sm:grid-cols-1 gap-4">
                     <Field label="Full Name"

@@ -449,7 +449,7 @@ const ShopByPrice = () => {
                 <span className="w-4 sm:w-6 h-[2px] bg-[#F7A221] inline-block" />
                 Wholesale Deals
               </p>
-              <h1 className="text-2xl sm:text-4xl md:text-6xl lg:text-7xl font-black text-white uppercase leading-none tracking-tighter">
+              <h1 className="text-2xl sm:text-4xl md:text-6xl lg:text-7xl text-white uppercase leading-none font-['satoshi'] font-bold">
                 {priceLabel}
               </h1>
               <p className="mt-2 sm:mt-4 max-w-xs sm:max-w-md text-gray-400 text-xs sm:text-sm leading-relaxed font-medium">
@@ -602,7 +602,7 @@ const ShopByPrice = () => {
             {/* No results after filter */}
             {!pageIsLoading && !hasError && sortedProducts.length === 0 && products.length > 0 && (
               <div className="py-24 sm:py-32 flex flex-col items-center text-center animate-in fade-in px-4">
-                <h2 className="text-lg sm:text-xl font-semibold text-zinc-700 mb-2">No products found</h2>
+                <h2 className="text-lg sm:text-xl font-semibold text-zinc-700 mb-2">Coming Soon...</h2>
                 <p className="text-zinc-400 text-xs uppercase tracking-widest mb-6">Try different filters</p>
                 <button
                   onClick={clearFilters}
@@ -619,7 +619,7 @@ const ShopByPrice = () => {
                 <div className="p-3 sm:p-4 rounded-full bg-zinc-100 mb-4">
                   <AlertCircle size={24} className="text-zinc-400" />
                 </div>
-                <h2 className="text-lg sm:text-xl font-semibold text-zinc-700 mb-2">No Products Found</h2>
+                <h2 className="text-lg sm:text-xl font-semibold text-zinc-700 mb-2">Coming soon...</h2>
                 <p className="text-zinc-400 text-xs uppercase tracking-widest mb-6">
                   No products available in {priceLabel} range
                 </p>

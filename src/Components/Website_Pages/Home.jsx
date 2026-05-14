@@ -3,7 +3,7 @@ import HeroBanner from '../HomeComponents/HeroBanner';
 import TrendingProducts from '../HomeComponents/TrendingProducts';
 import SaleIsLive from '../HomeComponents/SaleIsLive';
 import ShopByCategory from '../HomeComponents/ShopByCategory';
-import ShopByWholesalePrice from '../HomeComponents/ShopByWholesalePrice';
+// import ShopByWholesalePrice from '../HomeComponents/ShopByWholesalePrice';
 import ExploreBestsellers from '../HomeComponents/ExploreBestsellers';
 import CategoryProducts from '../HomeComponents/Categories/Categories';
 import { useGetAllCategoriesQuery } from '../REDUX_FEATURES/REDUX_SLICES/SHOP_BY_CATEGORY/categoriesApi';
@@ -17,9 +17,8 @@ const Home = () => {
       <HeroBanner />
       <TrendingProducts />
       <SaleIsLive />
-      <ShopByCategory />
-      <ShopByWholesalePrice />
-
+      {/* <ShopByCategory /> */}
+      {/* <ShopByWholesalePrice /> */}
       <ExploreBestsellers />
       {categories.map((cat) => (
         <CategorySection

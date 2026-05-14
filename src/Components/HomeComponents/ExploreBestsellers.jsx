@@ -2,6 +2,9 @@ import React, { useEffect, useState, useRef } from "react";
 import { ArrowRight } from "lucide-react";
 import { useGetFeaturedProductsQuery } from "../REDUX_FEATURES/REDUX_SLICES/ProductsApi/productsApi";
 import WholesaleProductCard from "../ProductCard/WholesaleProductCard";
+import { useDispatch, useSelector } from "react-redux";
+import { selectIsAuthenticated } from "../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice";
+import { openModal } from "../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerSlice";
 
 // ── Skeleton ─────────────────────────────────────────────
 const ProductSkeleton = () => (
@@ -16,10 +19,16 @@ const ExploreBestsellers = () => {
   const [page, setPage] = useState(1);
   const [products, setProducts] = useState([]);
   const loadingMoreRef = useRef(false);
+    const isAuthenticated = useSelector(selectIsAuthenticated);
+    const handleOpenAuth = () => {
+      dispatch(openModal('login'));  // ✅ openModal is already imported
+    };
+    // Add this near the top with other hooks
+const dispatch = useDispatch();
 
   const { data: apiData, isFetching } = useGetFeaturedProductsQuery({
     page,
-    limit: 6,
+    limit: 4,
   });
 
   // ── Sync products safely (pagination aware) ─────────────
@@ -45,6 +54,10 @@ const ExploreBestsellers = () => {
 
   // ── Load more (race-safe) ───────────────────────────────
   const loadMore = () => {
+      if (!isAuthenticated) {
+    dispatch(openModal('login'));
+    return;
+  }
     if (isFetching || loadingMoreRef.current) return;
     if (!apiData?.pagination?.hasNextPage) return;
 
@@ -53,54 +66,58 @@ const ExploreBestsellers = () => {
   };
 
   return (
-    <section className="max-w-[1200px] mx-auto px-4 sm:px-8 py-10">
+   <section className="max-w-[1200px] mx-auto lg:ml-80 px-4 sm:px-8 py-10">
 
-      {/* HEADER */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-lg font-extrabold text-navy flex items-center gap-2">
-            <span className="w-1 h-6 bg-gold rounded-full" />
-            Explore <span className="text-gold">Bestsellers</span>
-          </h2>
-          <p className="text-[12px] text-muted mt-1 ml-3">
-            Best bulk pricing tiers for your business
-          </p>
-        </div>
-      </div>
+  {/* HEADER */}
+  <div className="flex items-center justify-between mb-6">
+    <div>
+      <h2 className="text-2xl sm:text-3xl lg:text-5xl font-extrabold text-navy flex items-center gap-2">
+        <span className="w-1 h-5 sm:h-6 bg-gold rounded-full" />
+        Explore <span className="text-gold ml-2">Bestsellers</span>
+      </h2>
+      <p className="text-[12px] sm:text-[14px] text-muted font-semibold uppercase mt-1 ml-3">
+        Best bulk pricing tiers for your business
+      </p>
+    </div>
+  </div>
 
-      {/* GRID */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+  {/* GRID */}
+  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
 
-        {/* INITIAL SKELETON ONLY */}
-        {isFetching && products.length === 0 &&
-          Array.from({ length: 8 }).map((_, i) => (
-            <ProductSkeleton key={i} />
-          ))}
+    {isFetching && products.length === 0 &&
+      Array.from({ length: 8 }).map((_, i) => (
+        <ProductSkeleton key={i} />
+      ))}
 
-        {/* PRODUCTS */}
-        {products.map((product, index) => (
-          <WholesaleProductCard
-            key={product._id}
-            product={product}
-            index={index}
-          />
-        ))}
-      </div>
+    {products.map((product, index) => (
+      <WholesaleProductCard
+        key={product._id}
+        product={product}
+        index={index}
+      />
+    ))}
+  </div>
 
-      {/* LOAD MORE */}
-      {apiData?.pagination?.hasNextPage && (
-        <div className="flex justify-center mt-6">
-          <button
-            onClick={loadMore}
-            disabled={isFetching || loadingMoreRef.current}
-            className="px-4 py-3 text-sm font-semibold border border-zinc-800 text-zinc-800 uppercase hover:bg-black hover:text-zinc-100 disabled:opacity-50 transition"
-          >
-            {isFetching ? "Loading..." : "Load More"}
-          </button>
-        </div>
+  {/* LOAD MORE */}
+ {apiData?.pagination?.hasNextPage && (
+  <div className="flex justify-center mt-6">
+    <button
+      onClick={loadMore}
+      disabled={isFetching || loadingMoreRef.current}
+      className="w-full sm:w-auto px-6 py-3 text-xs sm:text-sm font-semibold border border-zinc-800 text-zinc-800 uppercase hover:bg-black hover:text-zinc-100 disabled:opacity-50 transition flex items-center justify-center gap-2"
+    >
+      {isFetching ? (
+        "Loading..."
+      ) : !isAuthenticated ? (
+        <> Load More</>
+      ) : (
+        <>Load More <ArrowRight size={14} /></>
       )}
+    </button>
+  </div>
+)}
 
-    </section>
+</section>
   );
 };
 

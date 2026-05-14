@@ -197,10 +197,10 @@ const CatProducts = () => {
       if (filters.price.length > 0) {
         const priceToCheck = sale || base;
         const match = filters.price.some((p) => {
-          if (p === "u500")      return priceToCheck < 500;
-          if (p === "500-999")   return priceToCheck >= 500  && priceToCheck <= 999;
-          if (p === "1000-1999") return priceToCheck >= 1000 && priceToCheck <= 1999;
-          if (p === "o2000")     return priceToCheck >= 2000;
+          if (p === "u29")      return priceToCheck < 29;
+          if (p === "29-49")   return priceToCheck >= 29  && priceToCheck <= 49;
+          if (p === "49-79") return priceToCheck >= 49 && priceToCheck <= 79;
+          if (p === "o99")     return priceToCheck >= 99;
           return false;
         });
         if (!match) return false;
@@ -256,10 +256,10 @@ const CatProducts = () => {
         </h4>
         <div className="space-y-2">
           {[
-            { label: "Under ₹500",    val: "u500"      },
-            { label: "₹500 – ₹999",   val: "500-999"   },
-            { label: "₹1000 – ₹1999", val: "1000-1999" },
-            { label: "₹2000 & above", val: "o2000"     },
+            { label: "Under ₹29",    val: "u29"      },
+            { label: "₹29 – ₹49",   val: "29-49"   },
+            { label: "₹49 – ₹79", val: "49-79" },
+            { label: "₹99 & above", val: "o99"     },
           ].map(({ label, val }) => (
             <label key={val} className="flex items-center gap-3 cursor-pointer group"
               onClick={() => toggleFilter("price", val)}>
@@ -414,7 +414,7 @@ const CatProducts = () => {
                 <span className="w-4 sm:w-6 h-[2px] bg-[#F7A221] inline-block" />
                 Wholesale Collection
               </p>
-              <h1 className="text-2xl sm:text-4xl md:text-6xl lg:text-7xl font-black text-white uppercase leading-none tracking-tighter">
+              <h1 className="text-2xl sm:text-4xl md:text-6xl lg:text-7xl text-white uppercase leading-none font-['satoshi'] font-semibold">
                 {categoryName}
               </h1>
               {currentCategory?.description && (
@@ -500,7 +500,7 @@ const CatProducts = () => {
               {filters.price.map((val) => (
                 <button key={val} onClick={() => toggleFilter("price", val)}
                   className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold bg-zinc-900 text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full hover:bg-red-500 transition-colors">
-                  {val === "u500" ? "Under ₹500" : val === "500-999" ? "₹500–₹999" : val === "1000-1999" ? "₹1000–₹1999" : "₹2000+"}
+                  {val === "u29" ? "Under ₹29" : val === "29-49" ? "₹29–₹49" : val === "49-79" ? "₹49–₹79" : "₹99+"}
                   <X size={10} />
                 </button>
               ))}
@@ -597,7 +597,7 @@ const CatProducts = () => {
             {/* No results after filter */}
             {!pageIsLoading && !hasError && sortedProducts.length === 0 && products.length > 0 && (
               <div className="py-24 sm:py-32 flex flex-col items-center text-center animate-in fade-in px-4">
-                <h2 className="text-lg sm:text-xl font-semibold text-zinc-700 mb-2">No products found</h2>
+                <h2 className="text-lg sm:text-xl font-semibold text-zinc-700 mb-2">Coming Soon...</h2>
                 <p className="text-zinc-400 text-xs uppercase tracking-widest mb-6">Try different filters</p>
                 <button onClick={clearFilters}
                   className="px-6 py-2 text-xs font-semibold uppercase tracking-wider border border-zinc-300 rounded-full hover:bg-black hover:text-white transition">
@@ -612,7 +612,7 @@ const CatProducts = () => {
                 <div className="p-3 sm:p-4 rounded-full bg-zinc-100 mb-4">
                   <Package size={24} className="text-zinc-400" />
                 </div>
-                <h2 className="text-lg sm:text-xl font-semibold text-zinc-700 mb-2">No Products Found</h2>
+                <h2 className="text-lg sm:text-xl font-semibold text-zinc-700 mb-2"></h2>
                 <p className="text-zinc-400 text-xs uppercase tracking-widest mb-6">
                   This collection is empty right now
                 </p>

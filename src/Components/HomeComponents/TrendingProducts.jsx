@@ -2,6 +2,11 @@ import React, { useEffect } from 'react';
 import { ArrowRight, Zap, Package } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useGetProductsByTagQuery } from '../REDUX_FEATURES/REDUX_SLICES/ProductsApi/productsApi';
+
+// Add to existing imports
+import { openModal } from '../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerSlice';
+import { selectIsAuthenticated } from '../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
+import { useNavigate } from 'react-router-dom';
 import {
   setPageForTag,
   addProductsForTag,
@@ -24,11 +29,14 @@ const TodayArrival = () => {
     useGetProductsByTagQuery({
       tag: 'today-arrival',
       page,
-      limit: 22,
-      _cb: '1',
+      limit: 10,
+      // _cb: '1',
     });
 
   const hasMore = data?.hasNextPage ?? false;
+  // Add inside TodayArrival component
+const navigate = useNavigate();
+const isAuthenticated = useSelector(selectIsAuthenticated);
 
   // ✅ Append products (no overwrite)
   useEffect(() => {
@@ -48,9 +56,14 @@ const TodayArrival = () => {
 //   };
 // }, []);
 
-  const handleLoadMore = () => {
-    dispatch(setPageForTag({ tag: 'today-arrival', page: page + 1 }));
-  };
+// Replace handleLoadMore
+const handleLoadMore = () => {
+  if (!isAuthenticated) {
+    dispatch(openModal('login'));
+    return;
+  }
+  dispatch(setPageForTag({ tag: 'today-arrival', page: page + 1 }));
+};
 
   if (isError) return null;
 
@@ -84,8 +97,16 @@ const TodayArrival = () => {
                     <Zap size={14} className="text-[#F59E0B]" fill="currentColor" />
                   </p>
                   </div>
-                  <Link to="/TagProducts/today-arrival" className='w-full sm:w-auto text-center flex items-center justify-center gap-2 text-xs sm:text-sm font-bold text-yellow-500 uppercase tracking-widest bg-white px-4 py-2 rounded-lg transition-all cursor-pointer shadow-sm hover:bg-yellow-500 hover:text-white'>View All</Link>
-                  </div>
+<button
+  onClick={handleLoadMore}
+  disabled={isFetching}
+  className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#0F172A] uppercase tracking-widest group bg-white border border-slate-200 px-6 sm:px-10 py-3 sm:py-4 hover:bg-[#0F172A] hover:text-white transition-all shadow-sm disabled:opacity-50"
+>
+  {isFetching ? 'Loading...' : !isAuthenticated ? 'View More' : 'View More'}
+  {!isFetching && (
+    <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+  )}
+</button>                  </div>
       </div>
 
       {/* Loading */}
@@ -126,19 +147,16 @@ const TodayArrival = () => {
           {/* ✅ Bottom View More Button */}
           {hasMore && (
             <div className="flex justify-center mt-10">
-              <button
-                onClick={handleLoadMore}
-                disabled={isFetching}
-                className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#0F172A] uppercase tracking-widest group bg-white border border-slate-200 px-6 sm:px-10 py-3 sm:py-4 rounded-2xl hover:bg-[#0F172A] hover:text-white transition-all shadow-sm disabled:opacity-50"
-              >
-                {isFetching ? 'Loading...' : 'View More'}
-                {!isFetching && (
-                  <ArrowRight
-                    size={16}
-                    className="group-hover:translate-x-1 transition-transform"
-                  />
-                )}
-              </button>
+<button
+  onClick={handleLoadMore}
+  disabled={isFetching}
+  className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#0F172A] uppercase tracking-widest group bg-white border border-slate-200 px-6 sm:px-10 py-3 sm:py-4 rounded-2xl hover:bg-[#0F172A] hover:text-white transition-all shadow-sm disabled:opacity-50"
+>
+  {isFetching ? 'Loading...' : !isAuthenticated ? 'View More' : 'View More'}
+  {!isFetching && (
+    <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+  )}
+</button>
             </div>
           )}
 

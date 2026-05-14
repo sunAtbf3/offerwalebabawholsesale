@@ -5,6 +5,13 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 
 import { useGetProductsByCategoryQuery } from '../../REDUX_FEATURES/REDUX_SLICES/ProductsApi/productsApi';
 import WholesaleProductCard from '../../ProductCard/WholesaleProductCard';
+
+
+
+// Add these imports at the top
+import { useDispatch, useSelector } from 'react-redux';
+import { openModal } from '../../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerSlice';
+import { selectIsAuthenticated } from '../../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
 import SkeletonCard from '../../ProductCard/Skelleton/SkeletonCard';
 import useInViewFetch from '../../HOOKS/useInViewFetch';
 
@@ -89,6 +96,9 @@ const CategorySection = ({ slug, title }) => {
   const [products, setProducts] = useState([]);
   const loadingMoreRef = useRef(false);
   const [shouldFetch, setShouldFetch] = useState(false);
+  // Add these hooks inside CategorySection
+const dispatch = useDispatch();
+const isAuthenticated = useSelector(selectIsAuthenticated);
 
   // Slug change → full reset
   useEffect(() => {
@@ -108,7 +118,7 @@ const CategorySection = ({ slug, title }) => {
 
   const { data: apiData, isFetching, isError, error, refetch } =
     useGetProductsByCategoryQuery(
-      { slug, page, limit: 8 },
+      { slug, page, limit: 6 },
       { skip: !slug || !shouldFetch }
     );
 
@@ -143,11 +153,11 @@ const CategorySection = ({ slug, title }) => {
     window.scrollTo({top:0, behavior: "smooth"})
   },[])
 
-  const loadMore = () => {
-    if (isFetching || loadingMoreRef.current || !hasNextPage) return;
-    loadingMoreRef.current = true;
-    setPage((p) => p + 1);
-  };
+  // const loadMore = () => {
+  //   if (isFetching || loadingMoreRef.current || !hasNextPage) return;
+  //   loadingMoreRef.current = true;
+  //   setPage((p) => p + 1);
+  // };
 
   const handleRetry = () => {
     setPage(1);
@@ -156,107 +166,89 @@ const CategorySection = ({ slug, title }) => {
   };
 
   return (
-    <section ref={sentinelRef} className="max-w-[1200px] mx-auto px-4 sm:px-8 py-10">
-      {!shouldFetch ? (
-        // Placeholder to preserve layout before the section is visible.
-        <div style={{ minHeight: '480px' }} aria-hidden="true" />
-      ) : initialLoad ? (
-        // ── Initial skeleton ────────────────────────────────────────────────
-        <>
-          <div className="flex items-center justify-between mb-6">
-            <div className="h-6 w-40 bg-gray-200 animate-pulse rounded" />
-            <div className="h-4 w-16 bg-gray-200 animate-pulse rounded" />
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <SkeletonCard key={i} seed={i} />
-            ))}
-          </div>
-        </>
-      ) : isError && products.length === 0 ? (
-        // ── Error ────────────────────────────────────────────────────────────
-        <div className="py-12 text-center">
-          <p className="text-red-500 mb-2 font-medium">Failed to load {title}</p>
-          <p className="text-gray-400 text-sm mb-4">
-            {error?.message || 'Something went wrong'}
+  <section ref={sentinelRef} className="max-w-[1200px] mx-auto lg:ml-80 px-4 sm:px-6 py-8 sm:py-10">
+  {!shouldFetch ? (
+    <div style={{ minHeight: '480px' }} aria-hidden="true" />
+  ) : initialLoad ? (
+    <>
+      <div className="flex items-center justify-between mb-6">
+        <div className="h-6 w-40 bg-gray-200 animate-pulse rounded" />
+        <div className="h-4 w-16 bg-gray-200 animate-pulse rounded" />
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <SkeletonCard key={i} seed={i} />
+        ))}
+      </div>
+    </>
+  ) : isError && products.length === 0 ? (
+    <div className="py-12 text-center">
+      <p className="text-red-500 mb-2 font-medium">Failed to load {title}</p>
+      <p className="text-gray-400 text-sm mb-4">
+        {error?.message || 'Something went wrong'}
+      </p>
+      <button
+        onClick={handleRetry}
+        className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold bg-black text-white rounded-lg hover:opacity-80 transition"
+      >
+        <RefreshCw size={14} /> Try Again
+      </button>
+    </div>
+  ) : (
+    <>
+      {/* HEADER */}
+      <div className="flex items-center justify-between mb-5 sm:mb-6">
+        <div>
+          <h2 className="text-2xl sm:text-3xl lg:text-5xl font-extrabold text-navy flex items-center gap-2">
+            <span className="w-1 h-5 sm:h-6 bg-gold rounded-full" />
+            {title}
+          </h2>
+          <p className="text-[11px] sm:text-[14px] text-muted uppercase font-semibold mt-1 ml-3">
+            Best bulk pricing tiers for your business
           </p>
+        </div>
+      </div>
+
+      {/* GRID */}
+      {products.length > 0 ? (
+        <>
+          <VirtualizedProductGrid
+            products={products}
+            loadingMore={loadingMore}
+          />
+
+          {/* VIEW ALL */}
+{!hasNextPage && (
+  <div className="flex justify-center mt-6">
+    <button
+      onClick={() => {
+        if (!isAuthenticated) {
+          dispatch(openModal('login'));
+          return;
+        }
+        navigate(`/category/${slug}`);
+      }}
+      className="w-full sm:w-auto text-xs sm:text-sm font-semibold border border-zinc-800 text-zinc-800 uppercase hover:bg-black px-4 sm:px-6 py-2.5 flex items-center justify-center gap-2 hover:text-zinc-100 transition"
+    >
+      {!isAuthenticated ? ' View All' : <>VIEW ALL <ArrowRight size={14} /></>}
+    </button>
+  </div>
+)}
+        </>
+      ) : (
+        <div className="py-20 text-center">
+          <p className="text-sm text-muted mb-4">Coming Soon...</p>
           <button
-            onClick={handleRetry}
+            onClick={() => navigate('/')}
             className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold bg-black text-white rounded-lg hover:opacity-80 transition"
           >
-            <RefreshCw size={14} /> Try Again
+            Explore All
           </button>
         </div>
-      ) : (
-        // ── Content ─────────────────────────────────────────────────────────
-        <>
-          {/* HEADER — same as ExploreBestsellers */}
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-lg font-extrabold text-navy flex items-center gap-2">
-                <span className="w-1 h-6 bg-gold rounded-full" />
-                {title}
-              </h2>
-              <p className="text-[12px] text-muted mt-1 ml-3">
-                Best bulk pricing tiers for your business
-              </p>
-            </div>
-            <button
-              onClick={() => navigate(`/category/${slug}`)}
-              className="text-[12px] font-bold text-gold-dark flex items-center gap-1 hover:text-gold transition-colors"
-            >
-              VIEW ALL <ArrowRight size={14} />
-            </button>
-          </div>
-
-          {/* GRID */}
-          {products.length > 0 ? (
-            <>
-              <VirtualizedProductGrid
-                products={products}
-                loadingMore={loadingMore}
-              />
-
-              {/* LOAD MORE — same as ExploreBestsellers */}
-              {hasNextPage && (
-                <div className="flex justify-center mt-6">
-                  <button
-                    onClick={loadMore}
-                    disabled={isFetching || loadingMoreRef.current}
-                    className="text-sm font-semibold border border-zinc-800 text-zinc-800 uppercase hover:bg-black px-4 py-2 flex items-center gap-2 hover:text-zinc-100 disabled:opacity-50 transition"
-                  >
-                    {isFetching ? "Loading..." : "Load More"}
-                  </button>
-                </div>
-              )}
-
-              {/* VIEW ALL — jab sab load ho jaye */}
-              {!hasNextPage && (
-                <div className="flex justify-center mt-6">
-                  <button
-                    onClick={() => navigate(`/category/${slug}`)}
-                    className="text-sm font-semibold border border-zinc-800 text-zinc-800 uppercase hover:bg-black px-4 py-2 flex items-center gap-2 hover:text-zinc-100 disabled:opacity-50 transition"
-                  >
-                    VIEW ALL <ArrowRight size={14} />
-                  </button>
-                </div>
-              )}
-            </>
-          ) : (
-            // /* EMPTY STATE */
-            <div className="py-20 text-center">
-              <p className="text-sm text-muted mb-4">Coming Soon...</p>
-              <button
-                onClick={() => navigate('/')}
-                className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold bg-black text-white rounded-lg hover:opacity-80 transition"
-              >
-                Explore All
-              </button>
-            </div>
-          )}
-        </>
       )}
-    </section>
+    </>
+  )}
+</section>
   );
 };
 

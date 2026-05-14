@@ -11,6 +11,13 @@ import { logout, selectUser, selectIsAuthenticated } from '../REDUX_FEATURES/RED
 import { useLogoutMutation } from '../REDUX_FEATURES/REDUX_SLICES/authApi/authApi';
 import LOGO from "../../assets/logo2.png";
 import LOGO2 from "../../assets/home (3).png";
+import LOGO3 from "../../assets/offer wale baba RESIZE.jpg";
+import LOGO4 from "../../assets/offer wale baba. PNG.png";
+import LOGO5 from "../../assets/offer wale baba.GIF";
+// import VID1 from "../../assets/offer wale baba.GIF";
+import VID1 from "../../assets/Video1.mp4"
+import VID2 from "../../assets/Video2.mp4"
+import LOGO6 from "../../assets/home (3).png";
 // import { selectDisplayedData } from 'recharts/types/state/selectors/axisSelectors';
 import { selectDisplayCartCount } from '../REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice';
 import WholesaleCartSidebar from '../HomeComponents/Sidebar/CartSidebar';
@@ -227,9 +234,9 @@ const handleOpenAuth = () => {
     { label: "Stationary", path: "/category/stationary" },
     { label: "Baby Items", path: "/category/baby-items" },
     { label: "Car Accessories", path: "/category/car-accessories" },
-    { label: "Cleaning Supplies", path: "/category/mix-items-daily-use" },
+    { label: "Cleaning Supplies", path: "/category/cleaning-&housekeeping-supplies" },
     { label: "Gifts", path: "/category/gifts" },
-    { label: "Mix-Items-daily-use", path: "/category/mix-items-daily-use" }
+    { label: "Mix-Items", path: "/category/mix-items" }
   ];
  
   useEffect(() => {
@@ -243,180 +250,351 @@ const handleOpenAuth = () => {
     <>
      <nav className="sticky top-0 w-full z-[100] font-sans shadow-sm bg-white">
       {/* TOP UTILITY STRIP */}
-      <div className="bg-[#0F172A] text-white/70 py-2 px-6 hidden lg:flex justify-between items-center text-[11px] font-bold tracking-widest border-b border-white/5 uppercase">
-        <div className="flex gap-8 items-center">
-          <span className="flex items-center gap-2 border-r border-white/10 pr-8">
-            <ShieldCheck size={14} className="text-amber-500" /> GST Verified Portal
-          </span>
-          <span className="flex items-center gap-2 border-r border-white/10 pr-8">
-            <Package size={14} className="text-amber-500" /> Bulk Order Discounts
-          </span>
-          <span className="flex items-center gap-2">
-            <Zap size={14} className="text-amber-500" /> Fast Enterprise Delivery
-          </span>
-        </div>
-        <div className="flex gap-6 items-center">
-          <a href="#" className="hover:text-amber-500 transition-colors">Taxes & Invoicing</a>
-          <a href="#" className="hover:text-amber-500 transition-colors text-amber-500">Support: +91 93706 86008</a>
-        </div>
-      </div>
+     {/* ══════════════════════════════════════════════
+    DROP-IN REPLACEMENT — paste inside your <nav>
+    ══════════════════════════════════════════════ */}
 
-      {/* MAIN NAVBAR */}
-      <div className={`transition-all duration-500 ease-in-out border-b border-slate-200 ${scrolled ? 'py-1 lg:py-2 shadow-md' : 'py-2 lg:py-4'}`}>
-        <div className="max-w-[1440px] mx-auto px-4 lg:px-10 flex items-center justify-between gap-2 lg:gap-10">
-          
-          {/* Logo Section */}
-         <div
-  className="relative flex-shrink-0 flex items-center cursor-pointer min-w-[120px] lg:min-w-[180px]"
+{/* TOP UTILITY STRIP — desktop only */}
+<div className="bg-[#0F172A] text-white/70 py-2 px-6 hidden lg:flex justify-between items-center text-[11px] font-bold tracking-widest border-b border-white/5 uppercase">
+  <div className="flex gap-6 items-center">
+    <span className="flex items-center gap-2 border-r border-white/10 pr-6">
+      <ShieldCheck size={13} className="text-amber-500" /> GST Verified Portal
+    </span>
+    <span className="flex items-center gap-2 border-r border-white/10 pr-6">
+      <Package size={13} className="text-amber-500" /> Bulk Order Discounts
+    </span>
+    <span className="flex items-center gap-2">
+      <Zap size={13} className="text-amber-500" /> Fast Enterprise Delivery
+    </span>
+  </div>
+  <div className="flex gap-6 items-center">
+    <a href="#" className="hover:text-amber-500 transition-colors">Taxes & Invoicing</a>
+    <a href="tel:+919370686008" className="hover:text-amber-500 transition-colors text-amber-500">
+      Support: +91 93706 86008
+    </a>
+  </div>
+</div>
+
+{/* MAIN NAVBAR ROW */}
+<div
+  className={`border-b border-slate-200 bg-white transition-all duration-300 ${
+    scrolled ? "shadow-md" : ""
+  }`}
+>
+  <div
+    className="
+      max-w-[1440px]
+      mx-auto
+      px-3 sm:px-6 lg:px-10
+      flex items-center
+      gap-2 sm:gap-4 lg:gap-8
+      h-[72px] sm:h-[84px] lg:h-auto
+    "
+  >
+
+    {/* ── LOGO ── */}
+  <div
+  className="
+    relative
+    flex-shrink-0
+    cursor-pointer
+    flex items-center
+
+    w-[90px]
+    sm:w-[135px]
+    md:w-[110px]
+    lg:w-[240px]
+  "
   onClick={() => (window.location.href = "/")}
 >
-
-  {/* LOGO */}
-  <img
-    src={LOGO}
-    alt="Offer Wale Baba"
-    className={`
-      transition-all duration-500 ease-in-out object-contain
-      ${scrolled ? "h-10 lg:h-14" : "h-14 lg:h-24"}
-    `}
+  
+  {/* LOGO VIDEO */}
+  <video
+    autoPlay
+    loop
+    muted
+    playsInline
+    src={VID2}
+    className="w-full h-auto object-contain"
   />
 
-  {/* TOP RIGHT LABEL */}
+  {/* WHOLESALE BADGE */}
   <div
     className="
       absolute
-      top-1
-      right-0
-      hidden lg:flex
+      top-10
+      -right-10
+
+      hidden sm:flex
       items-center
+      gap-1
+
+      px-3 py-1
       rounded-full
-      border border-amber-500/30
-      bg-amber-50
-      px-3
-      py-[4px]
-      text-[9px]
-      font-bold
+
+      bg-[#2563EB]
+
+      shadow-lg shadow-blue-500/25
+      border border-blue-300/20
+      backdrop-blur-xl
+
+      text-white
+      text-[8px]
+      sm:text-[9px]
+      font-black
       uppercase
-      tracking-[2px]
-      text-amber-600
-      shadow-sm
+      tracking-[0.18em]
+
+      transition-all duration-300
     "
   >
+    <span className="w-1.5 h-1.5 rounded-full bg-blue-100 animate-pulse" />
+
     Wholesale
   </div>
 </div>
 
-          {/* Desktop Search */}
-          <div className="hidden md:flex flex-grow max-w-2xl relative group items-center">
-            <div className="absolute left-4 text-slate-400 group-focus-within:text-amber-500 transition-colors">
-              <Search size={18} />
-            </div>
-       <input
-  type="text"
-  placeholder="Search by SKU, Product Name..."
-  onClick={handleSearchFocus}
-  readOnly
-  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 pl-12 pr-32 focus:outline-none focus:border-amber-500/50 focus:bg-white transition-all text-sm font-medium cursor-pointer"
-/>
-            <button className="absolute right-2 bg-[#0F172A] text-white px-5 py-1.5 rounded-xl text-[10px] font-bold hover:bg-slate-800 transition-all uppercase tracking-wider">
-              Search
-            </button>
-          </div>
-
-          {/* Action Icons Group */}
-          <div className="flex items-center gap-2 lg:gap-6">
-            <div className="hidden xl:flex items-center gap-2 cursor-pointer hover:text-amber-500 group">
-            <LocationDisplay userAddress={userAddress} />
-            </div>
-
-            {/* Heart & Cart */}
-        <div className="flex items-center gap-1 lg:gap-3">
-  
-  {/* Wishlist Button */}
-  <div
-    onClick={() => setWishlistOpen(true)}
-    className="relative p-2 lg:p-3 bg-amber-500/10 hover:bg-amber-500/20 rounded-full cursor-pointer border border-amber-500/20"
-  >
-    <Heart size={22} className="text-slate-700" />
-    {wishlistCount > 0 && (
-      <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full">
-        {wishlistCount > 99 ? "99+" : wishlistCount}
-      </span>
-    )}
-  </div>
-
-  {/* Cart Button */}
-  <div
-    onClick={() => setIsCartOpen(true)}
-    className="relative p-2 lg:p-3 bg-amber-500/10 hover:bg-amber-500/20 rounded-full cursor-pointer border border-amber-500/20"
-  >
-    <ShoppingCart size={22} className="text-amber-600" />
-    {cartCount > 0 && (
-      <span className="absolute top-1 right-1 bg-amber-500 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full">
-        {cartCount > 99 ? "99+" : cartCount}
-      </span>
-    )}
-  </div>
-
-</div>
-   {/* Search Trigger - Perfectly Centered using absolute positioning */}
-
-            <div className="h-8 w-[1px] bg-slate-200 mx-1 hidden sm:block"></div>
-
-            <div className="relative group">
-              <button
-                onClick={handleAccountClick}
-                className="flex items-center gap-2 lg:gap-3 p-1 bg-white border border-slate-200 rounded-full hover:shadow-md transition-all sm:pr-4"
-              >
-                <div className={`w-8 h-8 lg:w-9 lg:h-9 rounded-full flex items-center justify-center shadow-md flex-shrink-0 ${isAuthenticated ? 'bg-gradient-to-br from-amber-500 to-amber-600' : 'bg-[#0F172A]'}`}>
-                  <User size={16} className="text-white" />
-                </div>
-                <div className="hidden sm:block text-left leading-tight">
-                  <p className="text-[9px] font-bold text-slate-400 uppercase leading-none mb-0.5">
-                    {isAuthenticated ? 'Welcome' : 'Sign In'}
-                  </p>
-                  <p className="text-[11px] font-black text-[#0F172A] max-w-[80px] truncate leading-none">
-                    {isAuthenticated ? (user.name || 'User') : 'My Business'}
-                  </p>
-                </div>
-                <ChevronDown size={14} className="text-slate-400 hidden lg:block" />
-              </button>
-
-              {isAuthenticated && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                  <div className="p-2">
-                    <div className="px-3 py-2 border-b border-slate-100 mb-1 text-[11px]">
-                      <p className="font-bold text-slate-900">{user.name || 'User'}</p>
-                      <p className="text-slate-500">{user.email || user.phone}</p>
-                    </div>
-                    <Link to="/account/userprofile" className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
-                      <User size={14} /> My Profile
-                    </Link>
-                    <Link to="/account/userorders" className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
-                      <Package size={14} /> My Orders
-                    </Link>
-                    <button 
-                      onClick={handleLogout}
-                      disabled={isLoggingOut}
-                      className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg mt-1 border-t border-slate-50 pt-2"
-                    >
-                      <LogOut size={14} /> {isLoggingOut ? '...' : 'Sign Out'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-            {/* Search Bar - Desktop Only */}
-
-            <button
-              className="lg:hidden p-2 text-slate-800 focus:bg-slate-50 rounded-lg"
-              onClick={() => setIsMobileMenuOpen(true)}
-            >
-              <Menu size={24} />
-            </button>
-          </div>
-        </div>
+    {/* ── SEARCH (ONLY TABLET/DESKTOP) ── */}
+    <div className="hidden md:flex flex-1 relative group items-center max-w-xl lg:max-w-2xl">
+      <div className="absolute left-4 text-slate-400 group-focus-within:text-amber-500 transition-colors pointer-events-none">
+        <Search size={17} />
       </div>
+
+      <input
+        type="text"
+        placeholder="Search by SKU, Product Name..."
+        onClick={handleSearchFocus}
+        readOnly
+        className="
+          w-full
+          bg-slate-50
+          border-2 border-slate-100
+          rounded-2xl
+          py-3 pl-12 pr-28
+          focus:outline-none
+          focus:border-amber-500/50
+          focus:bg-white
+          transition-all
+          text-sm
+          font-medium
+          cursor-pointer
+        "
+      />
+
+      <button
+        className="
+          absolute right-2
+          bg-[#0F172A]
+          text-white
+          px-4 py-1.5
+          rounded-xl
+          text-[10px]
+          font-bold
+          hover:bg-slate-800
+          transition-all
+          uppercase
+          tracking-wider
+        "
+      >
+        Search
+      </button>
+    </div>
+
+    {/* ── RIGHT ACTIONS ── */}
+    <div className="flex items-center gap-1 sm:gap-2.5 lg:gap-4 ml-auto">
+
+      {/* Location */}
+      <div className="hidden xl:flex">
+        <LocationDisplay userAddress={userAddress} />
+      </div>
+
+      {/* Wishlist */}
+      <button
+        onClick={() => setWishlistOpen(true)}
+        className="
+          relative
+          p-1.5 sm:p-2.5 lg:p-3
+          bg-amber-500/10
+          hover:bg-amber-500/20
+          rounded-full
+          border border-amber-500/20
+          cursor-pointer
+          transition-colors
+        "
+        aria-label="Wishlist"
+      >
+        <Heart size={18} className="text-slate-700" />
+
+        {wishlistCount > 0 && (
+          <span
+            className="
+              absolute top-0 right-0
+              bg-red-500 text-white
+              text-[8px] font-black
+              w-4 h-4
+              flex items-center justify-center
+              rounded-full
+            "
+          >
+            {wishlistCount > 99 ? "99+" : wishlistCount}
+          </span>
+        )}
+      </button>
+
+      {/* Cart */}
+      <button
+        onClick={() => setIsCartOpen(true)}
+        className="
+          relative
+          p-1.5 sm:p-2.5 lg:p-3
+          bg-amber-500/10
+          hover:bg-amber-500/20
+          rounded-full
+          border border-amber-500/20
+          cursor-pointer
+          transition-colors
+        "
+        aria-label="Cart"
+      >
+        <ShoppingCart size={18} className="text-amber-600" />
+
+        {cartCount > 0 && (
+          <span
+            className="
+              absolute top-0 right-0
+              bg-amber-500 text-white
+              text-[8px] font-black
+              w-4 h-4
+              flex items-center justify-center
+              rounded-full
+            "
+          >
+            {cartCount > 99 ? "99+" : cartCount}
+          </span>
+        )}
+      </button>
+
+      {/* Divider */}
+      <div className="hidden sm:block h-7 w-px bg-slate-200" />
+
+      {/* Account */}
+      <div className="relative group">
+        <button
+          onClick={handleAccountClick}
+          className="
+            flex items-center gap-1.5
+            p-1
+            sm:pr-3 lg:pr-4
+            bg-white
+            border border-slate-200
+            rounded-full
+            hover:shadow-md
+            transition-all
+          "
+        >
+          <div
+            className={`
+              w-8 h-8 lg:w-10 lg:h-10
+              rounded-full
+              flex items-center justify-center
+              shadow-md flex-shrink-0
+              ${
+                isAuthenticated
+                  ? "bg-gradient-to-br from-amber-500 to-amber-600"
+                  : "bg-[#0F172A]"
+              }
+            `}
+          >
+            <User size={15} className="text-white" />
+          </div>
+
+          <div className="hidden sm:block text-left leading-tight">
+            <p className="text-[9px] font-bold text-slate-400 uppercase leading-none mb-0.5">
+              {isAuthenticated ? "Welcome" : "Sign In"}
+            </p>
+
+            <p className="text-[11px] font-black text-[#0F172A] max-w-[80px] truncate leading-none">
+              {isAuthenticated ? (user?.name || "User") : "My Business"}
+            </p>
+          </div>
+
+          <ChevronDown
+            size={13}
+            className="text-slate-400 hidden lg:block"
+          />
+        </button>
+
+        {/* Dropdown */}
+        {isAuthenticated && (
+          <div
+            className="
+              absolute right-0 mt-2
+              w-56 bg-white rounded-xl
+              shadow-xl border border-slate-100
+              opacity-0 invisible
+              group-hover:opacity-100
+              group-hover:visible
+              transition-all duration-200 z-50
+            "
+          >
+            <div className="p-2">
+
+              <div className="px-3 py-2 border-b border-slate-100 mb-1 text-[11px]">
+                <p className="font-bold text-slate-900">
+                  {user?.name || "User"}
+                </p>
+
+                <p className="text-slate-500 truncate">
+                  {user?.email || user?.phone}
+                </p>
+              </div>
+
+              <Link
+                to="/account/userprofile"
+                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+              >
+                <User size={14} /> My Profile
+              </Link>
+
+              <Link
+                to="/account/userorders"
+                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+              >
+                <Package size={14} /> My Orders
+              </Link>
+
+              <button
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg mt-1 border-t border-slate-100 pt-2 transition-colors"
+              >
+                <LogOut size={14} />
+                {isLoggingOut ? "..." : "Sign Out"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Menu */}
+      <button
+        className="
+          lg:hidden
+          p-1.5
+          text-slate-800
+          hover:bg-slate-100
+          rounded-xl
+          transition-colors
+        "
+        onClick={() => setIsMobileMenuOpen(true)}
+        aria-label="Open menu"
+      >
+        <Menu size={21} />
+      </button>
+
+    </div>
+  </div>
+</div>
 
       {/* MOBILE MENU OVERLAY */}
       <div className={`fixed inset-0 z-[200] lg:hidden transition-all duration-300 ${isMobileMenuOpen ? 'visible' : 'invisible'}`}>
@@ -468,7 +646,7 @@ const handleOpenAuth = () => {
 
       {/* DESKTOP CATEGORY BAR */}
    <div className="bg-white border-b border-slate-100 hidden lg:block shadow-sm">
-  <div className="max-w-[1440px] mx-auto px-10 flex items-center justify-between">
+  <div className="max-w-[1440px] mx-auto px-72 flex w-full items-center justify-between">
 
     {/* LEFT NAV */}
     <div className="flex items-center">
@@ -494,7 +672,7 @@ const handleOpenAuth = () => {
           transition-all duration-300
         "
       >
-        About
+        About Us
       </Link>
 
       {/* DISCOVER PRODUCTS */}
@@ -514,7 +692,7 @@ const handleOpenAuth = () => {
             }
           `}
         >
-          Discover Products
+          Products
         </button>
 
         {/* MEGA MENU */}
@@ -576,21 +754,7 @@ const handleOpenAuth = () => {
         Contact Us
          </Link>
     </div>
-
-    {/* OPTIONAL RIGHT SIDE */}
-    <div className="flex items-center gap-4">
-      <button
-        className="
-          px-7 py-3 rounded-full
-          bg-amber-500 text-[#0F172A]
-          text-sm font-black uppercase tracking-wider
-          hover:bg-amber-400
-          transition-all duration-300
-        "
-      >
-        Start Shopping
-      </button>
-    </div>
+    {/* <div className='px-2 py-4 rounded-full bg-yellow-500 text-zinc-50'>Start Shopping</div> */}
   </div>
 </div>
     </nav>

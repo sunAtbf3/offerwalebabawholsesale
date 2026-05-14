@@ -2,6 +2,10 @@ import React, { useEffect } from 'react';
 import { ArrowRight, Flame, Zap } from 'lucide-react';
 import { useGetProductsByTagQuery } from '../REDUX_FEATURES/REDUX_SLICES/ProductsApi/productsApi';
 import { useDispatch, useSelector } from 'react-redux';
+// Add to existing imports
+import { openModal } from '../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerSlice';
+import { selectIsAuthenticated } from '../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
+import { useNavigate } from 'react-router-dom';
 import {
   setPageForTag,
   addProductsForTag,
@@ -19,12 +23,15 @@ const SaleIsLive = () => {
   const storedProducts = useSelector(
     (state) => state.userProducts.tagProducts?.['on-sale'] ?? []
   );
+  // Add inside SaleIsLive component (after existing hooks)
+const navigate = useNavigate();
+const isAuthenticated = useSelector(selectIsAuthenticated);
 
   const { data, isLoading, isFetching, isError } =
     useGetProductsByTagQuery({
       tag: 'on-sale',
       page,
-      limit: 4,
+      limit: 10,
       // _cb: '1',
     });
 
@@ -42,9 +49,14 @@ const SaleIsLive = () => {
     }
   }, [data, dispatch]);
 
-  const handleLoadMore = () => {
-    dispatch(setPageForTag({ tag: 'on-sale', page: page + 1 }));
-  };
+ // Replace handleLoadMore
+const handleLoadMore = () => {
+  if (!isAuthenticated) {
+    dispatch(openModal('login'));
+    return;
+  }
+  dispatch(setPageForTag({ tag: 'on-sale', page: page + 1 }));
+};
 
   if (isError) return null;
 
@@ -77,8 +89,16 @@ const SaleIsLive = () => {
             <Zap size={14} className="text-[#F59E0B]" fill="currentColor" />
           </p>
           </div>
-          <Link to="/TagProducts/on-sale"
-  className="w-full sm:w-auto text-center flex items-center justify-center gap-2 text-xs sm:text-sm font-bold text-yellow-500 uppercase tracking-widest bg-white px-4 py-2 rounded-lg transition-all cursor-pointer shadow-sm hover:bg-yellow-500 hover:text-white">View All</Link>
+<button
+  onClick={handleLoadMore}
+  disabled={isFetching}
+  className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#0F172A] uppercase tracking-widest group bg-white border border-slate-200 px-6 sm:px-10 py-3 sm:py-4 hover:bg-[#0F172A] hover:text-white transition-all shadow-sm disabled:opacity-50"
+>
+  {isFetching ? 'Loading...' : !isAuthenticated ? 'View More' : 'View More'}
+  {!isFetching && (
+    <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+  )}
+</button>
           </div>
       </div>
 
@@ -120,18 +140,17 @@ const SaleIsLive = () => {
           {/* Load More */}
          {hasMore && (
   <div className="flex justify-center mt-10">
-    <button
-      onClick={handleLoadMore}
-      disabled={isFetching}
-className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#0F172A] uppercase tracking-widest group bg-white border border-slate-200 px-6 sm:px-10 py-3 sm:py-4 rounded-2xl hover:bg-[#0F172A] hover:text-white transition-all shadow-sm disabled:opacity-50"    >
-      {isFetching ? 'Loading...' : 'View More'}
-      {!isFetching && (
-        <ArrowRight
-          size={16}
-          className="group-hover:translate-x-1 transition-transform"
-        />
-      )}
-    </button>
+  // Replace View More button
+<button
+  onClick={handleLoadMore}
+  disabled={isFetching}
+  className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#0F172A] uppercase tracking-widest group bg-white border border-slate-200 px-6 sm:px-10 py-3 sm:py-4 hover:bg-[#0F172A] hover:text-white transition-all shadow-sm disabled:opacity-50"
+>
+  {isFetching ? 'Loading...' : !isAuthenticated ? 'View More' : 'View More'}
+  {!isFetching && (
+    <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+  )}
+</button>
   </div>
 )}
 

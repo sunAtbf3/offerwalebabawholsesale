@@ -21,12 +21,13 @@ import {
 } from "lucide-react";
 import logo from "../../assets/logo.jpg"
 import { Link } from "react-router-dom";
+import { useEffect } from "react";
 
 const categories = [
   {
     label: "Smart Life Gadgets",
     path: "/category/smart-life-gadgets",
-    desc: "Smart gadgets & trending tech products",
+    desc: "Smart Life Gadgets",
     icon: Smartphone,
     color: "from-cyan-500/20 to-blue-500/10",
   },
@@ -34,7 +35,8 @@ const categories = [
   {
     label: "Home & Kitchen",
     path: "/category/home-and-kitchen",
-    desc: "Daily essentials for modern homes",
+   
+    desc: "Home & Kitchen",
     icon: Home,
     color: "from-orange-500/20 to-yellow-500/10",
   },
@@ -42,7 +44,7 @@ const categories = [
   {
     label: "Fashion World",
     path: "/category/fashion-world",
-    desc: "Wholesale fashion & accessories",
+    desc: "Fashion World",
     icon: Shirt,
     color: "from-pink-500/20 to-rose-500/10",
   },
@@ -50,7 +52,7 @@ const categories = [
   {
     label: "Sports & Fitness",
     path: "/category/sports-and-fitness",
-    desc: "Fitness gear & active lifestyle products",
+    desc: "Sports & Fitness",
     icon: Dumbbell,
     color: "from-green-500/20 to-emerald-500/10",
   },
@@ -58,7 +60,7 @@ const categories = [
   {
     label: "Tours & Travels",
     path: "/category/tours-and-travels",
-    desc: "Travel essentials & accessories",
+    desc: "Tours & Travels",
     icon: Plane,
     color: "from-sky-500/20 to-indigo-500/10",
   },
@@ -66,7 +68,7 @@ const categories = [
   {
     label: "Stationary",
     path: "/category/stationary",
-    desc: "Office, school & business supplies",
+    desc: "Stationary",
     icon: PencilRuler,
     color: "from-violet-500/20 to-purple-500/10",
   },
@@ -74,7 +76,7 @@ const categories = [
   {
     label: "Baby Items",
     path: "/category/baby-items",
-    desc: "Safe & essential baby products",
+    desc: "Baby Items",
     icon: Baby,
     color: "from-pink-400/20 to-orange-300/10",
   },
@@ -82,7 +84,7 @@ const categories = [
   {
     label: "Car Accessories",
     path: "/category/car-accessories",
-    desc: "Accessories for smarter driving",
+    desc: "Car Accessories",
     icon: Car,
     color: "from-slate-500/20 to-gray-500/10",
   },
@@ -90,7 +92,7 @@ const categories = [
   {
     label: "Cleaning Supplies",
     path: "/category/mix-items-daily-use",
-    desc: "Daily-use & hygiene essentials",
+    desc: "Cleaning Supplies",
     icon: SprayCan,
     color: "from-teal-500/20 to-cyan-500/10",
   },
@@ -98,7 +100,7 @@ const categories = [
   {
     label: "Gifts",
     path: "/category/gifts",
-    desc: "Curated gifting collections",
+    desc: "Gifts",
     icon: Gift,
     color: "from-amber-500/20 to-orange-500/10",
   },
@@ -159,6 +161,9 @@ const fadeUp = {
 };
 
 export default function AboutUs() {
+  useEffect(()=>{
+    window.scrollTo({ top:0, behavior: "smooth"})
+  },[])
   return (
     <div className="bg-[#0a0a0f] text-white overflow-hidden">
 
@@ -170,45 +175,72 @@ export default function AboutUs() {
         <div className="absolute bottom-[-150px] left-[-100px] h-[400px] w-[400px] rounded-full bg-orange-500/20 blur-[120px]" />
 
         {/* GRID */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:60px_60px]" />
+{/* PREMIUM GRID BACKGROUND */}
+<div
+  className="pointer-events-none absolute inset-0 opacity-[0.045]"
+  style={{
+    backgroundImage: `
+      linear-gradient(rgba(251,191,36,0.12) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(251,191,36,0.12) 1px, transparent 1px)
+    `,
+    backgroundSize: "72px 72px",
+    maskImage:
+      "radial-gradient(circle at center, black 35%, transparent 90%)",
+    WebkitMaskImage:
+      "radial-gradient(circle at center, black 35%, transparent 90%)",
+  }}
+/>
+{/* SOFT OVERLAY */}
+<div
+  className="absolute inset-0"
+  style={{
+    background:
+      "linear-gradient(135deg, rgba(5,5,5,0.88) 0%, rgba(20,11,5,0.82) 30%, rgba(42,20,8,0.78) 65%, rgba(9,9,9,0.9) 100%)",
+  }}
+/>
+      {/* HERO CONTENT */}
+<motion.div
+  initial="hidden"
+  animate="visible"
+  variants={fadeUp}
+  className="relative z-10 text-center max-w-5xl"
+>
 
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={fadeUp}
-          className="relative z-10 text-center max-w-5xl"
-        >
-          <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-5 py-2 text-xs uppercase tracking-[3px] text-amber-400">
-            <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-            About Us
-          </div>
+  {/* TOP BADGE */}
+  <div className="inline-flex items-center gap-3 rounded-full border border-amber-500/20 bg-amber-500/5 px-7 py-3 backdrop-blur-xl shadow-[0_0_40px_rgba(251,191,36,0.04)]">
+    
+    <span className="h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.9)]" />
 
-          <h1 className="mt-8 text-5xl md:text-7xl font-black leading-[0.95] tracking-[-3px]">
-            India's Trusted <br />
-            <span className="text-amber-400">Wholesale</span> Destination
-          </h1>
+    <span className="text-[12px] font-semibold uppercase tracking-[5px] text-amber-500">
+      Wholesale Marketplace
+    </span>
+  </div>
 
-          <p className="mx-auto mt-8 max-w-2xl text-lg leading-8 text-white/60">
-            From the heart of Ulhasnagar, Maharashtra — bringing quality
-            products, honest pricing, and seamless wholesale to businesses and
-            shoppers across PAN India.
-          </p>
+  {/* MAIN TITLE */}
+  <h1 className="mt-10 text-6xl md:text-8xl font-[300] tracking-[-4px] text-white leading-none">
+    About Us
+    <br />
+  </h1>
 
-          <div className="mt-8 flex items-center justify-center gap-2 text-sm text-white/40">
-            <MapPin className="h-4 w-4 text-amber-400" />
-            Ulhasnagar, Maharashtra · Serving PAN India
-          </div>
+  {/* SUBTITLE */}
+  <h2 className="mt-8 text-2xl md:text-4xl font-semibold tracking-[-1px] text-white/90">
+    Bulk Products • Better Prices • Faster Delivery
+  </h2>
 
-          <div className="mt-12 flex flex-wrap justify-center gap-4">
-            <Link to="/category/smart-life-gadgets" className="rounded-full bg-amber-400 px-8 py-4 text-sm font-bold text-black transition hover:scale-105 hover:bg-amber-300">
-              Explore Categories
-            </Link>
+  {/* DESCRIPTION */}
+  <p className="mx-auto mt-8 max-w-4xl text-lg md:text-[1.35rem] leading-[2.2rem] text-white/55 font-light">
+    From trending gadgets to daily essentials — Offer Wale Baba helps
+    retailers, resellers, and businesses source high-quality wholesale
+    products at unbeatable prices across PAN India.
+  </p>
 
-            <Link to="/contact" className="rounded-full border border-white/20 px-8 py-4 text-sm font-bold transition hover:border-amber-400 hover:text-amber-400">
-              Contact Us
-            </Link>
-          </div>
-        </motion.div>
+  {/* LOCATION */}
+  <div className="mt-12 flex items-center justify-center">
+    <p className="text-[13px] md:text-[15px] uppercase tracking-[4px] text-amber-600/80">
+      Ulhasnagar, Maharashtra · Wholesale Delivery Across India
+    </p>
+  </div>
+</motion.div>
 
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center text-white/30">
           <ChevronDown className="animate-bounce" />
@@ -300,7 +332,7 @@ export default function AboutUs() {
             </div>
 
             <div className="absolute -bottom-6 -right-6 rounded-3xl bg-amber-400 px-8 py-6 text-black shadow-2xl">
-              <h2 className="text-4xl font-black">₹299</h2>
+              <h2 className="text-4xl font-black">₹9</h2>
               <p className="mt-1 text-xs uppercase tracking-[2px] text-black/60">
                 Starting Price
               </p>

@@ -23,11 +23,13 @@ const TAG_META = {
 };
 
 const TagProducts = () => {
-  const { tag } = useParams();
+  const { slug } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  console.log("Tags", slug);
+  
 
-  const normalizedTag = useMemo(() => tag?.replace("_", "-"), [tag]);
+  const normalizedTag = useMemo(() => slug?.replace("_", "-"), [slug]);
 
   const page = useSelector(
     (state) => state.userProducts.tagPage?.[normalizedTag] ?? 1
@@ -37,6 +39,8 @@ const TagProducts = () => {
     useSelector(
       (state) => state.userProducts.tagProducts?.[normalizedTag]
     ) ?? [];
+    console.log("normalized tags", normalizedTag, "stored Product", storedProducts);
+    
 
   const meta = TAG_META[normalizedTag] || {
     title: normalizedTag,
@@ -56,7 +60,7 @@ const TagProducts = () => {
   const { data, isFetching, isLoading } = useGetProductsByTagQuery({
     tag: normalizedTag,
     page,
-    limit: 22,
+    limit: 4,
   });
 
   const hasMore = data?.hasNextPage ?? false;
@@ -105,10 +109,10 @@ const TagProducts = () => {
          const ok = filters.price.some((x) => {
     const price = v?.price?.sale ?? v?.price?.base ?? 0;
 
-    if (x === "u1000") return price < 1000;
-    if (x === "1000-4000") return price >= 1000 && price <= 4000;
-    if (x === "4000-10000") return price >= 4000 && price <= 10000;
-    if (x === "o10000") return price > 10000;
+    if (x === "u29") return price < 29;
+    if (x === "29-49") return price > 29 && price <= 49;
+    if (x === "49-79") return price > 49 && price <= 79;
+    if (x === "o99") return price > 99;
 
     return false;
          })
@@ -222,10 +226,10 @@ return (
           </h3>
 
           {[
-            ["u1000", "Under ₹1000"],
-            ["1000-4000", "₹1000 - 4000"],
-            ["4000-10000", "4000 - 10000"],
-            ["o10000", "Over ₹10000"],
+            ["u29", "Under ₹29"],
+            ["29-49", "₹29 - ₹49"],
+            ["49-79", "₹49 - ₹79"],
+            ["o99", "Over ₹99"],
           ].map(([k, label]) => (
             <label
               key={k}
@@ -321,8 +325,7 @@ return (
           </div>
         ) : sortedProducts.length === 0 ? (
           <div className="text-center text-gray-400 py-20">
-            No products found
-          </div>
+            Coming Soon...          </div>
         ) : (
           <>
             {/* CENTER GRID ALIGN FIX */}
