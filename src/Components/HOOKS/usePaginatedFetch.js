@@ -41,17 +41,21 @@ const usePaginatedFetch = ({ useQuery, baseArgs, limit = 12, dataKey = "products
   // RTK Query's merge gives us the full accumulated array in rawData
  const data = rawData?.[dataKey] ?? [];
 
-const total = rawData?.pagination?.total ?? 0;
-const totalPages = rawData?.pagination?.totalPages ?? 1;
-const hasNextPage = rawData?.pagination?.hasNextPage ?? false;
+const total = rawData?.total ?? 0;
+const currentPage = rawData?.page ?? 1;
+const currentLimit = rawData?.limit ?? limit;
 
- const pagination = rawData?.pagination ?? {
-  total: 0,
-  page: 1,
-  limit,
-  totalPages: 1,
-  hasNextPage: false,
-  hasPrevPage: false,
+const totalPages = Math.ceil(total / currentLimit);
+
+const hasNextPage = currentPage < totalPages;
+
+const pagination = {
+  total,
+  page: currentPage,
+  limit: currentLimit,
+  totalPages,
+  hasNextPage,
+  hasPrevPage: currentPage > 1,
 };
 
   // isFetchingMore = we already have data AND we're fetching the next page

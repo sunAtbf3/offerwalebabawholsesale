@@ -22,7 +22,7 @@ import {
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 const ADDRESS_TYPE_ICON = {
-  home: <Home size={15} className="text-[#F7A221]" />,
+  home: <Home size={15} className="text-[#478B8D]" />,
   work: <Briefcase size={15} className="text-blue-500" />,
   other: <MapPin size={15} className="text-gray-400" />,
 };
@@ -220,46 +220,193 @@ const AreaDropdown = ({ value, onChange, options = [], required, onAddCustom, sa
 // ─────────────────────────────────────────────────────────────────────────────
 // Address Card
 // ─────────────────────────────────────────────────────────────────────────────
-const AddressCard = ({ address, isDefault, onEdit, onDelete, onSetDefault, isDeleting }) => (
-  <div className={`p-5 sm:p-6 rounded-[28px] sm:rounded-[32px] relative overflow-hidden transition-all duration-300 border-2 cursor-pointer hover:shadow-xl ${isDefault ? "border-black shadow-xl ring-4 ring-black/5" : "border-gray-100 hover:border-black"}`}>
-    {isDefault && (
-      <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-black text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full">
-        <Star size={10} className="fill-[#F7A221] text-[#F7A221]" />
-        <span>Default</span>
-      </div>
-    )}
-    <div className="flex items-center gap-2 mb-4">
-      <div className="p-2 bg-gray-50 rounded-xl">
+const AddressCard = ({
+  address,
+  isDefault,
+  onEdit,
+  onDelete,
+  onSetDefault,
+  isDeleting,
+}) => (
+  <div
+    className="
+      w-full
+
+      bg-white
+
+      rounded-2xl
+
+      px-3 py-3
+      sm:px-4
+
+      flex items-start
+      sm:items-center
+
+      justify-between
+      gap-3
+
+      hover:border-gray-300
+      hover:shadow-sm
+
+      transition-all duration-200
+    "
+  >
+
+    {/* LEFT */}
+    <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+
+      {/* ICON */}
+      <div
+        className="
+          w-9 h-9
+          sm:w-10 sm:h-10
+
+          rounded-xl
+          bg-[#F5F5F5]
+
+          flex items-center justify-center
+
+          flex-shrink-0
+        "
+      >
         {ADDRESS_TYPE_ICON[address.addressType] || ADDRESS_TYPE_ICON.other}
       </div>
-      <span className="font-black uppercase text-[10px] tracking-widest text-gray-400">{address.addressType}</span>
+
+      {/* CONTENT */}
+      <div className="min-w-0 flex-1">
+
+        {/* TOP */}
+        <div className="flex items-center gap-2 flex-wrap">
+
+          <h4
+            className="
+              text-md
+              font-bold
+              text-gray-900
+            "
+          >
+            {address.addressType === "home"
+              ? "Home"
+              : address.addressType === "work"
+              ? "Work"
+              : "Other"}
+          </h4>
+
+          {isDefault && (
+            <span
+              className="
+                text-[8px]
+                sm:text-[10px]
+
+                font-bold
+
+                bg-green-50
+                text-green-700
+
+                px-2 py-[2px]
+
+                rounded-full
+
+                whitespace-nowrap
+              "
+            >
+              Default
+            </span>
+          )}
+        </div>
+
+        {/* ADDRESS */}
+        <p
+          className="
+            text-[11px]
+            sm:text-xs
+
+            text-gray-600
+
+            mt-0.5
+
+            line-clamp-1
+            sm:line-clamp-2
+
+            break-words
+          "
+        >
+          {address.fullName},{" "}
+          {[
+            address.houseNumber,
+            address.area,
+            address.city,
+          ]
+            .filter(Boolean)
+            .join(", ")}
+        </p>
+      </div>
     </div>
-    <h4 className="font-black text-gray-900 text-base leading-tight pr-20">{address.fullName}</h4>
-    <p className="text-xs text-gray-400 font-bold mt-0.5 mb-4">{address.phone}</p>
-    <p className="text-sm font-medium text-gray-600 leading-relaxed">
-      {[address.houseNumber, address.area, address.landmark, address.addressLine1, address.addressLine2]
-        .filter(Boolean).join(", ")}
-      <br />
-      <span className="text-gray-900 font-bold">
-        {address.city}, {address.state} — {address.postalCode}
-      </span>
-    </p>
-    <div className="mt-5 pt-5 border-t border-gray-100 flex items-center gap-3">
+
+    {/* ACTIONS */}
+    <div
+      className="
+        flex items-center
+
+        gap-2
+        sm:gap-3
+
+        flex-shrink-0
+      "
+    >
+
+      <button
+        onClick={() => onEdit(address)}
+        className="
+          text-[11px]
+          sm:text-xs
+
+          font-semibold
+
+          text-green-700
+          hover:text-green-800
+
+          whitespace-nowrap
+        "
+      >
+        Edit
+      </button>
+
       {!isDefault && (
-        <button onClick={(e) => { e.stopPropagation(); onSetDefault(address); }}
-          className="text-[10px] font-black uppercase tracking-widest text-[#F7A221] hover:underline cursor-pointer whitespace-nowrap">
-          Set Default
+        <button
+          onClick={() => onSetDefault(address)}
+          className="
+            hidden md:block
+
+            text-xs
+            font-semibold
+
+            text-gray-600
+            hover:text-black
+
+            whitespace-nowrap
+          "
+        >
+          Default
         </button>
       )}
-      <button onClick={(e) => { e.stopPropagation(); onEdit(address); }}
-        className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-black cursor-pointer transition-colors">
-        <Pencil size={12} /> Edit
-      </button>
-      <button onClick={(e) => { e.stopPropagation(); onDelete(address._id); }}
+
+      <button
+        onClick={() => onDelete(address._id)}
         disabled={isDeleting}
-        className="ml-auto flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-red-400 hover:text-red-600 disabled:opacity-30 cursor-pointer transition-colors">
-        {isDeleting ? <RefreshCw size={12} className="animate-spin" /> : <Trash2 size={12} />}
-        {isDeleting ? "Deleting..." : "Delete"}
+        className="
+          text-[11px]
+          sm:text-xs
+
+          font-semibold
+
+          text-red-500
+          hover:text-red-600
+
+          whitespace-nowrap
+        "
+      >
+        {isDeleting ? "..." : "Delete"}
       </button>
     </div>
   </div>
@@ -767,7 +914,7 @@ const UserAddress = () => {
       )}
 
       {loading.fetch ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {[1, 2, 3].map((i) => <div key={i} className="h-64 bg-gray-50 rounded-[40px] animate-pulse" />)}
         </div>
       ) : allCount === 0 ? (
@@ -781,7 +928,7 @@ const UserAddress = () => {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="flex flex-col gap-4">
           {defaultAddress && (
             <AddressCard address={defaultAddress} isDefault onEdit={openEdit} onDelete={handleDelete} onSetDefault={handleSetDefault} isDeleting={deletingId === defaultAddress._id} />
           )}

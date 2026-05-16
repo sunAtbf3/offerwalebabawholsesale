@@ -13,7 +13,7 @@ const Home = () => {
   const { data: categories = [], isLoading, isError } = useGetAllCategoriesQuery();
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen overflow-hidden">
       <HeroBanner />
       <TrendingProducts />
       <SaleIsLive />

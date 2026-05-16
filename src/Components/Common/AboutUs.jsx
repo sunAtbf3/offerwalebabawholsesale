@@ -168,112 +168,105 @@ export default function AboutUs() {
     <div className="bg-[#0a0a0f] text-white overflow-hidden">
 
       {/* HERO */}
-      <section className="relative min-h-screen flex items-center justify-center px-6 lg:px-12">
+      {/* HERO */}
+<section className="relative min-h-[70vh] flex items-center justify-center px-6 lg:px-12" style={{ backgroundColor: '#0d1117' }}>
 
-        {/* ORBS */}
-        <div className="absolute top-[-200px] right-[-150px] h-[500px] w-[500px] rounded-full bg-amber-500/20 blur-[120px]" />
-        <div className="absolute bottom-[-150px] left-[-100px] h-[400px] w-[400px] rounded-full bg-orange-500/20 blur-[120px]" />
+  {/* ORBS */}
+  <div className="absolute top-[-200px] right-[-150px] h-[500px] w-[500px] rounded-full bg-amber-500/10 blur-[120px]" />
+  <div className="absolute bottom-[-150px] left-[-100px] h-[400px] w-[400px] rounded-full bg-orange-500/10 blur-[120px]" />
 
-        {/* GRID */}
-{/* PREMIUM GRID BACKGROUND */}
-<div
-  className="pointer-events-none absolute inset-0 opacity-[0.045]"
-  style={{
-    backgroundImage: `
-      linear-gradient(rgba(251,191,36,0.12) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(251,191,36,0.12) 1px, transparent 1px)
-    `,
-    backgroundSize: "72px 72px",
-    maskImage:
-      "radial-gradient(circle at center, black 35%, transparent 90%)",
-    WebkitMaskImage:
-      "radial-gradient(circle at center, black 35%, transparent 90%)",
-  }}
-/>
-{/* SOFT OVERLAY */}
-<div
-  className="absolute inset-0"
-  style={{
-    background:
-      "linear-gradient(135deg, rgba(5,5,5,0.88) 0%, rgba(20,11,5,0.82) 30%, rgba(42,20,8,0.78) 65%, rgba(9,9,9,0.9) 100%)",
-  }}
-/>
-      {/* HERO CONTENT */}
-<motion.div
-  initial="hidden"
-  animate="visible"
-  variants={fadeUp}
-  className="relative z-10 text-center max-w-5xl"
->
+  {/* GRID */}
+  <div
+    className="pointer-events-none absolute inset-0 opacity-[0.04]"
+    style={{
+      backgroundImage: `
+        linear-gradient(rgba(255, 255, 255, 0.3) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.3) 1px, transparent 1px)
+      `,
+      backgroundSize: "60px 60px",
+      maskImage: "radial-gradient(circle at center, black 30%, transparent 80%)",
+      WebkitMaskImage: "radial-gradient(circle at center, black 30%, transparent 80%)",
+    }}
+  />
 
-  {/* TOP BADGE */}
-  <div className="inline-flex items-center gap-3 rounded-full border border-amber-500/20 bg-amber-500/5 px-7 py-3 backdrop-blur-xl shadow-[0_0_40px_rgba(251,191,36,0.04)]">
-    
-    <span className="h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.9)]" />
+  {/* SOFT OVERLAY */}
+  <div
+    className="absolute inset-0"
+    style={{
+      background: "linear-gradient(135deg, rgba(13,17,23,0.95) 0%, rgba(13,17,23,0.85) 50%, rgba(13,17,23,0.95) 100%)",
+    }}
+  />
 
-    <span className="text-[12px] font-semibold uppercase tracking-[5px] text-amber-500">
-      Wholesale Marketplace
-    </span>
-  </div>
+  {/* HERO CONTENT */}
+  <motion.div
+    initial="hidden"
+    animate="visible"
+    variants={fadeUp}
+    className="relative z-10 text-center max-w-5xl py-16"
+  >
+    {/* TOP BADGE */}
+    <div className="inline-flex items-center gap-3 rounded-full border border-amber-500/20 bg-amber-500/5 px-7 py-3 backdrop-blur-xl shadow-[0_0_40px_rgba(251,191,36,0.04)]">
+      <span className="h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.9)]" />
+      <span className="text-[12px] font-semibold uppercase tracking-[5px] text-amber-500">
+        Wholesale Marketplace
+      </span>
+    </div>
 
-  {/* MAIN TITLE */}
-  <h1 className="mt-10 text-6xl md:text-8xl font-[300] tracking-[-4px] text-white leading-none">
-    About Us
-    <br />
-  </h1>
+    {/* MAIN TITLE */}
+    <h1 className="mt-10 text-6xl md:text-8xl font-[300] tracking-[-4px] text-white leading-none">
+      About Us
+    </h1>
 
-  {/* SUBTITLE */}
-  <h2 className="mt-8 text-2xl md:text-4xl font-semibold tracking-[-1px] text-white/90">
-    Bulk Products • Better Prices • Faster Delivery
-  </h2>
+    {/* SUBTITLE */}
+    <h2 className="mt-8 text-2xl md:text-4xl font-semibold tracking-[-1px] text-white/90">
+      Bulk Products • Better Prices • Faster Delivery
+    </h2>
 
-  {/* DESCRIPTION */}
-  <p className="mx-auto mt-8 max-w-4xl text-lg md:text-[1.35rem] leading-[2.2rem] text-white/55 font-light">
-    From trending gadgets to daily essentials — Offer Wale Baba helps
-    retailers, resellers, and businesses source high-quality wholesale
-    products at unbeatable prices across PAN India.
-  </p>
-
-  {/* LOCATION */}
-  <div className="mt-12 flex items-center justify-center">
-    <p className="text-[13px] md:text-[15px] uppercase tracking-[4px] text-amber-600/80">
-      Ulhasnagar, Maharashtra · Wholesale Delivery Across India
+    {/* DESCRIPTION */}
+    <p className="mx-auto mt-8 max-w-4xl text-lg md:text-[1.35rem] leading-[2.2rem] text-white/55 font-light">
+      From trending gadgets to daily essentials — Offer Wale Baba helps
+      retailers, resellers, and businesses source high-quality wholesale
+      products at unbeatable prices across PAN India.
     </p>
-  </div>
-</motion.div>
 
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center text-white/30">
-          <ChevronDown className="animate-bounce" />
-          <span className="mt-2 text-xs tracking-[3px] uppercase">
-            Scroll
-          </span>
-        </div>
-      </section>
+    {/* LOCATION */}
+    <div className="mt-12 flex items-center justify-center">
+      <p className="text-[13px] md:text-[15px] uppercase tracking-[4px] text-amber-600/80">
+        Ulhasnagar, Maharashtra · Wholesale Delivery Across India
+      </p>
+    </div>
+  </motion.div>
+
+  {/* SCROLL INDICATOR */}
+  <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center text-white/30">
+    <ChevronDown className="animate-bounce" />
+    <span className="mt-2 text-xs tracking-[3px] uppercase">Scroll</span>
+  </div>
+</section>
 
       {/* STATS */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 bg-amber-400 text-black">
-        {[
-          ["10K+", "Products"],
-          ["PAN India", "Delivery"],
-          ["GST", "Compliant"],
-          ["MOQ 10+", "Min Order"],
-        ].map(([number, label], i) => (
-          <motion.div
-            key={label}
-            custom={i}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={fadeUp}
-            className="border border-black/10 py-8 text-center"
-          >
-            <h2 className="text-4xl font-black">{number}</h2>
-            <p className="mt-2 text-xs uppercase tracking-[2px] text-black/60">
-              {label}
-            </p>
-          </motion.div>
-        ))}
-      </section>
+    <section className="grid grid-cols-2 lg:grid-cols-4 bg-[#294669] rounded-2xl overflow-hidden">
+  {[
+    ["10K+", "Products"],
+    ["PAN India", "Delivery"],
+    ["GST", "Compliant"],
+    ["MOQ 10+", "Min Order"],
+  ].map(([number, label], i) => (
+    <motion.div
+      key={label}
+      custom={i}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true }}
+      variants={fadeUp}
+      className="relative border-r border-white/8 last:border-r-0 px-5 py-8 text-center"
+    >
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-[3px] bg-[#E4D329] rounded-b" />
+      <h2 className="text-4xl font-black text-[#E4D329]">{number}</h2>
+      <p className="mt-1.5 text-[10px] uppercase tracking-[2.5px] text-white/55">{label}</p>
+    </motion.div>
+  ))}
+</section>
 
       {/* STORY */}
       <section className="bg-[#f8f8f5] px-6 py-28 text-black lg:px-12">
@@ -331,7 +324,7 @@ export default function AboutUs() {
               </p>
             </div>
 
-            <div className="absolute -bottom-6 -right-6 rounded-3xl bg-amber-400 px-8 py-6 text-black shadow-2xl">
+            <div className="absolute -bottom-6 -right-6 rounded-3xl bg-[#E4D329] px-8 py-6 text-black shadow-2xl">
               <h2 className="text-4xl font-black">₹9</h2>
               <p className="mt-1 text-xs uppercase tracking-[2px] text-black/60">
                 Starting Price
@@ -545,7 +538,7 @@ export default function AboutUs() {
       </section>
 
       {/* CTA */}
-      <section className="relative overflow-hidden bg-amber-400 px-6 py-28 text-center text-black">
+      <section className="relative overflow-hidden bg-[#F7A221] px-6 py-28 text-center text-black">
 
         <div className="absolute left-1/2 top-[-150px] h-[450px] w-[450px] -translate-x-1/2 rounded-full bg-black/10 blur-[100px]" />
 

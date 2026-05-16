@@ -109,22 +109,22 @@ const footerLinks = [
   {
     title: "Quick links",
     items: [
-      { label: "Smart Life Gadgets", path: "/category/smart-life-gadgets" },
       { label: "Home & Kitchen", path: "/category/home-and-kitchen" },
-      { label: "Fashion World", path: "/category/fashion-world" },
-      { label: "Sports & Fitness", path: "/category/sports-and-fitness" },
-      { label: "Tours & Travels", path: "/category/tours-and-travels" },
+      { label: "Smart Life Gadgets", path: "/category/smart-life-gadgets" },
+      { label: "Baby Items", path: "/category/baby-items" },
       { label: "Stationary", path: "/category/stationary" },
+      { label: "Cleaning & Housekeeping Supplies", path: "/category/cleaning-and-housekeeping-supplies" },
+      { label: "Sports & Fitness", path: "/category/sports-and-fitness" },
     ]
   },
   {
     title: "Quick links",
     items: [
-      { label: "Baby Items", path: "/category/baby-items" },
-      { label: "Car Accessories", path: "/category/car-accessories" },
-      { label: "Cleaning & Housekeeping Supplies", path: "/category/cleaning-&housekeeping-supplies" },
+      { label: "Tours & Travels", path: "/category/tours-and-travels" },
+      { label: "Fashion World", path: "/category/fashion-world" },
       { label: "Gifts", path: "/category/gifts" },
       { label: "Mix Items", path: "/category/mix-items" },
+      { label: "Car Accessories", path: "/category/car-accessories" },
     ]
   },
   {
@@ -565,7 +565,7 @@ const Footer = () => {
             {/* Fine Print Links */}
             <div className="flex items-center gap-4 sm:gap-6 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
               <a href="/contact" className="hover:text-amber-500 transition-colors underline underline-offset-4 decoration-slate-100">Contact Us</a>
-              <a href="#" className="hover:text-amber-500 transition-colors underline underline-offset-4 decoration-slate-100">Sitemap</a>
+              <a href="/contact" className="hover:text-amber-500 transition-colors underline underline-offset-4 decoration-slate-100">Sitemap</a>
               {/* <a href="#" className="hover:text-amber-500 transition-colors underline underline-offset-4 decoration-slate-100">MSME Verified Portal</a> */}
             </div>
           </div>

@@ -12,6 +12,7 @@ import { WHOLESALE_ADMIN_ACCESS_TOKEN_KEY } from "../../SERVICES/wholesaleAxios"
 import LOGO from "../../assets/logo2.png";
 // ── Settings dashboard import (used when activeTab === "settings") ─────────
 import SettingsDashboard from "./ADMIN_TABS/SETTINGS/SettingsDashboard";
+import { useAdminLogoutMutation } from "./ADMIN_REDUX_MANAGEMENT/adminAuthApi";
 
 
 // ── HARDCODED ROLE ────────────────────────────────────────────────────────────
@@ -60,10 +61,18 @@ const AdminDashboard = () => {
   });
 
   const navigate = useNavigate();
+const [adminLogout, { isLoading: loggingOut }] = useAdminLogoutMutation();
 
   // ── Logout — UI only, no API call ─────────────────────────────────────────
-  const handleLogout = () => {
+  const handleLogout = async() => {
+    try {
+    await adminLogout().unwrap();
+  } catch {
+    // even if API fails, adminAuthApi.transformResponse already clears the token
+    // and adminAuthSlice extraReducer (matchRejected) clears the state
+  } finally {
     navigate("/admin/login", { replace: true });
+  }
   };
 
   // ── Single-responsibility effect: keep URL honest ─────────────────────────

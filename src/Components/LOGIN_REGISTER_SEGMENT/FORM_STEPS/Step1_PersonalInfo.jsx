@@ -7,7 +7,7 @@ import { nextStep, updateFormData } from "../../REDUX_FEATURES/REDUX_SLICES/WHOL
 const validate = (data) => {
   const errors = {};
   if (!data.fullName.trim())                          errors.fullName       = "Full name is required";
-  if (!data.email.trim())                             errors.email          = "Email is required";
+  // if (!data.email.trim())                             errors.email          = "Email is required";
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email))
                                                       errors.email          = "Enter a valid email";
   if (!data.mobileNumber.trim())                      errors.mobileNumber   = "Mobile number is required";
@@ -94,7 +94,6 @@ const Step1_PersonalInfo = ({ formData }) => {
       <Field
         label="Email Address"
         icon={Mail}
-        required
         type="email"
         placeholder="your@email.com"
         value={formData.email}

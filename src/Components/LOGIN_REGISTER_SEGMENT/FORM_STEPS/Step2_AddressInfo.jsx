@@ -9,9 +9,9 @@ import {
 
 const validate = (data) => {
   const errors = {};
-  if (!data.permanentAddress.trim()) errors.permanentAddress = "Permanent address is required";
-  if (!data.businessAddress.trim())  errors.businessAddress  = "Business address is required";
-  if (!data.deliveryAddress.trim())  errors.deliveryAddress  = "Delivery address is required";
+  // if (!data.permanentAddress.trim()) errors.permanentAddress = "Permanent address is required";
+  // if (!data.businessAddress.trim())  errors.businessAddress  = "Business address is required";
+  // if (!data.deliveryAddress.trim())  errors.deliveryAddress  = "Delivery address is required";
   return errors;
 };
 
@@ -72,7 +72,6 @@ const Step2_AddressInfo = ({ formData }) => {
       <TextAreaField
         label="Permanent Address"
         icon={MapPin}
-        required
         placeholder="Your home / permanent address"
         value={formData.permanentAddress}
         onChange={handleChange("permanentAddress")}
@@ -107,7 +106,6 @@ const Step2_AddressInfo = ({ formData }) => {
       <TextAreaField
         label="Business Address"
         icon={Building2}
-        required
         hint={formData.haveShop ? "Your shop address" : "Where you operate from"}
         placeholder="Your business operating address"
         value={formData.businessAddress}
@@ -119,7 +117,6 @@ const Step2_AddressInfo = ({ formData }) => {
       <TextAreaField
         label="Delivery Address"
         icon={Truck}
-        required
         hint="Where should we deliver your wholesale orders?"
         placeholder="Delivery / warehouse address"
         value={formData.deliveryAddress}

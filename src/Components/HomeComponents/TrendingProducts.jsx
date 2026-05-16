@@ -2,8 +2,6 @@ import React, { useEffect } from 'react';
 import { ArrowRight, Zap, Package } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useGetProductsByTagQuery } from '../REDUX_FEATURES/REDUX_SLICES/ProductsApi/productsApi';
-
-// Add to existing imports
 import { openModal } from '../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerSlice';
 import { selectIsAuthenticated } from '../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +14,8 @@ import { Link } from 'react-router-dom';
 
 const TodayArrival = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const isAuthenticated = useSelector(selectIsAuthenticated);
 
   const page = useSelector(
     (state) => state.userProducts.tagPage?.['today-arrival'] ?? 1
@@ -25,20 +25,17 @@ const TodayArrival = () => {
     (state) => state.userProducts.tagProducts?.['today-arrival'] ?? []
   );
 
-  const { data, isLoading, isFetching, isError } =
-    useGetProductsByTagQuery({
-      tag: 'today-arrival',
-      page,
-      limit: 10,
-      // _cb: '1',
-    });
+  const { data, isLoading, isFetching, isError } = useGetProductsByTagQuery({
+    tag: 'today-arrival',
+    page,
+    limit: 10,
+  });
 
   const hasMore = data?.hasNextPage ?? false;
-  // Add inside TodayArrival component
-const navigate = useNavigate();
-const isAuthenticated = useSelector(selectIsAuthenticated);
 
-  // ✅ Append products (no overwrite)
+  // First product ka slug nikalo for "View All" link
+  const categorySlug = storedProducts?.[0]?.category?.slug ?? null;
+
   useEffect(() => {
     if (data?.products) {
       dispatch(
@@ -49,27 +46,41 @@ const isAuthenticated = useSelector(selectIsAuthenticated);
       );
     }
   }, [data, dispatch]);
-//   useEffect(() => {
-//   return () => {
-//     dispatch(clearTagProducts('on-sale'));
-//     dispatch(setPageForTag({ tag: 'on-sale', page: 1 }));
-//   };
-// }, []);
 
-// Replace handleLoadMore
-const handleLoadMore = () => {
-  if (!isAuthenticated) {
-    dispatch(openModal('login'));
-    return;
-  }
-  dispatch(setPageForTag({ tag: 'today-arrival', page: page + 1 }));
-};
+  const handleLoadMore = () => {
+    if (!isAuthenticated) {
+      dispatch(openModal('login'));
+      return;
+    }
+    dispatch(setPageForTag({ tag: 'today-arrival', page: page + 1 }));
+  };
+
+  const handleViewAll = () => {
+    if (!isAuthenticated) {
+      dispatch(openModal('login'));
+      return;
+    }
+    if (categorySlug) {
+      navigate(`/category/${categorySlug}`);
+    }
+  };
 
   if (isError) return null;
 
   return (
-    <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10 lg:py-14">
-      
+    <section className="  max-w-[1440px]
+    mx-auto
+
+  px-5
+sm:px-5
+md:px-7
+lg:px-10
+xl:px-12
+
+    py-8
+    sm:py-10
+    lg:py-14">
+
       {/* Header */}
       <div className="mb-6 sm:mb-10">
         <div className="space-y-1">
@@ -86,30 +97,32 @@ const handleLoadMore = () => {
             </div>
           </div>
         </div>
-         <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full'>
-                     <div>
-                    
-                  <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl flex items-center gap-3 sm:gap-4 font-black text-[#0F172A] tracking-tighter uppercase">
-                    Today <span className="text-[#F59E0B]">Arrivals</span>
-                  </h2>
-                  <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.2em] flex items-center gap-2">
-                    Freshly stocked for bulk orders{' '}
-                    <Zap size={14} className="text-[#F59E0B]" fill="currentColor" />
-                  </p>
-                  </div>
-<button
-  onClick={handleLoadMore}
-  disabled={isFetching}
-  className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#0F172A] uppercase tracking-widest group bg-white border border-slate-200 px-6 sm:px-10 py-3 sm:py-4 hover:bg-[#0F172A] hover:text-white transition-all shadow-sm disabled:opacity-50"
->
-  {isFetching ? 'Loading...' : !isAuthenticated ? 'View More' : 'View More'}
-  {!isFetching && (
-    <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-  )}
-</button>                  </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full">
+          <div>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl flex items-center gap-3 sm:gap-4 text-[#0F172A] tracking-tighter uppercase">
+              Today <span className="text-[#F59E0B]">Arrivals</span>
+            </h2>
+            <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.2em] flex items-center gap-2">
+              Freshly stocked for bulk orders{' '}
+              <Zap size={14} className="text-[#F59E0B]" fill="currentColor" />
+            </p>
+          </div>
+
+          {/* View All — header mein, authenticated hone pe
+          {isAuthenticated && categorySlug && (
+            <Link
+              to={`/TagProducts/today-arrival`}
+              className="flex items-center gap-2 text-xs font-black text-[#0F172A] uppercase tracking-widest group hover:text-[#2563EB] transition-colors"
+            >
+              View All
+              <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            </Link>
+          )} */}
+        </div>
       </div>
 
-      {/* Loading */}
+      {/* Loading Skeleton */}
       {isLoading && storedProducts.length === 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -133,7 +146,7 @@ const handleLoadMore = () => {
         </div>
       ) : (
         <>
-          {/* Products */}
+          {/* Products Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
             {storedProducts.map((product, index) => (
               <WholesaleProductCard
@@ -144,23 +157,25 @@ const handleLoadMore = () => {
             ))}
           </div>
 
-          {/* ✅ Bottom View More Button */}
+          {/* Bottom Buttons — View More + View All */}
           {hasMore && (
-            <div className="flex justify-center mt-10">
-<button
-  onClick={handleLoadMore}
-  disabled={isFetching}
-  className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#0F172A] uppercase tracking-widest group bg-white border border-slate-200 px-6 sm:px-10 py-3 sm:py-4 rounded-2xl hover:bg-[#0F172A] hover:text-white transition-all shadow-sm disabled:opacity-50"
->
-  {isFetching ? 'Loading...' : !isAuthenticated ? 'View More' : 'View More'}
-  {!isFetching && (
-    <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-  )}
-</button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10">
+
+              {/* View More */}
+              <button
+                onClick={handleLoadMore}
+                disabled={isFetching}
+                className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#0F172A] uppercase tracking-widest group bg-white border border-zinc-800 px-6 sm:px-4 py-3 sm:py-4 hover:bg-[#0F172A] hover:text-white transition-all shadow-sm disabled:opacity-50"
+              >
+                {isFetching ? 'Loading...' : 'View More'}
+                {!isFetching && (
+                  <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                )}
+              </button>
             </div>
           )}
 
-          {/* Spinner */}
+          {/* Fetching Spinner */}
           {isFetching && (
             <div className="flex justify-center mt-6">
               <div className="w-5 h-5 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />

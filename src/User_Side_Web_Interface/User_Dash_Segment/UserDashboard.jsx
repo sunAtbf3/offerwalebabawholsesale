@@ -80,87 +80,310 @@ const UserDashboard = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#f8f9fa] py-6 md:py-10 px-4 md:px-8">
-            <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8 items-start">
+       <div
+  className="
+    min-h-screen
+    bg-[#f8f9fa]
 
+    px-3
+    sm:px-4
+    md:px-6
+    xl:px-8
+
+    py-4
+    sm:py-6
+    lg:py-10
+  "
+>
+  <div
+    className="
+      max-w-[1500px]
+      mx-auto
+
+      flex
+      flex-col
+      lg:flex-row
+
+      gap-4
+      sm:gap-6
+      lg:gap-8
+
+      items-start
+    "
+  >
                 {/* ── SIDEBAR / MOBILE ACCORDION ── */}
-                <aside className="w-full lg:w-80 sticky top-10">
-                    <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100">
+          <aside
+  className="
+    w-full
+    lg:w-[320px]
+    xl:w-[340px]
 
-                        {/* User header */}
-                        <div className="flex items-center gap-4 mb-8">
-                            <div className="w-14 h-14 bg-[#F7A221] rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-orange-100">
-                                {getInitials(user?.name)}
-                            </div>
-                            <div className="overflow-hidden">
-                                <h2 className="font-black text-gray-900 truncate">
-                                    {user?.name || 'Guest User'}
-                                </h2>
-                                <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">
-                                    {user?.role === 'admin' ? 'Administrator' : 'Premium Member'}
-                                </p>
-                            </div>
-                        </div>
+    lg:sticky
+    lg:top-6
 
-                        {/* Nav items */}
-                        <nav className="space-y-2">
-                            {menuItems.map((item) => {
-                                const isActive = openTab === item.id;
-                                return (
-                                    <div key={item.id} ref={isActive ? activeTabRef : null} className="w-full">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleTabClick(item.id)}
-                                            className={`w-full flex items-center cursor-pointer justify-between p-4 rounded-2xl transition-all duration-300 group ${
-                                                isActive
-                                                    ? 'bg-black text-white shadow-xl'
-                                                    : 'hover:bg-orange-50 text-gray-600 hover:text-black'
-                                            }`}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <span className={`${isActive ? 'text-[#F7A221]' : 'text-gray-400 group-hover:text-black'}`}>
-                                                    {item.icon}
-                                                </span>
-                                                <span className="font-bold text-sm tracking-tight uppercase">{item.label}</span>
-                                            </div>
-                                            <div className="flex items-center">
-                                                <ChevronDown size={16} className={`lg:hidden transition-transform duration-300 ${isActive ? 'rotate-180 text-[#F7A221]' : 'opacity-40'}`} />
-                                                <ChevronRight size={16} className={`hidden lg:block transition-all ${isActive ? 'translate-x-1 text-[#F7A221]' : 'opacity-0 group-hover:opacity-100'}`} />
-                                            </div>
-                                        </button>
+    shrink-0
+  "
+>
+  <div
+    className="
+      bg-white
+     rounded-[24px] lg:rounded-[32px]
+      p-4 sm:p-6
+      shadow-sm
+      border border-gray-100
+      overflow-hidden
+    "
+  >
 
-                                        {/* Mobile accordion panel */}
-                                        <div
-                                            className={`lg:hidden overflow-hidden transition-all duration-500 ease-in-out ${
-                                                isActive ? 'max-h-[5000px] opacity-100 mt-4 mb-4' : 'max-h-0 opacity-0'
-                                            }`}
-                                        >
-                                            <div className="bg-white p-4 overflow-x-hidden">
-                                                {isActive && item.component}
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </nav>
+    {/* User Header */}
+    <div
+      className="
+        flex items-center
+        gap-3 sm:gap-4
+        mb-6 sm:mb-8
+      "
+    >
 
-                        {/* Logout */}
-                        <div className="mt-8 pt-6 border-t border-gray-100">
-                            <button
-                                onClick={handleLogout}
-                                disabled={isLoggingOut}
-                                className="w-full flex items-center gap-3 p-4 rounded-2xl text-red-500 hover:bg-red-50 transition-colors font-black text-xs uppercase tracking-widest cursor-pointer disabled:opacity-50"
-                            >
-                                <LogOut size={20} />
-                                {isLoggingOut ? 'Signing out...' : 'Logout'}
-                            </button>
-                        </div>
-                    </div>
-                </aside>
+      <div
+        className="
+          w-12 h-12
+          sm:w-14 sm:h-14
+          bg-[#478B8D]
+          rounded-2xl
+          flex items-center justify-center
+          text-white
+          font-black
+          text-lg sm:text-xl
+          shadow-lg shadow-orange-100
+          flex-shrink-0
+        "
+      >
+        {getInitials(user?.name)}
+      </div>
+
+      <div className="overflow-hidden min-w-0">
+
+        <h2
+          className="
+            font-black
+            text-gray-900
+            truncate
+            text-sm sm:text-base
+          "
+        >
+          {user?.name || "Guest User"}
+        </h2>
+
+        <p
+          className="
+            text-[9px] sm:text-[10px]
+            text-gray-400
+            font-black
+            uppercase
+            tracking-[2px]
+            mt-1
+            truncate
+          "
+        >
+          {user?.role === "admin"
+            ? "Administrator"
+            : "Premium Member"}
+        </p>
+      </div>
+    </div>
+
+    {/* Navigation */}
+    <nav className="space-y-1.5 sm:space-y-2">
+
+      {menuItems.map((item) => {
+
+        const isActive = openTab === item.id;
+
+        return (
+          <div
+            key={item.id}
+            ref={isActive ? activeTabRef : null}
+            className="w-full"
+          >
+
+            <button
+              type="button"
+              onClick={() => handleTabClick(item.id)}
+              className={`
+                w-full
+                flex items-center justify-between
+                gap-3
+              px-3 py-3 sm:px-4 sm:py-4
+                rounded-2xl
+                transition-all duration-300
+                group
+                cursor-pointer
+
+                ${
+                  isActive
+                    ? "bg-gray-700 text-white shadow-xl"
+                    : "hover:bg-orange-50 text-gray-600 hover:text-black"
+                }
+              `}
+            >
+
+              {/* Left */}
+              <div className="flex items-center gap-3 min-w-0">
+
+                <span
+                  className={`
+                    flex-shrink-0
+                    ${
+                      isActive
+                        ? "text-[#478B8D]"
+                        : "text-gray-400 group-hover:text-black"
+                    }
+                  `}
+                >
+                  {item.icon}
+                </span>
+
+                <span
+                  className="
+                    font-bold
+                    text-[11px] sm:text-sm
+                    tracking-tight
+                    uppercase
+                    truncate
+                  "
+                >
+                  {item.label}
+                </span>
+              </div>
+
+              {/* Right */}
+              <div className="flex items-center flex-shrink-0">
+
+                <ChevronDown
+                  size={16}
+                  className={`
+                    lg:hidden
+                    transition-transform duration-300
+
+                    ${
+                      isActive
+                        ? "rotate-180 text-[#F7A221]"
+                        : "opacity-40"
+                    }
+                  `}
+                />
+
+                <ChevronRight
+                  size={16}
+                  className={`
+                    hidden lg:block
+                    transition-all
+
+                    ${
+                      isActive
+                        ? "translate-x-1 text-[#F7A221]"
+                        : "opacity-0 group-hover:opacity-100"
+                    }
+                  `}
+                />
+              </div>
+            </button>
+
+            {/* Mobile Accordion */}
+            <div
+              className={`
+                lg:hidden
+                overflow-hidden
+                transition-all duration-500 ease-in-out
+
+                ${
+                  isActive
+                    ? "max-h-[5000px] opacity-100 mt-3 mb-3"
+                    : "max-h-0 opacity-0"
+                }
+              `}
+            >
+
+              <div
+                className="
+                  bg-gray-50
+                  rounded-2xl
+                  p-3 sm:p-4
+                  overflow-x-hidden
+                  border border-gray-100
+                "
+              >
+                {isActive && item.component}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </nav>
+
+    {/* Logout */}
+    <div
+      className="
+        mt-6 sm:mt-8
+        pt-5 sm:pt-6
+        border-t border-gray-100
+      "
+    >
+
+      <button
+        onClick={handleLogout}
+        disabled={isLoggingOut}
+        className="
+          w-full
+          flex items-center
+          gap-3
+          p-3 sm:p-4
+          rounded-2xl
+
+          text-red-500
+          hover:bg-red-50
+
+          transition-colors
+
+          font-black
+          text-[11px] sm:text-xs
+          uppercase
+          tracking-[2px]
+
+          cursor-pointer
+          disabled:opacity-50
+        "
+      >
+
+        <LogOut size={18} />
+
+        {isLoggingOut
+          ? "Signing out..."
+          : "Logout"}
+      </button>
+    </div>
+  </div>
+</aside>
 
                 {/* ── DESKTOP PANEL ── */}
-                <main className="hidden lg:block flex-1 bg-white rounded-[40px] shadow-sm border border-gray-100 p-10 min-h-[700px]">
-                    {openTab ? (
+<main
+  className="
+    hidden lg:block
+    flex-1
+
+    bg-white
+    rounded-[32px] xl:rounded-[40px]
+
+    shadow-sm
+    border border-gray-100
+
+    p-6
+    xl:p-10
+
+    min-h-[650px]
+    overflow-hidden
+  "
+>                    {openTab ? (
                         <div key={openTab} className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                             {menuItems.find((i) => i.id === openTab)?.component}
                         </div>

@@ -52,7 +52,7 @@ const UserWishlist = () => {
     .filter(Boolean);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 font-['satoshi'] font-semibold">
 
       {/* Header */}
       <div className="flex items-center justify-between">

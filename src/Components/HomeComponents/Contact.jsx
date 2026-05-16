@@ -170,12 +170,12 @@ const handleCaptchaChange = (e) => {
 
         {/* ── Page header ── */}
         <div className="mb-10 slide-up slide-up-1">
-          <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold px-3 py-1.5 rounded-full mb-4 uppercase tracking-wider">
-            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+          <div className="inline-flex items-center gap-2 bg-[#478B8D]/20 border border-amber-200 text-[#478B8D] text-xs font-bold px-3 py-1.5 rounded-full mb-4 uppercase tracking-wider">
+            <span className="w-1.5 h-1.5 bg-[#478B8D] rounded-full animate-pulse" />
             We're here to help
           </div>
           <h1 className="font-satoshi text-4xl sm:text-5xl font-extrabold text-gray-900 leading-tight">
-            Get in <span className="text-amber-500">Touch</span>
+            Get in <span className="text-[#478B8D]">Touch</span>
           </h1>
           {/* <p className="text-gray-500 mt-3 text-base max-w-md">
             Wholesale, retail, or bulk orders — drop us a message and we'll get back to you fast.
@@ -198,7 +198,7 @@ const handleCaptchaChange = (e) => {
               <div className="relative z-10">
 
                 <h2 className="font-satoshi text-2xl font-bold text-white mb-1">Offer Wale Baba</h2>
-                <p className="text-amber-400 text-xs font-semibold uppercase tracking-widest mb-5">
+                <p className="text-[#478B8D] text-xs font-semibold uppercase tracking-widest mb-5">
                   Wholesale &amp; Retail
                 </p>
 
@@ -396,7 +396,7 @@ const handleCaptchaChange = (e) => {
   <button
     type="button"
     onClick={generateCaptcha}
-    className="text-xs text-amber-500 hover:underline mt-1"
+    className="text-xs text-[#478B8D] font-semibold hover:underline mt-1"
   >
     Change Question
   </button>
@@ -450,7 +450,7 @@ const handleCaptchaChange = (e) => {
 
                   <p className="text-center text-[11px] text-gray-400">
                     Or reach us directly at{" "}
-                    <a href="tel:+919370686008" className="text-amber-600 font-semibold hover:underline">
+                    <a href="tel:+919370686008" className="text-[#478B8D] font-semibold hover:underline">
                       +91 93706 86008
                     </a>
                   </p>

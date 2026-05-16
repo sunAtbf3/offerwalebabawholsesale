@@ -169,9 +169,9 @@ const UserProfile = () => {
   // Main render
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl font-['satoshi'] font-semibold">
       <h1 className="text-3xl font-black text-gray-900 mb-2">Personal Settings</h1>
-      <p className="text-gray-500 font-medium mb-10">
+      <p className="text-gray-500 mb-10">
         Update your information to ensure a smooth checkout experience.
       </p>
 

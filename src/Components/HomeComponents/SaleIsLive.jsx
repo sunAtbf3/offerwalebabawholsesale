@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { ArrowRight, Flame, Zap } from 'lucide-react';
 import { useGetProductsByTagQuery } from '../REDUX_FEATURES/REDUX_SLICES/ProductsApi/productsApi';
 import { useDispatch, useSelector } from 'react-redux';
-// Add to existing imports
 import { openModal } from '../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerSlice';
 import { selectIsAuthenticated } from '../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
 import { useNavigate } from 'react-router-dom';
@@ -15,6 +14,8 @@ import { Link } from 'react-router-dom';
 
 const SaleIsLive = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const isAuthenticated = useSelector(selectIsAuthenticated);
 
   const page = useSelector(
     (state) => state.userProducts.tagPage?.['on-sale'] ?? 1
@@ -23,21 +24,18 @@ const SaleIsLive = () => {
   const storedProducts = useSelector(
     (state) => state.userProducts.tagProducts?.['on-sale'] ?? []
   );
-  // Add inside SaleIsLive component (after existing hooks)
-const navigate = useNavigate();
-const isAuthenticated = useSelector(selectIsAuthenticated);
 
-  const { data, isLoading, isFetching, isError } =
-    useGetProductsByTagQuery({
-      tag: 'on-sale',
-      page,
-      limit: 10,
-      // _cb: '1',
-    });
+  const { data, isLoading, isFetching, isError } = useGetProductsByTagQuery({
+    tag: 'on-sale',
+    page,
+    limit: 10,
+  });
 
   const hasMore = data?.hasNextPage ?? false;
 
-  // ✅ Append new products
+  // First product ka slug nikalo for "View All" link
+  const categorySlug = storedProducts?.[0]?.category?.slug ?? null;
+
   useEffect(() => {
     if (data?.products) {
       dispatch(
@@ -49,19 +47,19 @@ const isAuthenticated = useSelector(selectIsAuthenticated);
     }
   }, [data, dispatch]);
 
- // Replace handleLoadMore
-const handleLoadMore = () => {
-  if (!isAuthenticated) {
-    dispatch(openModal('login'));
-    return;
-  }
-  dispatch(setPageForTag({ tag: 'on-sale', page: page + 1 }));
-};
+  const handleLoadMore = () => {
+    if (!isAuthenticated) {
+      dispatch(openModal('login'));
+      return;
+    }
+    dispatch(setPageForTag({ tag: 'on-sale', page: page + 1 }));
+  };
 
   if (isError) return null;
 
   return (
     <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10 lg:py-14">
+
       {/* Header */}
       <div className="flex flex-col justify-between items-start gap-4 mb-6 sm:mb-10">
         <div className="space-y-1">
@@ -78,31 +76,32 @@ const handleLoadMore = () => {
             </div>
           </div>
         </div>
-         <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full'>
-             <div>
-            
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl flex items-center gap-3 sm:gap-4 font-black text-[#0F172A] tracking-tighter uppercase">
-            Sale <span className="text-[#F59E0B]">is Live</span>
-          </h2>
-          <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.2em] flex items-center gap-2">
-            Exclusive Bulk Inventory for Partners{' '}
-            <Zap size={14} className="text-[#F59E0B]" fill="currentColor" />
-          </p>
+
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full">
+          <div>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl flex items-center gap-3 sm:gap-4 text-[#0F172A] tracking-tighter uppercase">
+              Sale <span className="text-[#F59E0B]">is Live</span>
+            </h2>
+            <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.2em] flex items-center gap-2">
+              Exclusive Bulk Inventory for Partners{' '}
+              <Zap size={14} className="text-[#F59E0B]" fill="currentColor" />
+            </p>
           </div>
-<button
-  onClick={handleLoadMore}
-  disabled={isFetching}
-  className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#0F172A] uppercase tracking-widest group bg-white border border-slate-200 px-6 sm:px-10 py-3 sm:py-4 hover:bg-[#0F172A] hover:text-white transition-all shadow-sm disabled:opacity-50"
->
-  {isFetching ? 'Loading...' : !isAuthenticated ? 'View More' : 'View More'}
-  {!isFetching && (
-    <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-  )}
-</button>
-          </div>
+
+          {/* View All — header mein, sirf authenticated user ko
+          {isAuthenticated && categorySlug && (
+            <Link
+              to={`/TagProducts/on-sale`}
+              className="flex items-center gap-2 text-xs font-black text-[#0F172A] uppercase tracking-widest group hover:text-[#2563EB] transition-colors"
+            >
+              View All
+              <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            </Link>
+          )} */}
+        </div>
       </div>
 
-      {/* Loading */}
+      {/* Loading Skeleton */}
       {isLoading && storedProducts.length === 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -126,7 +125,7 @@ const handleLoadMore = () => {
         </div>
       ) : (
         <>
-          {/* ✅ Use accumulated products */}
+          {/* Products Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
             {storedProducts.map((product, index) => (
               <WholesaleProductCard
@@ -137,24 +136,36 @@ const handleLoadMore = () => {
             ))}
           </div>
 
-          {/* Load More */}
-         {hasMore && (
-  <div className="flex justify-center mt-10">
-  // Replace View More button
-<button
-  onClick={handleLoadMore}
-  disabled={isFetching}
-  className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#0F172A] uppercase tracking-widest group bg-white border border-slate-200 px-6 sm:px-10 py-3 sm:py-4 hover:bg-[#0F172A] hover:text-white transition-all shadow-sm disabled:opacity-50"
->
-  {isFetching ? 'Loading...' : !isAuthenticated ? 'View More' : 'View More'}
-  {!isFetching && (
-    <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-  )}
-</button>
-  </div>
-)}
+          {/* Bottom Buttons — View More + View All */}
+          {hasMore && (
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10">
 
-          {/* Spinner */}
+              {/* View More */}
+              <button
+                onClick={handleLoadMore}
+                disabled={isFetching}
+                className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[#0F172A] uppercase tracking-widest group bg-white border border-slate-200 px-6 sm:px-10 py-3 sm:py-4 rounded-2xl hover:bg-[#0F172A] hover:text-white transition-all shadow-sm disabled:opacity-50"
+              >
+                {isFetching ? 'Loading...' : 'View More'}
+                {!isFetching && (
+                  <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                )}
+              </button>
+
+              {/* View All — sirf authenticated user ko */}
+              {isAuthenticated && categorySlug && (
+                <Link
+                  to={`/category/${categorySlug}`}
+                  className="flex items-center gap-2 text-xs sm:text-sm font-bold text-white uppercase tracking-widest group bg-[#F59E0B] border border-[#F59E0B] px-6 sm:px-10 py-3 sm:py-4 rounded-2xl hover:bg-[#D97706] transition-all shadow-sm"
+                >
+                  View All
+                  <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                </Link>
+              )}
+            </div>
+          )}
+
+          {/* Fetching Spinner */}
           {isFetching && (
             <div className="flex justify-center mt-6">
               <div className="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />

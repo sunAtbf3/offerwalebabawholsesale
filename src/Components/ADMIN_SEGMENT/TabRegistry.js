@@ -3,6 +3,8 @@ import { lazy } from "react";
 import { USER_TAB_REGISTRY } from "./ADMIN_TABS/CUSTOMER_SEGMENT/userTabRegistry";
 import { WebPageRegistry } from "./ADMIN_TABS//WEBSITE_TAB/WebPageRegistry";
 import { DEMO_TAB_REGISTRY } from "./ADMIN_TABS/DEMO/demoTabRegistry";
+import { REVIEW_TAB_REGISTRY } from "./ADMIN_TABS/CUSTOMER_REVIEW/reviewTabRegistry";
+
 
 
 const OrderTab = lazy(() => import("./ADMIN_TABS/OrderTab/OrderTab"));
@@ -17,9 +19,10 @@ const EcomTab = lazy(() => import("./ADMIN_TABS/ECOMMERCE/EcomTab"));
 const MarketingTab = lazy(() => import("./ADMIN_TABS/MARKETING/MarketingTab"));
 const SupportTab = lazy(() => import("./ADMIN_TABS/SUPPORT/SupportTab"));
 const SettingsDashboard = lazy(() => import("./ADMIN_TABS/SETTINGS/SettingsDashboard"));
-const CustomerReviewTab = lazy(() => import("./ADMIN_TABS/CUSTOMER_REVIEW/CustomerReviewTab"));
+const CustomerReviewTab = lazy(() => import("./ADMIN_TABS/CUSTOMER_REVIEW/CustomerSubmissionsTab"));
 const StaffTab = lazy(() => import("./ADMIN_TABS/STAFF_TAB/StaffTab"));
 const DemoDashboard = lazy(() => import("./ADMIN_TABS/DEMO/DemoDashboard"));
+const ReviewsDashboard = lazy(() => import("./ADMIN_TABS/CUSTOMER_REVIEW/ReviewsDashboard"));
 const WholesalerDashboard = lazy(() => import("./ADMIN_TABS/WHOLESALER_TAB/WholesalerDashboard"));
 
 // const getProductsBadge = (state) => state.adminGetProducts?.products?.length || 0;
@@ -105,12 +108,13 @@ export const TAB_REGISTRY = [
     badge: null,
   },
 
-  {
+   {
     id: "customerreview",
-    label: "Customer Reviews",
+    label: "Reviews",
     icon: "M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3",
-    component: CustomerReviewTab,
+    component: ReviewsDashboard,
     badge: null,
+    subItems: REVIEW_TAB_REGISTRY,
   },
   {
     id: "staff",

@@ -116,7 +116,7 @@ function AppRoutes() {
         }
       />
        <Route path="/checkout" element={<Checkout />} />
-                      <Route path="/TagProducts/:slug" element={<TagProducts/>}/>
+                      {/* <Route path="/TagProducts/:slug" element={<TagProducts/>}/> */}
     </Routes>
   );
 }

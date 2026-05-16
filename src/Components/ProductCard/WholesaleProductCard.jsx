@@ -40,7 +40,7 @@ const formatCount = (count) => {
 const getAvailabilityMeta = (availability) => {
   const status = availability?.status || "IN_STOCK";
   if (status === "OUT_OF_STOCK") return { label: "Out of stock", chipClass: "bg-red-100 text-red-700" };
-  if (status === "MOQ_UNMET")    return { label: "MOQ not met",  chipClass: "bg-amber-100 text-amber-700" };
+  if (status === "MOQ_UNMET")    return { label: "MOQ not met",  chipClass: "bg-yellow-100 text-amber-800" };
   if (status === "NOT_LISTED")   return { label: "Not available", chipClass: "bg-gray-100 text-gray-600" };
   return { label: "In stock", chipClass: "bg-green-100 text-green-700" };
 };
@@ -272,21 +272,23 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
           </div>
         )}
 
-        {discountPct && canPurchase && (
-          <div className="absolute top-2 left-2 z-10">
-            <span className="text-[14px] bg-[#EB4C4C] text-white px-2 py-0.5 rounded-md shadow-sm font-bold">
-              {discountPct}% OFF
-            </span>
-          </div>
-        )}
+   <div className="flex flex-col gap-6">
+  {discountPct && canPurchase && (
+    <div className="absolute top-2 left-2 z-10">
+      <span className="text-[14px] bg-[#EB4C4C] text-white px-2 py-0.5 rounded-md shadow-sm font-bold">
+        {discountPct}% OFF
+      </span>
+    </div>
+  )}
 
-        {moq && (
-          <div className={`absolute ${discountPct ? "top-8" : "top-2"} left-2 z-10`}>
-            <span className="flex items-center gap-1 text-[12px] bg-[#08CB00] text-zinc-900 px-2 py-0.5 mt-2 rounded-md shadow-sm font-['sans-serif'] font-bold">
-              MOQ: <span className="font-bold"> {moq}</span>
-            </span>
-          </div>
-        )}
+  {moq && (
+    <div className={`absolute ${discountPct && canPurchase ? "top-8" : "top-2"} left-2 z-10`}>
+      <span className="flex items-center gap-1 text-[12px] bg-gray-200 text-zinc-900 px-2 py-0.5 mt-1 rounded-md shadow-sm font-bold">
+        MOQ: <span className="font-bold">{moq}</span>
+      </span>
+    </div>
+  )}
+</div>
 
         <div className="absolute top-2 right-2 flex flex-col gap-1.5 z-10
           md:translate-x-10 md:opacity-0
@@ -329,7 +331,7 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
         )}
 
         <div className="flex items-start justify-between gap-1">
-          <h3 className="text-xs sm:text-sm font-semibold text-zinc-900 line-clamp-2 group-hover:text-[#F7A221] transition-colors leading-snug flex-1">
+          <h3 className="text-xs sm:text-sm font-semibold text-zinc-900 line-clamp-2 group-hover:text-[#478B8D] transition-colors leading-snug flex-1">
             {title}
           </h3>
           <div className="flex items-center gap-0.5 flex-shrink-0 mt-0.5">
@@ -348,7 +350,7 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
         )}
 
         <div className="flex flex-col gap-0.5 mt-1">
-          <span className="text-[9px] uppercase tracking-widest text-[#F7A221] font-bold">
+          <span className="text-[9px] uppercase tracking-widest text-[#478B8D] font-bold">
             Wholesale Price
           </span>
           <div className="flex items-center gap-1.5">
@@ -390,7 +392,7 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
             <button
               onClick={handleAddToCart}
               disabled={localLoading.add}
-              className="w-full py-2 sm:py-3 text-[10px] sm:text-xs font-bold rounded-xl bg-zinc-900 text-white hover:bg-[#F7A221] transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer disabled:opacity-60"
+              className="w-full py-2 sm:py-3 text-[10px] sm:text-xs font-bold rounded-xl bg-[#478B8D]/95 text-white hover:bg-[#478B8D] transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer disabled:opacity-60"
             >
               {localLoading.add
                 ? <><Loader2 size={12} className="animate-spin" /> Adding...</>
@@ -399,7 +401,7 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
             </button>
           ) : (
             <div className="flex flex-col gap-1">
-              <div className="flex items-center w-full border-2 border-zinc-900 rounded-xl overflow-hidden">
+              <div className="flex items-center w-full border-2 border-[#478B8D] rounded-xl overflow-hidden">
                 {/* Version 2: disabled when at or below MOQ */}
                 <button
                   onClick={handleDecrement}
@@ -420,7 +422,7 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
                 <button
                   onClick={handleIncrement}
                   disabled={isAtMax || isProcessing}
-                  className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-zinc-900 text-white hover:bg-[#F7A221] transition-colors disabled:opacity-40 flex-shrink-0"
+                  className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-[#478B8D]/90 text-white hover:bg-[#478B8D] transition-colors disabled:opacity-40 flex-shrink-0"
                 >
                   {localLoading.update
                     ? <Loader2 size={11} className="animate-spin" />

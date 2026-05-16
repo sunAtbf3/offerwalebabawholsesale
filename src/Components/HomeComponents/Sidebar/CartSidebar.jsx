@@ -172,13 +172,13 @@ const GuestCartItem = ({ item, onRemove, onUpdateQty, isUpdating, isRemoving, pr
             </p>
           )}
 
-          <p className="text-[10px] text-yellow-600 font-semibold mt-0.5">
+          <p className="text-[10px] text-[#478B8D] font-semibold mt-0.5">
             Sign in to sync your cart
           </p>
         </div>
 
         <div className="flex items-center justify-between mt-2">
-          <div className="flex items-center border-2 border-yellow-400 rounded-xl overflow-hidden">
+          <div className="flex items-center border-2 border-[#478B8D] rounded-xl overflow-hidden">
            <button
   onClick={(e) => { 
     e.stopPropagation(); 
@@ -197,7 +197,7 @@ const GuestCartItem = ({ item, onRemove, onUpdateQty, isUpdating, isRemoving, pr
             <button
               onClick={(e) => { e.stopPropagation(); onUpdateQty(item, qty + 1); }}
               disabled={isUpdating}
-              className="w-8 h-8 flex items-center justify-center bg-yellow-400 hover:bg-yellow-300 transition-colors disabled:opacity-40"
+              className="w-8 h-8 flex items-center justify-center bg-[#478B8D]/80 hover:bg-[#478B8D]/90 transition-colors disabled:opacity-40"
             >
               <Plus size={12} />
             </button>
@@ -329,7 +329,7 @@ const CartItem = ({ item, onUpdateQty, onRemove, isUpdating, isRemoving, product
         </div>
 
         <div className="flex items-center justify-between mt-2">
-          <div className="flex items-center border-2 border-yellow-400 rounded-xl overflow-hidden">
+          <div className="flex items-center border-2 border-[#478B8D] rounded-xl overflow-hidden">
             <button
               onClick={(e) => { e.stopPropagation(); onUpdateQty(item, qty - 1); }}
               disabled={qty <= moq || isUpdating}
@@ -343,7 +343,7 @@ const CartItem = ({ item, onUpdateQty, onRemove, isUpdating, isRemoving, product
             <button
               onClick={(e) => { e.stopPropagation(); onUpdateQty(item, qty + 1); }}
               disabled={isUpdating}
-              className="w-8 h-8 flex items-center justify-center bg-yellow-400 hover:bg-yellow-300 transition-colors disabled:opacity-40"
+              className="w-8 h-8 flex items-center justify-center bg-[#478B8D] hover:bg-yellow-300 transition-colors disabled:opacity-40"
             >
               <Plus size={12} />
             </button>
@@ -575,7 +575,7 @@ useEffect(() => {
         <button
           onClick={checkHandler}
           disabled={checkDisabled}
-          className="text-xs font-black uppercase tracking-widest text-yellow-500 hover:text-gray-900 disabled:opacity-40 transition-colors cursor-pointer flex-shrink-0"
+          className="text-xs font-black uppercase tracking-widest text-[#478B8D] hover:text-gray-900 disabled:opacity-40 transition-colors cursor-pointer flex-shrink-0"
         >
           {isChecking ? <Loader2 size={12} className="animate-spin" /> : 'Check'}
         </button>
@@ -806,7 +806,7 @@ const handleUpdateQty = useCallback(async (item, newQty) => {
         {/* ── Header ── */}
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-yellow-400 rounded-xl flex items-center justify-center flex-shrink-0">
+            <div className="w-9 h-9 bg-[#478B8D]/50 rounded-xl flex items-center justify-center flex-shrink-0">
               <ShoppingBag size={18} className="text-gray-900" />
             </div>
             <div>
@@ -905,10 +905,10 @@ const handleUpdateQty = useCallback(async (item, newQty) => {
 
               {/* Guest sign-in nudge */}
               {!isLoggedIn && (
-                <div className="my-4 p-4 bg-amber-50 rounded-2xl border border-yellow-200">
+                <div className="my-4 p-4 bg-[#478B8D]/10 rounded-2xl border border-[#478B8D]">
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 bg-yellow-400 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <Star size={13} className="text-gray-900" />
+                    <div className="w-8 h-8 bg-[#478B8D]/50 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Star size={13} className="text-zinc-800" />
                     </div>
                     <div>
                       <p className="text-[11px] font-extrabold uppercase tracking-tight text-gray-900">
@@ -919,7 +919,7 @@ const handleUpdateQty = useCallback(async (item, newQty) => {
                       </p>
                       <button
                         onClick={() => { onOpenAuth?.(); onClose(); }}
-                        className="mt-2.5 text-[10px] font-extrabold uppercase tracking-widest text-yellow-600 hover:text-gray-900 transition-colors"
+                        className="mt-2.5 text-[10px] font-extrabold uppercase tracking-widest text-[#478B8D]/80 hover:text-[#478B8D]/90 transition-colors"
                       >
                         Login Now →
                       </button>
@@ -931,8 +931,8 @@ const handleUpdateQty = useCallback(async (item, newQty) => {
 
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center space-y-4 py-12">
-              <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center">
-                <ShoppingBag size={30} className="text-yellow-300" />
+              <div className="w-20 h-20 bg-[#478B8D]/50 rounded-full flex items-center justify-center">
+                <ShoppingBag size={30} className="text-[#478B8D]" />
               </div>
               <div>
                 <p className="text-gray-800 font-extrabold uppercase text-xs tracking-widest">Your cart is empty</p>
@@ -940,7 +940,7 @@ const handleUpdateQty = useCallback(async (item, newQty) => {
               </div>
               <button
                 onClick={onClose}
-                className="text-yellow-600 font-extrabold text-xs uppercase underline underline-offset-4 hover:text-gray-900 transition-colors"
+                className="text-[#478B8D] font-extrabold text-xs uppercase underline underline-offset-4 hover:text-gray-900 transition-colors"
               >
                 Browse Products
               </button>
@@ -969,7 +969,7 @@ const handleUpdateQty = useCallback(async (item, newQty) => {
             <div className="space-y-2 pt-1">
               <button
                 onClick={handleCheckoutClick}
-                className="w-full bg-yellow-400 text-gray-900 py-3.5 rounded-xl font-extrabold uppercase tracking-[0.15em] text-[11px] flex items-center justify-center gap-2 hover:bg-yellow-300 transition-all active:scale-95 shadow-md shadow-yellow-100"
+                className="w-full bg-[#478B8D]/80 text-gray-900 py-3.5 rounded-xl font-extrabold uppercase tracking-[0.15em] text-[11px] flex items-center justify-center gap-2 hover:bg-[#478B8D]/90 transition-all active:scale-95 shadow-md shadow-yellow-100"
               >
                 {isLoggedIn ? "Proceed to Checkout" : "Login to Checkout"}
                 <ArrowRight size={14} />

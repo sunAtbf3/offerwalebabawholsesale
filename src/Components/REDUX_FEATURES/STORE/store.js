@@ -40,6 +40,8 @@ import userAddressReducer from "../REDUX_SLICES/Useraddressslice";
 import { searchApi } from "../REDUX_SLICES/searchApi";
 import orderReducer from "../REDUX_SLICES/orderSlice";
 import checkoutReducer from "../REDUX_SLICES/checkoutSlice/checkoutSlice";
+import couponReducer from '../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/couponApi/CouponSlice';
+import { couponApi } from '../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/couponApi/couponApi';
 
 export const store = configureStore({
   reducer: {
@@ -71,6 +73,7 @@ export const store = configureStore({
     staff: staffReducer,
     seoUi: seoUiReducer,
     adminOrdersUi: adminOrdersUiReducer,
+        [couponApi.reducerPath]: couponApi.reducer,
     [userAnalyticsApi.reducerPath]: userAnalyticsApi.reducer,
     [seoAnalyticsApi.reducerPath]: seoAnalyticsApi.reducer,
     [adminOrdersApi.reducerPath]: adminOrdersApi.reducer,
@@ -99,6 +102,7 @@ export const store = configureStore({
       seoAnalyticsApi.middleware,
       adminOrdersApi.middleware,
       adminWholesalerApi.middleware,
+            couponApi.middleware,
     ),
   
   devTools: import.meta.env.MODE !== "production",

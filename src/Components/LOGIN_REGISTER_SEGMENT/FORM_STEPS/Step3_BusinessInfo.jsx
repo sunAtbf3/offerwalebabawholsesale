@@ -18,18 +18,17 @@ import { logError } from "../../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesaler
 
 // ── Product categories matching your backend expectations ───────────────────
 const CATEGORIES = [
-  "Electronics",
-  "Smart Life Gadgets",
   "Home & Kitchen",
-  "Fashion World",
-  "Sports & Fitness",
-  "Stationary",
+  "Smart Life Gadgets",
   "Baby Items",
-  "Car Accessories",
-  "Cleaning Supplies",
-  "Gifts",
+  "Stationary",
+  "Cleaning & Housekeeping Supplies",
+  "Sports & Fitness",
   "Tours & Travels",
-  "Mix / General",
+  "Fashion World",
+  "Gifts",
+  "Mix Items",
+  "Car Accessories",
 ];
 
 const validate = (data) => {
@@ -38,14 +37,14 @@ const validate = (data) => {
     errors.sellingPlaceFrom = "Selling place is required";
   if (!data.sellingZoneCity.trim())
     errors.sellingZoneCity = "City / zone is required";
-  if (!data.productCategory.trim())
-    errors.productCategory = "Please select a category";
-  if (!data.monthlyEstimatedPurchase || isNaN(Number(data.monthlyEstimatedPurchase)) || Number(data.monthlyEstimatedPurchase) <= 0)
-    errors.monthlyEstimatedPurchase = "Enter a valid monthly purchase amount";
-  if (!data.idProofFile)
-    errors.idProofFile = "ID proof document is required";
-  if (!data.businessAddressProofFile)
-    errors.businessAddressProofFile = "Business address proof is required";
+  // if (!data.productCategory.trim())
+  //   errors.productCategory = "Please select a category";
+  // if (!data.monthlyEstimatedPurchase || isNaN(Number(data.monthlyEstimatedPurchase)) || Number(data.monthlyEstimatedPurchase) <= 0)
+  //   errors.monthlyEstimatedPurchase = "Enter a valid monthly purchase amount";
+  // if (!data.idProofFile)
+  //   errors.idProofFile = "ID proof document is required";
+  // if (!data.businessAddressProofFile)
+  //   errors.businessAddressProofFile = "Business address proof is required";
   return errors;
 };
 
@@ -55,7 +54,7 @@ const FileUpload = ({ label, hint, file, onFileChange, error }) => {
   return (
     <div className="flex flex-col gap-1.5">
       <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-        {label} <span className="text-red-500">*</span>
+        {label}
       </label>
       {hint && <p className="text-[11px] text-slate-400">{hint}</p>}
       <button
@@ -260,7 +259,7 @@ const Step3_BusinessInfo = () => {
       </div>
 
       {/* Product Category */}
-      <InputField label="Product Category" required error={errors.productCategory}>
+      <InputField label="Product Category" error={errors.productCategory}>
         <div className="relative">
           <Tag size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <select
@@ -286,7 +285,6 @@ const Step3_BusinessInfo = () => {
       <InputField
         label="Monthly Estimated Purchase (₹)"
         icon={IndianRupee}
-        required
         type="number"
         min="1"
         placeholder="e.g. 50000"

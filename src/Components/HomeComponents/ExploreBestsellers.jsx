@@ -28,7 +28,7 @@ const dispatch = useDispatch();
 
   const { data: apiData, isFetching } = useGetFeaturedProductsQuery({
     page,
-    limit: 4,
+    limit: 10,
   });
 
   // ── Sync products safely (pagination aware) ─────────────
@@ -66,12 +66,12 @@ const dispatch = useDispatch();
   };
 
   return (
-   <section className="max-w-[1200px] mx-auto lg:ml-80 px-4 sm:px-8 py-10">
+   <section className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10 lg:py-14">
 
   {/* HEADER */}
   <div className="flex items-center justify-between mb-6">
     <div>
-      <h2 className="text-2xl sm:text-3xl lg:text-5xl font-extrabold text-navy flex items-center gap-2">
+      <h2 className="text-2xl sm:text-3xl lg:text-5xl text-navy flex items-center gap-2">
         <span className="w-1 h-5 sm:h-6 bg-gold rounded-full" />
         Explore <span className="text-gold ml-2">Bestsellers</span>
       </h2>
@@ -82,7 +82,7 @@ const dispatch = useDispatch();
   </div>
 
   {/* GRID */}
-  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
 
     {isFetching && products.length === 0 &&
       Array.from({ length: 8 }).map((_, i) => (
@@ -109,9 +109,9 @@ const dispatch = useDispatch();
       {isFetching ? (
         "Loading..."
       ) : !isAuthenticated ? (
-        <> Load More</>
+        <> View More</>
       ) : (
-        <>Load More <ArrowRight size={14} /></>
+        <>View More <ArrowRight size={14} /></>
       )}
     </button>
   </div>

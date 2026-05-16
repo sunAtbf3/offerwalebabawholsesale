@@ -305,6 +305,11 @@ const variant   = item.product?.variants?.find(
   (v) => String(v._id) === String(item.variantId)
 ) ?? item.product?.variants?.[0];
     const variantId = variant?._id?.toString() || item.variantId;
+    const moq =
+  variant?.minimumOrderQuantity ??
+  variant?.price?.minimumOrderQuantity ??
+  item.product?.moq ??
+  1;
 
     if (!slug) {
       logError('handleMoveToCart', new Error('Missing slug'), { item });
@@ -318,7 +323,7 @@ const variant   = item.product?.variants?.find(
         await dispatch(addToCart({
           productSlug: slug,
           variantId,
-          quantity: 1,
+          quantity: moq,
         })).unwrap();
         // Remove from wishlist after successful cart add
         await dispatch(removeFromWishlist({ productSlug: slug })).unwrap();
@@ -328,7 +333,7 @@ const variant   = item.product?.variants?.find(
         dispatch(addGuestCartItem({
           productSlug: slug,
           variantId:   variantId || '',
-          quantity:    1,
+          quantity:    moq,
         }));
         dispatch(removeGuestItem(slug));
         toast.success('Moved to cart 🛒');
