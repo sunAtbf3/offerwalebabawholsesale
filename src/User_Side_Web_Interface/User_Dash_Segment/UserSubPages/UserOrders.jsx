@@ -666,7 +666,7 @@ const UserOrders = () => {
   return (
     <div className="space-y-8 animate-fadeIn font-['satoshi'] font-semibold">
       <header>
-        <h1 className="text-3xl font-black text-gray-900 tracking-tight">Purchase History</h1>
+        <h1 className="text-xl md:text-2xl lg:text-3xl font-black text-gray-900 tracking-tight">Purchase History</h1>
         <p className="text-gray-500 font-bold text-sm uppercase tracking-widest mt-1">
           {orders?.length} Order{orders?.length !== 1 ? "s" : ""}
         </p>
@@ -688,7 +688,7 @@ const UserOrders = () => {
                     <Package size={24} />
                   </div>
                   <div>
-                    <h3 className="font-black text-base text-gray-900">{order.orderId}</h3>
+                    <h3 className="font-black text-xs md:text-sm lg:text-md text-gray-900">{order.orderId}</h3>
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-tighter mt-0.5">
                       {fmtDate(order.createdAt)}
                     </p>
@@ -703,12 +703,13 @@ const UserOrders = () => {
                   </div>
                 </div>
 
-                <div className="flex flex-row sm:flex-col justify-between sm:items-end border-t sm:border-t-0 pt-4 sm:pt-0">
-                  <p className="text-xl font-black text-gray-900">{fmt(order.totalAmount)}</p>
+                <div className="flex flex-row sm:flex-col justify-between mb-4 sm:items-end pt-4 sm:pt-0">
+                  <p className="text-sm md:text-md lg:text-lg font-black text-gray-900">{fmt(order.totalAmount)}</p>
                   <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-widest text-gray-400 group-hover:text-black transition-colors mt-auto">
                     View Details <ChevronRight size={13} />
                   </div>
                 </div>
+                <div className="border lg:hidden md:hidden sm:hidden"></div>
               </div>
             </button>
           );

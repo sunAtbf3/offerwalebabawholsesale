@@ -222,7 +222,7 @@ const UserDashboard = () => {
                 ${
                   isActive
                     ? "bg-gray-700 text-white shadow-xl"
-                    : "hover:bg-orange-50 text-gray-600 hover:text-black"
+                    : "hover:bg-[#478B8D] text-gray-600 hover:text-black"
                 }
               `}
             >
@@ -267,7 +267,7 @@ const UserDashboard = () => {
 
                     ${
                       isActive
-                        ? "rotate-180 text-[#F7A221]"
+                        ? "rotate-180 text-[#35858E]"
                         : "opacity-40"
                     }
                   `}
@@ -281,7 +281,7 @@ const UserDashboard = () => {
 
                     ${
                       isActive
-                        ? "translate-x-1 text-[#F7A221]"
+                        ? "translate-x-1 text-[#35858E]"
                         : "opacity-0 group-hover:opacity-100"
                     }
                   `}

@@ -18,13 +18,10 @@ const AuthModal = () => {
   const activeTab = useSelector(selectActiveTab);
 
   const handleLoginSuccess = (user) => {
-    // Close modal after successful login
     dispatch(closeModal());
-    // Optional: You can dispatch any additional actions here
     console.log('[AuthModal] Login successful for:', user?.name || user?.email);
   };
 
-  // Close on ESC key
   const handleKeyDown = useCallback(
     (e) => { if (e.key === "Escape") dispatch(closeModal()); },
     [dispatch]
@@ -51,105 +48,83 @@ const AuthModal = () => {
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center sm:p-4"
       style={{ backgroundColor: "rgba(15, 23, 42, 0.7)", backdropFilter: "blur(4px)" }}
       onClick={handleBackdropClick}
     >
       <div
-        className="relative bg-white w-full max-w-lg px-7 rounded-3xl shadow-2xl overflow-hidden
-          max-h-[90vh] flex flex-col"
+        className="relative bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl
+                   max-h-[95vh] sm:max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
+
+        {/* Mobile drag handle */}
+        <div className="flex justify-center pt-3 sm:hidden shrink-0">
+          <div className="w-10 h-1 bg-slate-200 rounded-full" />
+        </div>
+
         {/* Header */}
-     {/* Header */}
-<div className="relative z-10 flex items-start justify-between gap-4 px-5 sm:px-7 pt-5 sm:pt-6 pb-4 border-b border-slate-100 shrink-0">
+        <div className="flex items-center justify-between px-4 sm:px-6 pt-3 sm:pt-5 pb-3 sm:pb-4 border-b border-slate-100 shrink-0">
+          <div className="min-w-0">
+            <h1 className="text-sm sm:text-base font-black text-[#0F172A] uppercase tracking-[0.15em] leading-tight">
+              Wholesaler Portal
+            </h1>
+            <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 font-medium">
+              Offer Wale Baba — B2B Marketplace
+            </p>
+          </div>
+          <button
+            onClick={() => dispatch(closeModal())}
+            className="shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-100
+                       hover:bg-slate-200 flex items-center justify-center
+                       transition-all duration-200 text-slate-500 hover:text-slate-800"
+            aria-label="Close modal"
+          >
+            <X size={16} />
+          </button>
+        </div>
 
-  {/* Left */}
-  <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-    
-    {/* Logo */}
-    <div
-      className="
-        flex items-center justify-center
-        shrink-0
-      "
-    >
-    </div>
-
-    {/* Text */}
-    <div className="min-w-0">
-      <h1
-        className="
-          text-sm sm:text-lg
-          font-black
-          text-[#0F172A]
-          uppercase
-          tracking-[0.18em]
-          leading-tight
-        "
-      >
-        Wholesaler Portal
-      </h1>
-
-      <p className="text-[11px] sm:text-xs text-slate-500 mt-1 font-medium">
-        Offer Wale Baba — B2B Marketplace
-      </p>
-    </div>
-  </div>
-
-  {/* Close */}
-  <button
-    onClick={() => dispatch(closeModal())}
-    className="
-      shrink-0
-      w-10 h-10
-      rounded-full
-      bg-slate-100
-      hover:bg-slate-200
-      flex items-center justify-center
-      transition-all duration-200
-      text-slate-500 hover:text-slate-800
-    "
-    aria-label="Close modal"
-  >
-    <X size={18} />
-  </button>
-</div>
-        <div className="w-full flex items-center justify-center">
-          <img className="w-36 h-36 object-cover" src={logo} alt="" />
+        {/* Logo */}
+        <div className="flex justify-center pt-3 sm:pt-4 shrink-0">
+          <img
+            className="w-20 h-20 sm:w-28 sm:h-28 object-contain"
+            src={logo}
+            alt="OfferWaleBaba logo"
+          />
         </div>
 
         {/* Tab switcher */}
-        <div className="flex px-6 pt-4 gap-2 shrink-0">
+        <div className="flex px-4 sm:px-6 pt-3 sm:pt-4 gap-2 shrink-0">
           <button
             onClick={() => dispatch(setActiveTab("login"))}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black
-              uppercase tracking-wider transition-all duration-200
-              ${activeTab === "login"
-                ? "bg-[#0F172A] text-white shadow-lg"
-                : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-              }`}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl
+                        text-xs font-black uppercase tracking-wider transition-all duration-200
+                        ${activeTab === "login"
+                          ? "bg-[#0F172A] text-white shadow-lg"
+                          : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                        }`}
           >
-            <LogIn size={14} /> Login
+            <LogIn size={13} /> Login
           </button>
           <button
             onClick={() => dispatch(setActiveTab("register"))}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black
-              uppercase tracking-wider transition-all duration-200
-              ${activeTab === "register"
-                ? "bg-amber-500 text-[#0F172A] shadow-lg"
-                : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-              }`}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl
+                        text-xs font-black uppercase tracking-wider transition-all duration-200
+                        ${activeTab === "register"
+                          ? "bg-[#478B8D] text-[#0F172A] shadow-lg"
+                          : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                        }`}
           >
-            <UserPlus size={14} /> Register
+            <UserPlus size={13} /> Register
           </button>
         </div>
 
-        {/* Scrollable content area */}
-        <div className="overflow-y-auto flex-1 px-6 py-5">
+        {/* Scrollable content */}
+        <div className="overflow-y-auto flex-1 px-4 sm:px-6 py-4 sm:py-5">
           {activeTab === "login" && <LoginPage onLoginSuccess={handleLoginSuccess} />}
           {activeTab === "register" && <RegisterPage />}
         </div>
+
       </div>
     </div>
   );

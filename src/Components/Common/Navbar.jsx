@@ -2,7 +2,12 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Search, ShoppingCart, Heart, MapPin,
   User, ChevronDown, Menu, X, LogOut,
-  Package, ShieldCheck, Zap
+  Package, ShieldCheck, Zap,
+  Info,
+  CircleUser,
+  Phone,
+  ShoppingBag,
+  ChevronRight
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { openModal } from '../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerSlice';
@@ -127,6 +132,8 @@ const Navbar = ({ searchQuery, setSearchQuery }) => {
   const [logoutMutation] = useLogoutMutation();
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [wishlistOpen, setWishlistOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isLoggingOutState, setIsLoggingOutState] = useState(false);
@@ -135,6 +142,17 @@ const Navbar = ({ searchQuery, setSearchQuery }) => {
   const [showSearchTooltip, setShowSearchTooltip] = useState(false);
   const scrollPos = useRef(0);
   const ticking = useRef(false);
+  const accountRef = useRef(null);
+
+useEffect(() => {
+  const handleOutside = (e) => {
+    if (accountRef.current && !accountRef.current.contains(e.target)) {
+      setIsAccountOpen(false);
+    }
+  };
+  document.addEventListener("mousedown", handleOutside);
+  return () => document.removeEventListener("mousedown", handleOutside);
+}, []);
 
   /* ── resize: close mobile menu on desktop ── */
   useEffect(() => {
@@ -220,6 +238,7 @@ const Navbar = ({ searchQuery, setSearchQuery }) => {
     { label: 'Mix-Items', path: '/category/mix-items' },
     { label: 'Car Accessories', path: '/category/car-accessories' },
   ];
+  const isMobile = window.innerWidth < 768;
 
   return (
     <>
@@ -267,9 +286,15 @@ const Navbar = ({ searchQuery, setSearchQuery }) => {
               overflow-visible
             "
             style={{
-              /* Compact row — logo overflows, row stays tight */
-              height: 'clamp(180px, 7vw, 300px)',
-            }}
+  height: isMobile
+    ? "clamp(110px, 7vw, 300px)"
+    : window.innerWidth < 540
+    ? "110px"
+    : window.innerWidth < 1024
+    ? "130px"
+    : "clamp(180px, 7vw, 300px)"
+}}
+
           >
 
             {/* ════ LOGO ════
@@ -311,7 +336,7 @@ const Navbar = ({ searchQuery, setSearchQuery }) => {
                 <div
                   className="
                     absolute z-20
-                    top-[34%] right-0
+                    top-[38%] -right-3
                     flex items-center gap-[3px]
                     px-[6px] py-[3px]
                     rounded-full
@@ -390,9 +415,15 @@ const Navbar = ({ searchQuery, setSearchQuery }) => {
               <div className="hidden sm:block h-7 w-px bg-slate-200" />
 
               {/* Account */}
-              <div className="relative group">
+              <div className="relative" ref={accountRef}>
                 <button
-                  onClick={handleAccountClick}
+                   onClick={() => {
+      if (!isAuthenticated) {
+        dispatch(openModal('login'));
+      } else {
+        setIsAccountOpen((v) => !v);
+      }
+    }}
                   className="flex items-center gap-1.5 p-1 sm:pr-3 lg:pr-4 bg-white border border-slate-200 rounded-full hover:shadow-md transition-all"
                 >
                   <div
@@ -416,19 +447,29 @@ const Navbar = ({ searchQuery, setSearchQuery }) => {
                 </button>
 
                 {/* Dropdown */}
-                {isAuthenticated && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                {isAuthenticated && isAccountOpen && (
+  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 
+                  transition-all duration-200 z-50">
                     <div className="p-2">
                       <div className="px-3 py-2 border-b border-slate-100 mb-1 text-[11px]">
                         <p className="font-bold text-slate-900">{user?.name || 'User'}</p>
                         <p className="text-slate-500 truncate">{user?.email || user?.phone}</p>
                       </div>
-                      <Link to="/account/userprofile" className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
-                        <User size={14} /> My Profile
-                      </Link>
-                      <Link to="/account/userorders" className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
-                        <Package size={14} /> My Orders
-                      </Link>
+                     <Link 
+  to="/account/userprofile" 
+  onClick={() => setIsAccountOpen(false)}
+  className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+>
+  <User size={14} /> My Profile
+</Link>
+
+<Link 
+  to="/account/userorders" 
+  onClick={() => setIsAccountOpen(false)}
+  className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+>
+  <Package size={14} /> My Orders
+</Link>
                       <button
                         onClick={handleLogout}
                         disabled={isLoggingOutState}
@@ -469,43 +510,155 @@ const Navbar = ({ searchQuery, setSearchQuery }) => {
         </div> */}
 
         {/* ── MOBILE MENU OVERLAY ── */}
-        <div className={`fixed inset-0 z-[200] lg:hidden transition-all duration-300 ${isMobileMenuOpen ? 'visible' : 'invisible'}`}>
-          <div
-            className={`absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0'}`}
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-          <div className={`absolute top-0 right-0 h-full w-[290px] bg-white shadow-2xl transition-transform duration-300 ease-out transform ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-            <div className="flex items-center justify-between p-4 border-b">
-              <span className="font-black text-slate-800 uppercase tracking-tighter text-sm">Menu</span>
-              <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 bg-slate-100 rounded-full">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-4 flex flex-col gap-1 overflow-y-auto h-[calc(100%-70px)]">
-              <div className="mb-4">
-                <div
-                  onClick={() => { setIsMobileMenuOpen(false); setIsSearchModalOpen(true); }}
-                  className="flex items-center gap-3 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer"
-                >
-                  <Search size={16} className="text-slate-400" />
-                  <span className="text-sm text-slate-500">Search products...</span>
-                </div>
-              </div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-2">Categories</p>
-              {categories.map((cat, i) => (
-                <a key={i} href={cat.path} className="flex items-center gap-3 p-3 rounded-xl hover:bg-amber-50 text-slate-700 font-bold text-sm transition-all uppercase tracking-tight">
-                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0" />
-                  {cat.label}
-                </a>
-              ))}
-              {isAuthenticated && (
-                <button onClick={handleLogout} className="mt-4 flex items-center gap-3 p-3 rounded-xl text-red-600 bg-red-50 font-bold text-sm">
-                  <LogOut size={16} /> Sign Out
-                </button>
-              )}
-            </div>
-          </div>
+ <div className={`fixed inset-0 z-[200] lg:hidden transition-all duration-300 ${isMobileMenuOpen ? 'visible' : 'invisible'}`}>
+
+  {/* Backdrop */}
+  <div
+    className={`absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0'}`}
+    onClick={() => setIsMobileMenuOpen(false)}
+  />
+
+  {/* Drawer */}
+  <div className={`absolute top-0 right-0 h-full w-[295px] bg-white flex flex-col rounded-l-2xl shadow-2xl transition-transform duration-300 ease-out ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+
+    {/* Header */}
+    <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+      <div className="flex items-center gap-2.5">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: '#478B8D' }}>
+          <ShoppingBag size={18} className="text-white" />
         </div>
+        <div>
+          <p className="text-sm font-medium text-gray-900 leading-tight">OfferWaleBaba</p>
+          <p className="text-[11px] leading-tight" style={{ color: '#478B8D' }}>Wholesale & Retail</p>
+        </div>
+      </div>
+      <button
+        onClick={() => setIsMobileMenuOpen(false)}
+        className="w-8 h-8 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition"
+      >
+        <X size={15} />
+      </button>
+    </div>
+
+
+    {isAuthenticated ? (
+  <div className="mx-4 mt-3 mb-2 px-3.5 py-3 rounded-xl flex items-center justify-between gap-3" style={{ background: '#f0f7f7' }}>
+    <div className="flex items-center gap-3 min-w-0">
+      <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-white text-xs font-semibold" style={{ background: '#478B8D' }}>
+        {user?.name ? user.name.charAt(0).toUpperCase() : <User size={14} />}
+      </div>
+      <div className="min-w-0">
+        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#478B8D' }}>Welcome back</p>
+        <p className="text-sm font-medium text-gray-800 truncate leading-tight">{user?.name || 'User'}</p>
+      </div>
+    </div>
+    <Link
+      to="/account/userprofile"
+      onClick={() => setIsMobileMenuOpen(false)}
+      className="flex-shrink-0 text-[10px] font-semibold px-2.5 py-1 rounded-lg transition"
+      style={{ color: '#478B8D', background: 'white', border: '1px solid #d0e8e8' }}
+    >
+      My Account
+    </Link>
+  </div>
+) : (
+  <div className="mx-4 mb-2">
+    <button
+      onClick={() => { setIsMobileMenuOpen(false); dispatch(openModal('login')); }}
+      className="w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition"
+      style={{ background: '#478B8D' }}
+    >
+      <div className="flex items-center gap-2.5">
+        <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+          <User size={15} className="text-white" />
+        </div>
+        <div className="text-left">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-white/70">Guest</p>
+          <p className="text-sm font-medium text-white leading-tight">Sign in to your account</p>
+        </div>
+      </div>
+      <ChevronRight size={16} className="text-white/60" />
+    </button>
+  </div>
+)}
+
+    {/* Search */}
+    <div className="px-4 pt-3.5 pb-2.5">
+      <div
+        onClick={() => { setIsMobileMenuOpen(false); setIsSearchModalOpen(true); }}
+        className="flex items-center gap-2.5 px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer hover:border-gray-300 transition"
+      >
+        <Search size={14} className="text-gray-400" />
+        <span className="text-sm text-gray-400">Search products...</span>
+      </div>
+    </div>
+
+    {/* Scrollable content */}
+    <div className="flex-1 overflow-y-auto px-3 pb-5">
+
+      <p className="text-[10px] font-semibold uppercase tracking-widest mt-3 mb-1.5 ml-1.5" style={{ color: '#478B8D' }}>
+        Categories
+      </p>
+
+      <div className="flex flex-col gap-0.5 mb-4">
+        {categories.map((cat, i) => (
+          <Link
+            key={i}
+            to={cat.path}
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="group flex items-center gap-3 px-2.5 py-2 rounded-xl text-sm font-medium text-gray-800 hover:bg-[#f5fafa] transition-colors"
+          >
+            <span className="w-2 h-2 rounded-lg bg-gray-100 group-hover:bg-[#478B8D] flex items-center justify-center flex-shrink-0 transition-colors">
+              {cat.icon && <cat.icon size={15} className="text-gray-500 group-hover:text-white transition-colors" />}
+            </span>
+            {cat.label}
+            <ChevronRight size={13} className="text-gray-300 ml-auto" />
+          </Link>
+        ))}
+      </div>
+
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5 ml-1.5 text-gray-400">
+        More
+      </p>
+
+      <div className="flex flex-col gap-0.5 mb-4">
+        {[
+          { icon: Info, label: 'About us', path: '/wholesale/about' },
+          { icon: CircleUser, label: 'Contact us', path: '/contact' },
+          { icon: Phone, label: 'Customer care', path: '/wholesale/customer-care' },
+        ].map(({ icon: Icon, label, path }) => (
+        <Link
+  to={path}
+  key={label}
+  onClick={() => setIsMobileMenuOpen(false)}
+  className="flex items-center gap-3 px-2.5 py-2 rounded-xl text-sm font-medium text-gray-800 hover:bg-gray-50 cursor-pointer transition-colors"
+>
+  <span className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+    <Icon size={15} className="text-gray-500" />
+  </span>
+  {label}
+</Link>
+        ))}
+      </div>
+
+      <div className="h-px bg-gray-100 my-4" />
+
+      {isAuthenticated && (
+        <button
+          onClick={()=>{
+            setIsMobileMenuOpen(false);
+            handleLogout()
+            navigate("/")
+          }}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-red-500 bg-red-50 border border-red-100 hover:bg-red-100 transition-colors mb-6"
+        >
+          <LogOut size={15} /> Sign out
+        </button>
+      )}
+
+    </div>
+  </div>
+</div>
 
         {/* ── DESKTOP CATEGORY BAR ── */}
         <div className="border-b border-slate-100 hidden lg:block shadow-sm">
@@ -514,7 +667,7 @@ const Navbar = ({ searchQuery, setSearchQuery }) => {
             {/* HOME */}
             <Link
               to="/"
-              className="px-5 xl:px-6 py-4 xl:py-5 text-sm font-black uppercase tracking-wider text-slate-700 hover:text-amber-500 transition-all duration-300 flex items-center gap-2 whitespace-nowrap"
+              className="px-5 xl:px-6 py-4 xl:py-5 text-sm font-black uppercase tracking-wider text-slate-700 hover:text-[#35858E] transition-all duration-300 flex items-center gap-2 whitespace-nowrap"
             >
               <img className="w-4 h-4 object-cover animate-bounce" src={LOGO2} alt="" />
               Home
@@ -523,7 +676,7 @@ const Navbar = ({ searchQuery, setSearchQuery }) => {
             {/* ABOUT */}
             <Link
               to="/wholesale/about"
-              className="px-5 xl:px-6 py-4 xl:py-5 text-sm font-black uppercase tracking-wider text-slate-700 hover:text-amber-500 transition-all duration-300 whitespace-nowrap"
+              className="px-5 xl:px-6 py-4 xl:py-5 text-sm font-black uppercase tracking-wider text-slate-700 hover:text-[#35858E] transition-all duration-300 whitespace-nowrap"
             >
               About Us
             </Link>
@@ -536,7 +689,7 @@ const Navbar = ({ searchQuery, setSearchQuery }) => {
             >
               <button
                 className={`flex items-center gap-2 px-6 xl:px-8 py-4 xl:py-5 text-sm font-black uppercase tracking-wider transition-all duration-300 ${
-                  isMegaMenuOpen ? 'bg-amber-500 text-[#0F172A]' : 'text-slate-700 hover:text-amber-500'
+                  isMegaMenuOpen ? 'bg-[#35858E] text-[#0F172A]' : 'text-slate-700 hover:text-amber-500'
                 }`}
               >
                 Products
@@ -554,10 +707,10 @@ const Navbar = ({ searchQuery, setSearchQuery }) => {
                     <Link
                       key={idx}
                       to={category.path}
-                      className="flex items-center gap-4 p-3 rounded-2xl hover:bg-amber-50 transition-all group"
+                      className="flex items-center gap-4 p-3 rounded-2xl hover:bg-[#478B8D]/40 transition-all group"
                     >
-                      <div className="w-1.5 h-1.5 rounded-full bg-slate-300 group-hover:bg-amber-500 group-hover:scale-150 transition-all flex-shrink-0" />
-                      <span className="text-sm font-bold text-slate-700 group-hover:text-amber-600 uppercase tracking-tight">
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-300 group-hover:bg-[#478B8D] group-hover:scale-150 transition-all flex-shrink-0" />
+                      <span className="text-sm font-bold text-slate-700 group-hover:text[#478B8D] uppercase tracking-tight">
                         {category.label}
                       </span>
                     </Link>
@@ -569,7 +722,7 @@ const Navbar = ({ searchQuery, setSearchQuery }) => {
             {/* CONTACT */}
             <Link
               to="/contact"
-              className="px-5 xl:px-6 py-4 xl:py-5 text-sm font-black uppercase tracking-wider text-slate-700 hover:text-amber-500 transition-all duration-300 whitespace-nowrap"
+              className="px-5 xl:px-6 py-4 xl:py-5 text-sm font-black uppercase tracking-wider text-slate-700 hover:text-[#35858E] transition-all duration-300 whitespace-nowrap"
             >
               Contact Us
             </Link>

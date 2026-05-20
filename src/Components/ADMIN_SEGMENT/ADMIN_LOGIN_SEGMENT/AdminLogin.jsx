@@ -222,11 +222,6 @@ const AdminLogin = () => {
       {/* Card */}
       <div className="bg-[#0d0d0d] rounded-3xl border border-[#1f1f1f] p-12 w-full max-w-[420px] shadow-2xl">
         {/* Logo */}
-        <img
-          src={LOGO}
-          alt="logo"
-          className="h-7 block mx-auto mb-7"
-        />
 
         {/* Heading */}
         <h2 className="text-center text-white text-[28px] font-extrabold tracking-tight mb-1">

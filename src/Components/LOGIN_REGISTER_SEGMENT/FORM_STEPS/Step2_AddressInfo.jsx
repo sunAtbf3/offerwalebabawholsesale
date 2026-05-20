@@ -82,8 +82,8 @@ const Step2_AddressInfo = ({ formData }) => {
       {/* Have Shop Toggle */}
       <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border-2 border-slate-200">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-amber-100 rounded-lg">
-            <Store size={18} className="text-amber-600" />
+          <div className="p-2 bg-[#478B8D]/15 rounded-lg">
+            <Store size={18} className="text-[#478B8D]" />
           </div>
           <div>
             <p className="text-sm font-black text-[#0F172A]">Do you have a shop?</p>
@@ -94,7 +94,7 @@ const Step2_AddressInfo = ({ formData }) => {
           type="button"
           onClick={() => dispatch(updateFormData({ haveShop: !formData.haveShop }))}
           className={`relative w-12 h-6 rounded-full transition-all duration-300
-            ${formData.haveShop ? "bg-amber-500" : "bg-slate-300"}`}
+            ${formData.haveShop ? "bg-[#478B8D]" : "bg-slate-300"}`}
         >
           <span
             className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-300

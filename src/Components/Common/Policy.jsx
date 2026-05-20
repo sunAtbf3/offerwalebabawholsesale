@@ -571,7 +571,7 @@ function PolicyPage() {
                 <div className="mt-8 flex flex-col sm:flex-row gap-4">
                   <Link
                     to="/contact"
-                    className="group inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-400 to-orange-500 px-8 py-4 text-sm font-bold text-black transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(255,115,0,0.35)]"
+                    className="group inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-300 to-orange-400 px-8 py-4 text-sm font-bold text-black transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(255,115,0,0.35)]"
                   >
                     Contact Support
                     <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>

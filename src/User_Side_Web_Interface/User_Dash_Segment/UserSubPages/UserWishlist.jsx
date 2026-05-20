@@ -57,7 +57,7 @@ const UserWishlist = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight">Saved Items</h1>
+          <h1 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tight">Saved Items</h1>
           {!loading.fetch && products.length > 0 && (
             <p className="text-sm text-gray-400 mt-1 font-medium">
               {products.length} item{products.length !== 1 ? 's' : ''} saved
@@ -92,7 +92,7 @@ const UserWishlist = () => {
 
       {/* Loading skeletons */}
       {loading.fetch && products.length === 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="animate-pulse">
               <div className="aspect-[4/5] bg-zinc-100 rounded-2xl mb-4 overflow-hidden relative">
@@ -126,16 +126,16 @@ const UserWishlist = () => {
 
       {/* Products grid */}
       {products.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
-          {products.map((product, idx) => (
-            <ProductCard
-              key={product._id || product.slug || idx}
-              product={product}
-              index={idx}
-              seed={idx}
-            />
-          ))}
-        </div>
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-5">
+  {products.map((product, idx) => (
+    <ProductCard
+      key={product._id || product.slug || idx}
+      product={product}
+      index={idx}
+      seed={idx}
+    />
+  ))}
+</div>
       )}
 
       {/* Empty state */}

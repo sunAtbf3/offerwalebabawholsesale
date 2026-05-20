@@ -22,7 +22,7 @@ const StepIndicator = ({ currentStep }) => {
               <div
                 className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-sm border-2 transition-all duration-300
                   ${isCompleted
-                    ? "bg-amber-500 border-amber-500 text-white"
+                    ? "bg-[#478B8D] border-[#478B8D] text-white"
                     : isActive
                     ? "bg-[#0F172A] border-[#0F172A] text-white"
                     : "bg-white border-slate-300 text-slate-400"
@@ -32,7 +32,7 @@ const StepIndicator = ({ currentStep }) => {
               </div>
               <span
                 className={`text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-colors duration-300
-                  ${isActive ? "text-[#0F172A]" : isCompleted ? "text-amber-600" : "text-slate-400"}`}
+                  ${isActive ? "text-[#0F172A]" : isCompleted ? "text-[#478B8D]" : "text-slate-400"}`}
               >
                 {step.label}
               </span>
@@ -43,7 +43,7 @@ const StepIndicator = ({ currentStep }) => {
               <div className="flex-1 mx-3 mb-5">
                 <div className="h-0.5 w-full bg-slate-200 relative overflow-hidden rounded-full">
                   <div
-                    className="absolute left-0 top-0 h-full bg-amber-500 transition-all duration-500 rounded-full"
+                    className="absolute left-0 top-0 h-full bg-[#478B8D] transition-all duration-500 rounded-full"
                     style={{ width: isCompleted ? "100%" : "0%" }}
                   />
                 </div>

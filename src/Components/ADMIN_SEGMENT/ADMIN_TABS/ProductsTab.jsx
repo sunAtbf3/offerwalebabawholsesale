@@ -13,6 +13,7 @@ import ProductModal from "../PRODUCT_MODAL_SEGMENT/ProductModal";
 import EditProductModal from "../PRODUCT_MODAL_SEGMENT/EditProductModal";
 import StatsCardSkeleton from "./SKELLETON_HUB/StatsCardSkeleton";
 import ProductTableSkeleton from "./SKELLETON_HUB/ProductTableSkeleton";
+import wholesaleAxios from "../../../SERVICES/Wholesaleaxios";
 
 import { fetchCategories } from "../ADMIN_REDUX_MANAGEMENT/categoriesSlice";
 import {
@@ -539,10 +540,12 @@ const ProductsTab = ({ onSwitchTab }) => {
         if (status === "archived") dispatch(fetchArchivedProducts());
         dispatch(fetchActiveProductsCount());
       } else {
-        toast.error(res.data.message || "Bulk update failed");
+        toast.error(res.data.message || "Bulk update failed2");
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Bulk update failed");
+      toast.error(err.response?.data?.message || "Bulk update failed1");
+      console.log("error", err);
+      
     } finally {
       setBulkLoading(false);
     }

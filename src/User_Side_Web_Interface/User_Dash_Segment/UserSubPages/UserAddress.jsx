@@ -44,9 +44,9 @@ const CustomAreaModal = ({ isOpen, onClose, onSave }) => {
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+<div className="fixed inset-0 z-[1000] flex items-end sm:items-center sm:p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-3xl w-full max-w-md shadow-2xl">
+<div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl">
         <div className="p-6">
           <h3 className="text-xl font-black text-gray-900 mb-2">Add Custom Area</h3>
           <p className="text-xs text-gray-500 mb-5">Enter area/locality name not listed in dropdown</p>
@@ -227,190 +227,113 @@ const AddressCard = ({
   onDelete,
   onSetDefault,
   isDeleting,
-}) => (
-  <div
-    className="
-      w-full
+}) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
 
-      bg-white
+  useEffect(() => {
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
-      rounded-2xl
+  return (
+    <div className="w-full bg-white rounded-2xl px-4 py-4 flex items-start justify-between gap-3 border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all duration-200">
 
-      px-3 py-3
-      sm:px-4
+      {/* LEFT */}
+      <div className="flex items-start gap-3 min-w-0 flex-1">
 
-      flex items-start
-      sm:items-center
-
-      justify-between
-      gap-3
-
-      hover:border-gray-300
-      hover:shadow-sm
-
-      transition-all duration-200
-    "
-  >
-
-    {/* LEFT */}
-    <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
-
-      {/* ICON */}
-      <div
-        className="
-          w-9 h-9
-          sm:w-10 sm:h-10
-
-          rounded-xl
-          bg-[#F5F5F5]
-
-          flex items-center justify-center
-
-          flex-shrink-0
-        "
-      >
-        {ADDRESS_TYPE_ICON[address.addressType] || ADDRESS_TYPE_ICON.other}
-      </div>
-
-      {/* CONTENT */}
-      <div className="min-w-0 flex-1">
-
-        {/* TOP */}
-        <div className="flex items-center gap-2 flex-wrap">
-
-          <h4
-            className="
-              text-md
-              font-bold
-              text-gray-900
-            "
-          >
-            {address.addressType === "home"
-              ? "Home"
-              : address.addressType === "work"
-              ? "Work"
-              : "Other"}
-          </h4>
-
-          {isDefault && (
-            <span
-              className="
-                text-[8px]
-                sm:text-[10px]
-
-                font-bold
-
-                bg-green-50
-                text-green-700
-
-                px-2 py-[2px]
-
-                rounded-full
-
-                whitespace-nowrap
-              "
-            >
-              Default
-            </span>
-          )}
+        {/* ICON */}
+        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#F5F5F5] flex items-center justify-center flex-shrink-0 mt-0.5">
+          {ADDRESS_TYPE_ICON[address.addressType] || ADDRESS_TYPE_ICON.other}
         </div>
 
-        {/* ADDRESS */}
-        <p
-          className="
-            text-[11px]
-            sm:text-xs
+        {/* CONTENT */}
+        <div className="min-w-0 flex-1">
 
-            text-gray-600
+          {/* TOP — type + default badge */}
+          <div className="flex items-center gap-2 mb-0.5">
+            <h4 className="text-sm font-bold text-gray-900">
+              {address.addressType === "home"
+                ? "Home"
+                : address.addressType === "work"
+                ? "Work"
+                : "Other"}
+            </h4>
+            {isDefault && (
+              <span className="text-[9px] font-bold bg-green-50 text-green-700 px-2 py-[2px] rounded-full whitespace-nowrap">
+                Default
+              </span>
+            )}
+          </div>
 
-            mt-0.5
+          {/* ADDRESS — 2 lines */}
+          <p className="text-[11px] sm:text-xs text-gray-500 leading-relaxed line-clamp-2 break-words">
+            {address.fullName},{" "}
+            {[
+              address.houseNumber,
+              address.area,
+              address.city,
+            ]
+              .filter(Boolean)
+              .join(", ")}
+          </p>
 
-            line-clamp-1
-            sm:line-clamp-2
-
-            break-words
-          "
-        >
-          {address.fullName},{" "}
-          {[
-            address.houseNumber,
-            address.area,
-            address.city,
-          ]
-            .filter(Boolean)
-            .join(", ")}
-        </p>
+        </div>
       </div>
-    </div>
 
-    {/* ACTIONS */}
-    <div
-      className="
-        flex items-center
-
-        gap-2
-        sm:gap-3
-
-        flex-shrink-0
-      "
-    >
-
-      <button
-        onClick={() => onEdit(address)}
-        className="
-          text-[11px]
-          sm:text-xs
-
-          font-semibold
-
-          text-green-700
-          hover:text-green-800
-
-          whitespace-nowrap
-        "
-      >
-        Edit
-      </button>
-
-      {!isDefault && (
+      {/* 3-DOT MENU */}
+      <div className="relative flex-shrink-0" ref={menuRef}>
         <button
-          onClick={() => onSetDefault(address)}
-          className="
-            hidden md:block
-
-            text-xs
-            font-semibold
-
-            text-gray-600
-            hover:text-black
-
-            whitespace-nowrap
-          "
+          onClick={() => setMenuOpen((v) => !v)}
+          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-700"
         >
-          Default
+          {/* 3 dots vertical */}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="5" r="2" />
+            <circle cx="12" cy="12" r="2" />
+            <circle cx="12" cy="19" r="2" />
+          </svg>
         </button>
-      )}
 
-      <button
-        onClick={() => onDelete(address._id)}
-        disabled={isDeleting}
-        className="
-          text-[11px]
-          sm:text-xs
+        {menuOpen && (
+          <div className="absolute right-0 top-9 w-44 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
 
-          font-semibold
+            <button
+              onClick={() => { onEdit(address); setMenuOpen(false); }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <Pencil size={13} className="text-green-600" /> Edit
+            </button>
 
-          text-red-500
-          hover:text-red-600
+            {!isDefault && (
+              <button
+                onClick={() => { onSetDefault(address); setMenuOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors border-t border-gray-50"
+              >
+                <Star size={13} className="text-amber-500" /> Set as Default
+              </button>
+            )}
 
-          whitespace-nowrap
-        "
-      >
-        {isDeleting ? "..." : "Delete"}
-      </button>
+            <button
+              onClick={() => { onDelete(address._id); setMenuOpen(false); }}
+              disabled={isDeleting}
+              className="w-full flex items-center gap-3 px-4 py-3 text-xs font-semibold text-red-500 hover:bg-red-50 transition-colors border-t border-gray-50 disabled:opacity-50"
+            >
+              <Trash2 size={13} /> {isDeleting ? "Deleting..." : "Delete"}
+            </button>
+
+          </div>
+        )}
+      </div>
+
     </div>
-  </div>
-);
+  );
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AddressFormModal - COMPLETE VERSION WITH EDIT MODE FIX
@@ -587,13 +510,18 @@ export const AddressFormModal = ({ initial, onSubmit, onClose, isSaving, error }
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
+// SAHI:
+<div className="fixed inset-0 z-[999] flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
 
-      <div className="relative bg-white rounded-[40px] w-full max-w-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+<div className="relative bg-white rounded-t-[32px] sm:rounded-[40px] w-full max-w-xl shadow-2xl flex flex-col max-h-[95vh] sm:max-h-[90vh] overflow-hidden">
+  {/* Mobile drag handle */}
+<div className="flex justify-center pt-3 sm:hidden flex-shrink-0">
+  <div className="w-10 h-1 bg-gray-200 rounded-full" />
+</div>
 
         {/* Step indicator */}
-        <div className="px-8 pt-8 pb-4 flex items-center justify-between border-b border-gray-50 flex-shrink-0">
+        <div className="px-4 sm:px-8 pt-5 sm:pt-8 pb-4 flex items-center justify-between border-b border-gray-50 flex-shrink-0">
           <div className="flex items-center gap-3">
             {[1, 2, 3].map((s) => (
               <div key={s} className={`h-1.5 w-8 rounded-full transition-all duration-500 ${step >= s ? "bg-black" : "bg-gray-100"}`} />
@@ -605,8 +533,8 @@ export const AddressFormModal = ({ initial, onSubmit, onClose, isSaving, error }
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-8 py-6">
-          <h2 className="text-2xl font-black text-gray-900 mb-6">
+<div className="flex-1 overflow-y-auto px-4 sm:px-8 py-4 sm:py-6">
+<h2 className="text-lg sm:text-2xl font-black text-gray-900 mb-4 sm:mb-6">
             {step === 1 && "Who's receiving this?"}
             {step === 2 && "Where should we deliver?"}
             {step === 3 && "Final preferences"}
@@ -664,7 +592,7 @@ export const AddressFormModal = ({ initial, onSubmit, onClose, isSaving, error }
             {/* ── Step 2: Address Details ── */}
             {step === 2 && (
               <div className="space-y-5">
-                <div className="grid grid-cols-2 gap-4">
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Field
                     label="House / Flat No." name="houseNumber"
                     value={form.houseNumber} onChange={handleChange}
@@ -706,7 +634,7 @@ export const AddressFormModal = ({ initial, onSubmit, onClose, isSaving, error }
                   placeholder="Floor, wing, apartment number"
                 />
 
-                <div className="grid grid-cols-2 gap-4">
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* City - editable but pre-filled */}
                   <Field
                     label="City" name="city"
@@ -745,7 +673,7 @@ export const AddressFormModal = ({ initial, onSubmit, onClose, isSaving, error }
                     {["home", "work", "other"].map((t) => (
                       <button
                         key={t} type="button" onClick={() => setType(t)}
-                        className={`flex-1 py-4 rounded-2xl border-2 font-black text-[10px] uppercase tracking-widest transition-all cursor-pointer ${
+                        className={`flex-1 py-3 sm:py-4 rounded-2xl border-2 font-black text-[10px] uppercase tracking-widest transition-all cursor-pointer ${
                           form.addressType === t
                             ? "bg-black text-white border-black"
                             : "bg-gray-50 text-gray-400 border-transparent hover:border-gray-200"
@@ -796,7 +724,7 @@ export const AddressFormModal = ({ initial, onSubmit, onClose, isSaving, error }
         </div>
 
         {/* Footer */}
-        <div className="px-8 py-6 bg-gray-50 border-t border-gray-100 flex gap-3 flex-shrink-0">
+<div className="px-4 sm:px-8 py-4 sm:py-6 bg-gray-50 border-t border-gray-100 flex gap-3 flex-shrink-0">
           {step > 1 && (
             <button
               onClick={() => setStep((s) => s - 1)}
@@ -892,18 +820,21 @@ const UserAddress = () => {
 
   return (
     <div className="max-w-6xl mx-auto py-10 px-4">
-      <div className="flex justify-between items-center mb-10 pb-8 border-b border-gray-100">
-        <div>
-          <h1 className="text-xl font-black text-gray-900 tracking-tight">Saved Addresses</h1>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">{allCount} Total</p>
-        </div>
-        <button
-          onClick={openAdd}
-          className="bg-black text-white px-4 py-2.5 rounded-2xl flex items-center gap-2 font-black text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all cursor-pointer hover:bg-[#F7A221] hover:text-black"
-        >
-          <Plus size={16} /> Add Address
-        </button>
-      </div>
+     <div className="flex justify-between items-center mb-6 sm:mb-10 pb-6 sm:pb-8 border-b border-gray-100">
+  <div>
+    <h1 className="text-sm sm:text-xl font-black text-gray-900 tracking-tight">Saved Addresses</h1>
+    <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">{allCount} Total</p>
+  </div>
+  <button
+    onClick={openAdd}
+    className="bg-black text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl flex items-center gap-1.5 sm:gap-2 font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all cursor-pointer hover:bg-[#F7A221] hover:text-black"
+  >
+    <Plus size={14} className="sm:hidden" />
+    <Plus size={16} className="hidden sm:block" />
+    <span className="hidden sm:inline">Add Address</span>
+    <span className="sm:hidden">Add</span>
+  </button>
+</div>
 
       {error.fetch && (
         <div className="mb-6 flex items-center gap-3 bg-red-50 border border-red-100 rounded-2xl px-5 py-4">

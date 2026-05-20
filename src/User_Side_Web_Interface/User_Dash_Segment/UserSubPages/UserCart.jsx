@@ -92,7 +92,7 @@ const CartRowItem = ({ item, isLoggedIn, onUpdate, onRemove, isUpdating, isRemov
         <div className="min-w-0 flex-1">
           {slug ? (
             <Link to={`/products/${slug}`}>
-              <h3 className="text-xs md:text-base leading-snug line-clamp-2 hover:text-[#F7A221] transition-colors text-gray-900 font-semibold">
+              <h3 className="text-xs md:text-base leading-snug line-clamp-2 hover:text-[#35858E] transition-colors text-gray-900 font-semibold">
                 {name}
               </h3>
             </Link>

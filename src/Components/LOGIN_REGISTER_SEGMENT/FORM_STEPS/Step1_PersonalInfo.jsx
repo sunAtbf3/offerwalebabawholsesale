@@ -35,7 +35,7 @@ const Field = ({ label, icon: Icon, error, required, ...props }) => (
           focus:outline-none transition-all duration-200
           ${error
             ? "border-red-400 focus:border-red-500"
-            : "border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10"
+            : "border-slate-200 focus:border-[#478B8D] focus:ring-2 focus:ring-[#478B8D]/10"
           }`}
       />
     </div>

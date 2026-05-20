@@ -285,7 +285,7 @@ const CartItem = ({ item, onUpdateQty, onRemove, isUpdating, isRemoving, product
         <div>
           <div className="flex justify-between items-start gap-2">
             <Link to={productPath} onClick={onClose} className="flex-1 min-w-0">
-              <h3 className="text-xs font-bold text-gray-900 line-clamp-2 leading-snug hover:text-yellow-600 transition-colors">
+              <h3 className="text-xs font-bold text-gray-900 line-clamp-2 leading-snug hover:text-[#35858E] transition-colors">
                 {name}
               </h3>
             </Link>
@@ -343,7 +343,7 @@ const CartItem = ({ item, onUpdateQty, onRemove, isUpdating, isRemoving, product
             <button
               onClick={(e) => { e.stopPropagation(); onUpdateQty(item, qty + 1); }}
               disabled={isUpdating}
-              className="w-8 h-8 flex items-center justify-center bg-[#478B8D] hover:bg-yellow-300 transition-colors disabled:opacity-40"
+              className="w-8 h-8 flex items-center justify-center bg-[#478B8D]/80 hover:bg-[#478B8D] transition-colors disabled:opacity-40"
             >
               <Plus size={12} />
             </button>
@@ -969,7 +969,7 @@ const handleUpdateQty = useCallback(async (item, newQty) => {
             <div className="space-y-2 pt-1">
               <button
                 onClick={handleCheckoutClick}
-                className="w-full bg-[#478B8D]/80 text-gray-900 py-3.5 rounded-xl font-extrabold uppercase tracking-[0.15em] text-[11px] flex items-center justify-center gap-2 hover:bg-[#478B8D]/90 transition-all active:scale-95 shadow-md shadow-yellow-100"
+                className="w-full bg-[#478B8D]/80 text-gray-900 py-3.5 rounded-xl font-extrabold uppercase tracking-[0.15em] text-[11px] flex items-center justify-center gap-2 hover:bg-[#478B8D]/90 transition-all active:scale-95 shadow-md shadow-[#478B8D]/30"
               >
                 {isLoggedIn ? "Proceed to Checkout" : "Login to Checkout"}
                 <ArrowRight size={14} />

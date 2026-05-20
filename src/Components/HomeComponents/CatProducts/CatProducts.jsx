@@ -191,11 +191,19 @@ const CatProducts = () => {
   const [filters, setFilters]           = useState({
     price: [], availability: [], discount: [], moqMax: '', deals: [],
   });
+  const [allProductsFetched, setAllProductsFetched] = useState(false);
 
   useEffect(() => {
     setFilters({ price: [], availability: [], discount: [], moqMax: '', deals: [] });
     setSortBy("newest");
+      setAllProductsFetched(false); // ✅ add karo
   }, [slug]);
+
+  useEffect(() => {
+  setFilters({ price: [], availability: [], discount: [], moqMax: '', deals: [] });
+  setSortBy("newest");
+  setAllProductsFetched(false); // ✅ reset
+}, [slug]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -239,20 +247,45 @@ const CatProducts = () => {
   const hasError      = !pageIsLoading && (productsError || categoryError);
   const hasMore       = pagination?.hasNextPage ?? false;
   const categoryName  = currentCategory?.name || slug?.replace(/-/g, " ") || "Collection";
+  
+  const resetToFirstPage = useCallback(() => {
+  setAllProductsFetched(false);
+  resetPage(); // usePaginatedFetch ka reset
+    // refetch();    // ✅ fresh data force karo
+
+}, [resetPage]);
 
   // ── Filter helpers ─────────────────────────────────────────────────────────
-  const toggleFilter = useCallback((key, value) => {
-    setFilters((prev) => ({
+ const toggleFilter = useCallback((key, value) => {
+  setFilters((prev) => {
+    const updated = {
       ...prev,
       [key]: prev[key].includes(value)
         ? prev[key].filter((v) => v !== value)
         : [...prev[key], value],
-    }));
-  }, []);
+    };
 
-  const clearFilters = useCallback(() => {
-    setFilters({ price: [], availability: [], discount: [], moqMax: '', deals: [] });
-  }, []);
+    // ✅ Check if all filters are now empty after this toggle
+    const newCount =
+      updated.price.length +
+      updated.availability.length +
+      updated.discount.length +
+      updated.deals.length +
+      (updated.moqMax !== '' ? 1 : 0);
+
+    if (newCount === 0) {
+      // schedule reset after state settles
+      setTimeout(() => resetToFirstPage(), 0);
+    }
+
+    return updated;
+  });
+}, [resetToFirstPage]);
+
+ const clearFilters = useCallback(() => {
+  setFilters({ price: [], availability: [], discount: [], moqMax: '', deals: [] });
+  resetToFirstPage(); // ✅ products bhi reset
+}, [resetToFirstPage]);
 
   // ── Filter + Sort ──────────────────────────────────────────────────────────
   const sortedProducts = useMemo(() => {
@@ -362,6 +395,14 @@ if (filters.deals.length > 0) {
     filters.deals.length +
     (filters.moqMax !== '' ? 1 : 0)
   ), [filters]);
+
+  useEffect(() => {
+  if (activeFilterCount === 0) return;
+  if (allProductsFetched) return;
+  if (!hasMore) { setAllProductsFetched(true); return; }
+  if (loadingMore) return;
+  handleLoadMore();
+}, [activeFilterCount, hasMore, loadingMore, allProductsFetched, handleLoadMore]);
 
   const handleRetry = useCallback(() => { resetPage(); refetch(); }, [resetPage, refetch]);
   console.log("products", products.length);
@@ -532,48 +573,56 @@ console.log("hasMore", hasMore);
       </div>
 
       {/* ── HERO ──────────────────────────────────────────────────────────── */}
-      <section className="relative h-[28vh] sm:h-[35vh] md:h-[25vh] flex items-end overflow-hidden bg-gray-900">
-        {currentCategoryImage && (
-  <img src={currentCategoryImage} alt={categoryName}
-       className="absolute inset-0 w-full h-full object-cover opacity-80" />
-)}
-        {/* <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" /> */}
-        {/* <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#F7A221]" /> */}
+    <section className="relative min-h-[28vh] sm:min-h-[35vh] md:min-h-[42vh] lg:min-h-[50vh] flex items-end overflow-hidden bg-gray-900">
+  {currentCategoryImage && (
+    <img
+      src={currentCategoryImage}
+      alt={categoryName}
+      className="
+        absolute inset-0
+        w-full h-full
+        object-center
+        md:object-[center_30%]
+        scale-105
+        sm:scale-100
+      "
+    />
+  )}
 
-        <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 pb-7 sm:pb-10 md:pb-14">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <p className="text-[9px] sm:text-[13px] font-black uppercase tracking-[0.2em] sm:tracking-[0.25em] mb-2 sm:mb-3 flex items-center gap-2">
-                <span className="w-4 sm:w-6 h-[2px] bg-black inline-block" />
-                Wholesale Collection
-              </p>
-<h1
-  className="text-2xl sm:text-4xl md:text-4xl lg:text-5xl uppercase leading-none font-black"
-  style={{
-    color:
-      categoriesImage.find(
-        (cat) =>
-          cat.name.toLowerCase() ===
-          currentCategory?.name?.toLowerCase()
-      )?.color || "#fff",
-  }}
->                {categoryName}
-              </h1>
-              {currentCategory?.description && (
-                <p className="mt-2 sm:mt-4 max-w-xs sm:max-w-md text-gray-400 text-xs sm:text-sm leading-relaxed font-medium line-clamp-2 sm:line-clamp-none">
-                  {currentCategory.description}
-                </p>
-              )}
-            </div>
-            {/* {!pageIsLoading && (
-              <div className="hidden sm:flex flex-col items-end flex-shrink-0">
-                <span className="text-3xl md:text-5xl font-black text-white leading-none">{sortedProducts.length}</span>
-                <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-500 mt-1">Products</span>
-              </div>
-            )} */}
-          </div>
-        </div>
-      </section>
+  {/* Optional overlay for better text readability */}
+  <div className="absolute inset-0 bg-black/30 sm:bg-black/30 md:bg-black/25" />
+
+  <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 pb-6 sm:pb-10 md:pb-14">
+    <div className="flex items-end justify-between gap-4">
+      <div>
+        <p className="text-[9px] sm:text-[13px] font-black uppercase tracking-[0.2em] sm:tracking-[0.25em] mb-2 sm:mb-3 flex items-center gap-2 text-white">
+          <span className="w-4 sm:w-6 h-[2px] bg-white inline-block" />
+          Wholesale Collection
+        </p>
+
+        <h1
+          className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl uppercase leading-none font-black"
+          style={{
+            color:
+              categoriesImage.find(
+                (cat) =>
+                  cat.name.toLowerCase() ===
+                  currentCategory?.name?.toLowerCase()
+              )?.color || "#fff",
+          }}
+        >
+          {categoryName}
+        </h1>
+
+        {currentCategory?.description && (
+          <p className="mt-2 sm:mt-4 max-w-xs sm:max-w-md text-gray-200 text-xs sm:text-sm leading-relaxed font-medium line-clamp-2 sm:line-clamp-none">
+            {currentCategory.description}
+          </p>
+        )}
+      </div>
+    </div>
+  </div>
+</section>
 
       {/* ── MAIN CONTENT ──────────────────────────────────────────────────── */}
       <div className="max-w-[1600px] mx-auto px-3 sm:px-5 lg:px-8 py-6 sm:py-8 lg:py-12 flex flex-col md:flex-row gap-5 sm:gap-8 lg:gap-10">
@@ -643,12 +692,20 @@ console.log("hasMore", hasMore);
                   <X size={10} />
                 </button>
               ))}
-              {filters.moqMax && (
-                <button onClick={() => setFilters((p) => ({ ...p, moqMax: '' }))}
-                  className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold bg-zinc-900 text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full hover:bg-red-500 transition-colors">
-                  MOQ ≤ {filters.moqMax} pcs <X size={10} />
-                </button>
-              )}
+            {filters.moqMax && (
+  <button onClick={() => {
+    setFilters((p) => {
+      const updated = { ...p, moqMax: '' };
+      const count = updated.price.length + updated.availability.length +
+                    updated.discount.length + updated.deals.length;
+      if (count === 0) setTimeout(() => resetToFirstPage(), 0);
+      return updated;
+    });
+  }}
+    className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold bg-zinc-900 text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full hover:bg-red-500 transition-colors">
+    MOQ ≤ {filters.moqMax} pcs <X size={10} />
+  </button>
+)}
               {filters.discount.map((val) => (
                 <button key={val} onClick={() => toggleFilter("discount", val)}
                   className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold bg-zinc-900 text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full hover:bg-red-500 transition-colors">
@@ -707,29 +764,37 @@ console.log("hasMore", hasMore);
                   loadingMore={loadingMore}
                 />
                 <div className="mt-12 sm:mt-16 lg:mt-20 text-center">
-                  {hasMore ? (
-                    <div className="space-y-4 sm:space-y-6">
-                      <button onClick={handleLoadMore} disabled={loadingMore}
-                        className="px-8 sm:px-10 py-2.5 sm:py-3 text-xs bg-zinc-800 text-zinc-100 hover:bg-zinc-50 transition-all hover:text-zinc-800 border hover:border-zinc-800 duration-300 disabled:opacity-60">
-                        <span className="flex items-center gap-2 font-semibold uppercase tracking-widest">
-                          {loadingMore ? <Loader2 size={13} className="animate-spin" /> : "Load More"}
-                        </span>
-                      </button>
-                      <p className="text-[10px] text-zinc-400 uppercase tracking-widest">
-                        {products.length} / {pagination?.total || 0} viewed
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-xs uppercase tracking-[0.4em] text-zinc-300 py-8 sm:py-10">
-                      End of Collection
-                    </p>
-                  )}
+                 {hasMore && !activeFilterCount ? (
+  <div className="space-y-4 sm:space-y-6">
+    <button onClick={handleLoadMore} disabled={loadingMore}
+      className="px-8 sm:px-10 py-2.5 sm:py-3 text-xs bg-zinc-800 text-zinc-100 hover:bg-zinc-50 transition-all hover:text-zinc-800 border hover:border-zinc-800 duration-300 disabled:opacity-60">
+      <span className="flex items-center gap-2 font-semibold uppercase tracking-widest">
+        {loadingMore ? <Loader2 size={13} className="animate-spin" /> : "Load More"}
+      </span>
+    </button>
+    <p className="text-[10px] text-zinc-400 uppercase tracking-widest">
+      {products.length} / {pagination?.total || 0} viewed
+    </p>
+  </div>
+) : hasMore && activeFilterCount > 0 ? (
+  <div className="flex flex-col items-center gap-2 py-6">
+    <Loader2 size={18} className="animate-spin text-zinc-400" />
+    <p className="text-[10px] text-zinc-400 uppercase tracking-widest">
+      Loading all products for filter…
+    </p>
+  </div>
+) : (
+  <p className="text-xs uppercase tracking-[0.4em] text-zinc-300 py-8 sm:py-10">
+    End of Collection
+  </p>
+)}
                 </div>
               </div>
             )}
 
-            {!pageIsLoading && !hasError && sortedProducts.length === 0 && products.length > 0 && (
-              <div className="py-24 sm:py-32 flex flex-col items-center text-center animate-in fade-in px-4">
+{!pageIsLoading && !hasError && sortedProducts.length === 0 && products.length > 0
+  && !(activeFilterCount > 0 && hasMore) && (
+                  <div className="py-24 sm:py-32 flex flex-col items-center text-center animate-in fade-in px-4">
                 <h2 className="text-lg sm:text-xl font-semibold text-zinc-700 mb-2">No results found</h2>
                 <p className="text-zinc-400 text-xs uppercase tracking-widest mb-6">Try different filters</p>
                 <button onClick={clearFilters}

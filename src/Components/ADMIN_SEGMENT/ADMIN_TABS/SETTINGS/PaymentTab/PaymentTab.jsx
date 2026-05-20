@@ -170,16 +170,14 @@ const PaymentTab = () => {
             <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
               Storefront
             </label>
-            <select
+           
+            <input
+            readOnly
               value={storefront}
               onChange={(e) => setStorefront(e.target.value)}
-              className="w-full max-w-md p-3 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full max-w-md p-3 bg-white border border-gray-200 rounded-xl outline-none text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none"
               disabled={loading || saving}
-            >
-              {STOREFRONTS.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </select>
+            />
             <p className="text-[11px] text-gray-400 mt-1.5">
               Policy is stored per storefront. Uses your admin scope; wrong scope returns access denied.
             </p>

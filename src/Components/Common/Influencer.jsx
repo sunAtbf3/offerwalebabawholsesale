@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import toast from "react-hot-toast";
+import {toast} from "react-toastify";
 import { CheckCircle2, X, Send, Star } from "lucide-react";
 
 export default function InfluencerFormPage() {
@@ -156,12 +156,12 @@ export default function InfluencerFormPage() {
 
         {/* Header */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-100 text-amber-700 text-xs font-black uppercase tracking-[0.2em] mb-5">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#478B8D]/15 text-[#478B8D] text-xs font-black uppercase tracking-[0.2em] mb-5">
             Influencer Collaboration
           </div>
 
           <h1 className="text-4xl sm:text-5xl font-black text-[#0F172A] tracking-tight leading-tight">
-            Work With <span className="text-amber-500">Offer Wale Baba</span>
+            Work With <span className="text-[#478B8D]">Offer Wale Baba</span>
           </h1>
 
           <p className="mt-4 text-slate-500 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
@@ -272,7 +272,7 @@ export default function InfluencerFormPage() {
               )}
               <button
                 type="button" onClick={generateCaptcha}
-                className="text-xs text-amber-500 hover:underline mt-2"
+                className="text-xs text-[#478B8D] hover:underline mt-2"
               >
                 Change Question
               </button>

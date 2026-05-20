@@ -1462,6 +1462,7 @@
 
 // export default WholesaleProductDetail;
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import ReactDOM from "react-dom";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { IoLogoWhatsapp, IoLogoFacebook, IoLogoInstagram } from "react-icons/io5";
@@ -1506,6 +1507,12 @@ import {
 
 import { toast } from "react-toastify";
 import { selectIsAuthenticated } from "../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice";
+// BEFORE: axiosInstance not imported in wholesale
+// AFTER: add these
+
+import axiosInstance from "../../SERVICES/Wholesaleaxios"; // adjust path to match your wholesale app's folder structure
+import { getProductRatingDisplay, getFallbackDistribution } from "../../utils/productRatingDisplay"; // same
+import StarRatingInput from "../Common/StarRatingInput"; // adjust path
 
 // ✅ WholesaleProductCard import — RelatedCard replaced
 import WholesaleProductCard from "../ProductCard/WholesaleProductCard";
@@ -1567,11 +1574,11 @@ useEffect(() => {
 
       activeRef.current = next;
 
+      setActiveThumb(next);
       requestAnimationFrame(() => {
-        setActiveThumb(next);
         applyTransform(0, true);
       });
-    }, 3000);
+    }, 8000);
   };
 
   startAutoPlay();
@@ -1767,9 +1774,41 @@ const renderStars = (rating = 0) =>
   ));
 
 function formatCount(count = 0) {
-  if (count < 100) return count.toString();
-  return Math.floor(count / 100) * 100 + "+";
+  if (count < 100) {
+    return `${count}+`;
+  }
+
+  if (count < 1000) {
+    return `${Math.floor(count / 100) * 100}+`;
+  }
+
+  if (count < 10000) {
+    return `${Math.floor(count / 1000)}K+`;
+  }
+
+  return `${Math.floor(count / 1000)}K+`;
 }
+
+
+const formatPrice = (n) => {
+  if (n == null) return "—";
+  return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(n);
+};
+
+const formatCouponLabel = (coupon) => {
+  if (!coupon) return "";
+  const code = String(coupon.code || "").trim().toUpperCase();
+  const minOrderValue = Number(coupon.minOrderValue || 0);
+  const discountValue = Number(coupon.discountValue || 0);
+  const discountType = String(coupon.discountType || "").trim().toLowerCase();
+  if (!code) return "";
+  if (discountType === "percentage") {
+    const base = `Use ${code} on ₹${formatPrice(minOrderValue)}+ for ${discountValue}% OFF`;
+    return coupon.maxDiscountAmount ? `${base} (up to ₹${formatPrice(coupon.maxDiscountAmount)})` : base;
+  }
+  if (minOrderValue > 0) return `Use ${code} on ₹${formatPrice(minOrderValue)}+ for ₹${formatPrice(discountValue)} OFF`;
+  return `Use ${code} for ₹${formatPrice(discountValue)} OFF`;
+};
 
 // ── From V1: full availability meta with MOQ_UNMET / NOT_LISTED support ───────
 const getAvailabilityMeta = (availability) => {
@@ -1778,6 +1817,17 @@ const getAvailabilityMeta = (availability) => {
   if (status === "MOQ_UNMET")    return { label: "MOQ not met",  className: "text-amber-600" };
   if (status === "NOT_LISTED")   return { label: "Not available", className: "text-gray-500" };
   return { label: "In stock", className: "text-green-700" };
+};
+
+// BEFORE: no helper, rating derived inline with fragile nested ternary
+// AFTER: reusable helper matching retail's logic exactly
+
+const getProductRating = (product) => {
+  const r = product?.rating;
+  if (!r) return null;
+  if (typeof r === "number") return r;
+  if (typeof r === "object" && r.value != null) return Number(r.value);
+  return null;
 };
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
@@ -1823,6 +1873,10 @@ const {
   refetch,
   status,
   } = useGetProductBySlugQuery(slug, { skip: !slug });
+  const handleMouseMove = (e) => {
+  updatePosition(e.clientX, e.clientY);
+};
+  
 
   const canRefetch = status !== "uninitialized";
   
@@ -1842,33 +1896,38 @@ const {
   // const activeRef = useRef(activeThumb);
   const desktopWrapperRef = useRef(null);
 const desktopTrackRef = useRef(null);
-
-const desktopStartX = useRef(0);
+const desktopAutoPlayRef = useRef(null);
+const desktopActiveRef = useRef(activeThumb);
+const showZoomRef = useRef(false);
+const isHoveredRef = useRef(false);
 const desktopDragging = useRef(false);
-const desktopDelta = useRef(0);
+const activeImgRef = useRef(null);
+
 const applyDesktopTransform = useCallback(
   (delta = 0, animated = false) => {
     if (!desktopTrackRef.current || !desktopWrapperRef.current) return;
 
     const width = desktopWrapperRef.current.offsetWidth;
-    // Damp live drag to 30% speed — prevents it from feeling too fast
-    const dampedDelta = animated ? 0 : delta * 0.3;
-    const x = -(desktopActiveRef.current * width) + dampedDelta;
+
+    const x = -(desktopActiveRef.current * width) + delta;
 
     desktopTrackRef.current.style.transition = animated
-      ? "transform 0.25s cubic-bezier(0.22,1,0.36,1)"
+      ? "transform 0.22s cubic-bezier(0.22,1,0.36,1)"
       : "none";
 
-    desktopTrackRef.current.style.transform = `translate3d(${x}px,0,0)`;
+    desktopTrackRef.current.style.transform =
+      `translate3d(${x}px,0,0)`;
   },
   []
 );
 
-const desktopAutoPlayRef = useRef();
-const desktopActiveRef = useRef(activeThumb);
- useEffect(() => {
+useEffect(() => {
   desktopActiveRef.current = activeThumb;
-}, [activeThumb]);
+
+  requestAnimationFrame(() => {
+    applyDesktopTransform(0, true);
+  });
+}, [activeThumb, applyDesktopTransform]);
   const [selectedAttrs, setSelectedAttrs] = useState({});
   const [activeTab, setActiveTab]     = useState("desc");
   const [openDesc, setOpenDesc]       = useState(false);
@@ -1877,6 +1936,22 @@ const desktopActiveRef = useRef(activeThumb);
   const [isMobile, setIsMobile]       = useState(false);
   const [isVisible, setIsVisible]     = useState(false);
   const [qty, setQty]                 = useState(1);
+  // BEFORE: none of these exist in wholesale
+// AFTER: add these alongside existing useState declarations
+
+const [reviewSummary, setReviewSummary] = useState(null);
+const [reviewsList, setReviewsList] = useState([]);
+const [reviewsLoading, setReviewsLoading] = useState(false);
+const [myReview, setMyReview] = useState(null);
+const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
+const [reviewSubmitting, setReviewSubmitting] = useState(false);
+const [showReviewComment, setShowReviewComment] = useState(false);
+const [visibleCount, setVisibleCount] = useState(3);
+const [filterStar, setFilterStar] = useState(null);
+const [publicCoupons, setPublicCoupons] = useState([]);
+const [couponsLoading, setCouponsLoading] = useState(false);
+const [copiedCouponCode, setCopiedCouponCode] = useState("");
+const copyResetTimeoutRef = useRef(null);
   const volumetricWeight =
   product?.shipping?.dimensions?.length &&
   product?.shipping?.dimensions?.width &&
@@ -1890,7 +1965,7 @@ const desktopActiveRef = useRef(activeThumb);
       ).toFixed(2)
     : null;
   const [localLoading, setLocalLoading] = useState({
-    add: false, update: false, remove: false, wishlist: false,
+    add: false, update: false, remove: false, wishlist: false,  orderNow: false,
   });
   const isLoggedIn  = useSelector(selectIsAuthenticated)
   const setL         = (key, val) => setLocalLoading((p) => ({ ...p, [key]: val }));
@@ -1913,38 +1988,125 @@ const desktopActiveRef = useRef(activeThumb);
     setSelectedAttrs({});
     setActiveTab("desc");
   }, [slug]);
-
   useEffect(() => {
-    const check = () =>
-      setIsMobile("ontouchstart" in window || navigator.maxTouchPoints > 0 || window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
+  return () => {
+    if (copyResetTimeoutRef.current) clearTimeout(copyResetTimeoutRef.current);
+  };
+}, []);
+  // BEFORE: no review fetching in wholesale
+// AFTER: add all three
+
+// Fetch public review summary + list
+useEffect(() => {
+  const productId = product?._id;
+  if (!productId) {
+    setReviewSummary(null);
+    setReviewsList([]);
+    setMyReview(null);
+    setShowReviewComment(false);
+    return undefined;
+  }
+  setShowReviewComment(false);
+  let cancelled = false;
+  (async () => {
+    setReviewsLoading(true);
+    try {
+      const pid = String(productId);
+      const [sumRes, listRes] = await Promise.all([
+        axiosInstance.get(`/product-reviews/public/${pid}/summary`),
+        axiosInstance.get(`/product-reviews/public/${pid}`, { params: { limit: 50 } }),
+      ]);
+      if (cancelled) return;
+      setReviewSummary(sumRes.data?.summary ?? null);
+      setReviewsList(Array.isArray(listRes.data?.reviews) ? listRes.data.reviews : []);
+    } catch (err) {
+      if (!cancelled) { setReviewSummary(null); setReviewsList([]); }
+    } finally {
+      if (!cancelled) setReviewsLoading(false);
+    }
+  })();
+  return () => { cancelled = true; };
+}, [product?._id]);
+
+// Fetch logged-in user's own review
+useEffect(() => {
+  const productId = product?._id;
+  if (!productId || !isAuthenticated) {
+    if (!isAuthenticated) { setMyReview(null); setShowReviewComment(false); }
+    return undefined;
+  }
+  let cancelled = false;
+  (async () => {
+    try {
+      const res = await axiosInstance.get(`/product-reviews/mine/${String(productId)}`);
+      if (!cancelled) {
+        const r = res.data?.review;
+        setMyReview(r || null);
+        setReviewForm(r ? { rating: r.rating, comment: r.comment || "" } : { rating: 5, comment: "" });
+      }
+    } catch (err) {
+      if (!cancelled) setMyReview(null);
+    }
+  })();
+  return () => { cancelled = true; };
+}, [product?._id, isAuthenticated]);
+
+ useEffect(() => {
+  const check = () => {
+    const val = "ontouchstart" in window || navigator.maxTouchPoints > 0 || window.innerWidth < 768;
+    setIsMobile(val);
+  };
+  check();
+  window.addEventListener("resize", check);
+  return () => window.removeEventListener("resize", check);
+}, []);
 
   useEffect(() => {
     const close = () => setShareOpen(false);
     document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
   }, []);
-
   useEffect(() => {
-    const animate = () => {
-      currentRef.current.x += (targetRef.current.x - currentRef.current.x) * 0.15;
-      currentRef.current.y += (targetRef.current.y - currentRef.current.y) * 0.15;
-      const { x, y } = currentRef.current;
-      if (lensRef.current) {
-        lensRef.current.style.left = `${x * 100}%`;
-        lensRef.current.style.top  = `${y * 100}%`;
-      }
-      if (zoomRef.current) {
-        zoomRef.current.style.backgroundPosition = `${x * 100}% ${y * 100}%`;
-      }
-      rafRef.current = requestAnimationFrame(animate);
-    };
+  let cancelled = false;
+  const loadPublicCoupons = async () => {
+    setCouponsLoading(true);
+    try {
+      const res = await axiosInstance.get("/public/coupons");
+      const coupons = Array.isArray(res?.data?.coupons) ? res.data.coupons : [];
+      if (!cancelled) setPublicCoupons(coupons);
+    } catch (err) {
+      if (!cancelled) setPublicCoupons([]);
+    } finally {
+      if (!cancelled) setCouponsLoading(false);
+    }
+  };
+  loadPublicCoupons();
+  return () => { cancelled = true; };
+}, []);
+
+useEffect(() => {
+  const animate = () => {
+    currentRef.current.x += (targetRef.current.x - currentRef.current.x) * 0.15;
+    currentRef.current.y += (targetRef.current.y - currentRef.current.y) * 0.15;
+
+    const { x, y } = currentRef.current;
+
+    if (lensRef.current) {
+      lensRef.current.style.left = `${x * 100}%`;
+      lensRef.current.style.top = `${y * 100}%`;
+    }
+
+    if (zoomRef.current) {
+      zoomRef.current.style.backgroundPosition = `${x * 100}% ${y * 100}%`;
+    }
+
     rafRef.current = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, []);
+  };
+
+  rafRef.current = requestAnimationFrame(animate);
+
+  return () => cancelAnimationFrame(rafRef.current);
+}, []);
 
   const updatePosition = (clientX, clientY) => {
     if (!containerRef.current) return;
@@ -1963,6 +2125,13 @@ const desktopActiveRef = useRef(activeThumb);
   );
   console.log("productvariant", product?.variants);
 
+  const topCoupons = useMemo(() => {
+  return (Array.isArray(publicCoupons) ? publicCoupons : [])
+    .map((coupon) => ({ ...coupon, label: formatCouponLabel(coupon) }))
+    .filter((coupon) => coupon.label)
+    .slice(0, 3);
+}, [publicCoupons]);
+
   const attrKeys = useMemo(() => {
     const s = new Set();
     activeVariants.forEach((v) => v.attributes?.forEach((a) => s.add(a.key)));
@@ -1979,12 +2148,65 @@ const desktopActiveRef = useRef(activeThumb);
     },
     [activeVariants]
   );
+  // BEFORE: no review submit handler in wholesale
+// AFTER: add this
+
+const submitProductReview = async (e) => {
+  e.preventDefault();
+  if (!product?._id || !isAuthenticated) {
+    toast.info("Please log in to write a review");
+    return;
+  }
+  setReviewSubmitting(true);
+  try {
+    const body = {
+      productId: String(product._id),
+      rating: Number(reviewForm.rating),
+      comment: String(reviewForm.comment || "").trim(),
+    };
+    if (myReview?._id) {
+      await axiosInstance.put(`/product-reviews/${myReview._id}`, body);
+      toast.success("Review updated");
+    } else {
+      await axiosInstance.post("/product-reviews", body);
+      toast.success("Thanks! Your review will appear after moderation.");
+    }
+    const pid = String(product._id);
+    const [sumRes, listRes, mineRes] = await Promise.all([
+      axiosInstance.get(`/product-reviews/public/${pid}/summary`),
+      axiosInstance.get(`/product-reviews/public/${pid}`, { params: { limit: 50 } }),
+      axiosInstance.get(`/product-reviews/mine/${pid}`),
+    ]);
+    setReviewSummary(sumRes.data?.summary ?? null);
+    setReviewsList(Array.isArray(listRes.data?.reviews) ? listRes.data.reviews : []);
+    const r = mineRes.data?.review;
+    setMyReview(r || null);
+    if (r) setReviewForm({ rating: r.rating, comment: r.comment || "" });
+    setShowReviewComment(false);
+  } catch (err) {
+    toast.error(err?.response?.data?.message || err?.message || "Could not save review");
+  } finally {
+    setReviewSubmitting(false);
+  }
+};
 
   const isAvailable = useCallback(
     (key, value) =>
       activeVariants.some((v) => v.attributes?.some((a) => a.key === key && a.value === value)),
     [activeVariants]
   );
+  const handleOrderNow = () => {
+
+  // ❌ Not logged in
+  if (!isAuthenticated) {
+    dispatch(openAuthModal());
+    return;
+  }
+
+  // ✅ Logged in
+  navigate("/checkout");
+  // Sync desktop track whenever activeThumb changes (thumbnail click, dot click, etc.)
+};
 
   const selectedVariant = useMemo(() => {
     if (!activeVariants.length) return null;
@@ -1998,7 +2220,9 @@ const desktopActiveRef = useRef(activeThumb);
     });
     return best;
   }, [activeVariants, selectedAttrs]);
-
+  
+  console.log("Product", typeof selectedVariant?.productCode);
+const productCode = selectedVariant?.productCode || "";
 useEffect(() => {
   if (!activeVariants.length) return;
 
@@ -2033,28 +2257,35 @@ useEffect(() => {
   // }, [activeVariants]);
 
   // ── Derived values ─────────────────────────────────────────────────────────
-  const images    = selectedVariant?.images ?? [];
-  // Desktop autoplay — arrows only, no drag
+const images = Array.isArray(selectedVariant?.images)
+  ? selectedVariant.images
+  : [];  // Desktop autoplay — arrows only, no drag
+// Desktop autoplay — arrows only, no drag
+
+// ── Autoplay useEffect — single source of truth ──────────────────────────
+// Yeh ref restartAutoPlay function store karega
+// FIND the entire autoplay useEffect and REPLACE with this:
 useEffect(() => {
-  if (isMobile) return;
-  if (images.length <= 1) return;
+  if (isMobile || images.length <= 1) return;
 
-  clearInterval(desktopAutoPlayRef.current);
+  const tick = () => {
+    if (isHoveredRef.current) return;  // pause on hover
 
-  desktopAutoPlayRef.current = setInterval(() => {
     const next =
       desktopActiveRef.current >= images.length - 1
         ? 0
         : desktopActiveRef.current + 1;
+
     desktopActiveRef.current = next;
     setActiveThumb(next);
-    applyDesktopTransform(0, true);
-  }, 3000);
-
-  return () => {
-    clearInterval(desktopAutoPlayRef.current);
+    requestAnimationFrame(() => applyDesktopTransform(0, true));
   };
-}, [images.length, isMobile, applyDesktopTransform]);
+
+  desktopAutoPlayRef.current = setInterval(tick, 3000);
+
+  return () => clearInterval(desktopAutoPlayRef.current);
+}, [images.length, isMobile]);  // NO applyDesktopTransform in deps
+
   useEffect(() => {
   if (!images.length) return;
 
@@ -2066,11 +2297,19 @@ useEffect(() => {
 const safeIndex =
   activeThumb >= images.length ? 0 : activeThumb;
 
-const activeImg =
+const actualActiveImg =
   images[safeIndex]?.url ||
   images[0]?.url ||
   product?.image ||
   null;
+
+// const activeImg = showZoom
+//   ? activeImgRef.current || actualActiveImg
+//   : actualActiveImg;
+// TO THIS:
+const activeImg = actualActiveImg;
+
+// Sync to ref immediately
   const variant = selectedVariant || {};
 
   const wholesalePrice = selectedVariant?.finalPrice ?? selectedVariant?.price?.sale ?? product?.wholesalePrice ?? null;
@@ -2100,28 +2339,31 @@ const activeImg =
   const returnPolicy  = product?.returnPolicy ?? "7 days";
   const title         = product?.title || product?.name || "Product";
   // const rating        = product?.rating?.value ?? product?.rating ?? 4.5;
-  const rating =
-  typeof product?.rating === "object"
-    ? (
-        typeof product?.rating?.value === "object"
-          ? product?.rating?.value?.value
-          : product?.rating?.value
-      ) ?? 4.5
-    : product?.rating ?? 4.5;
-  const ratingCnt     = product?.rating?.count ?? product?.reviewCount ?? 0;
+ // AFTER:
+const rating = getProductRating(product) ?? 4.5;
+const ratingCnt = product?.rating?.count ?? product?.reviewCount ?? 0;
   const soldInfo      = product?.soldInfo?.count ?? product?.soldCount ?? 0;
   const brand         = product?.brand ?? null;
   const sellingPriceRange = product?.sellingPriceRange ?? null;
   const earnPerUnit   = product?.earnPerUnit ?? null;
   const volumePricing = product?.volumePricing ?? [];
 
-  const currentTier = volumePricing.find((t) => qty >= t.min && qty <= t.max) || volumePricing[0];
-  const unitPrice   = currentTier?.price ?? wholesalePrice;
-  const totalPrice  = unitPrice != null ? unitPrice * qty : null;
+// AFTER — same placement, but add a safety guard on ratingDisplay:
+const currentTier = volumePricing.find((t) => qty >= t.min && qty <= t.max) || volumePricing[0];
+const unitPrice   = currentTier?.price ?? wholesalePrice;
+const totalPrice  = unitPrice != null ? unitPrice * qty : null;
 
-  useEffect(() => {
-    setQty(moq || 1);
-  }, [moq]);
+const ratingDisplay = useMemo(
+  () => getProductRatingDisplay(product, reviewSummary),
+  [product, reviewSummary]
+);
+const displayAvg = ratingDisplay?.average ?? 0;
+const displayCount = ratingDisplay?.count ?? 0;
+const ratingIsPlaceholder = ratingDisplay?.isPlaceholder ?? true;
+
+useEffect(() => {
+  setQty(moq || 1);
+}, [moq]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleWishlist = async (e) => {
@@ -2155,6 +2397,21 @@ const activeImg =
       setL("wishlist", false);
     }
   };
+  const handleCopyCouponCode = useCallback(async (couponCode) => {
+  const code = String(couponCode || "").trim().toUpperCase();
+  if (!code) return;
+  try {
+    await navigator.clipboard?.writeText(code);
+    setCopiedCouponCode(code);
+    if (copyResetTimeoutRef.current) clearTimeout(copyResetTimeoutRef.current);
+    copyResetTimeoutRef.current = setTimeout(() => setCopiedCouponCode(""), 1000);
+    toast.success(`Copied ${code}`);
+  } catch(err) {
+    toast.error("Unable to copy code");
+    console.log("error", err);
+    
+  }
+}, []);
 
   const handleAddToCart = async (e) => {
     e.stopPropagation();
@@ -2292,8 +2549,7 @@ const activeImg =
   const tabs = [
     { key: "desc",    label: "Description" },
     { key: "specs",   label: "Specifications" },
-    { key: "reviews", label: `Reviews (${ratingCnt})` },
-    { key: "margin",  label: "Margin Info" },
+    { key: "reviews", label: `Reviews (${displayCount})` },
   ];
 
   const tabContent = {
@@ -2308,93 +2564,279 @@ const activeImg =
               </li>
             ))}
           </ul>
-        )}
-        {product?.attributes?.length > 0 && (
-          <div>
-            <p className="font-semibold text-gray-800 mb-1">Highlights:</p>
-            <ul className="list-disc pl-5 space-y-1 text-xs">
-              {product.attributes.map((attr, i) => (
-                <li key={i}><span className="font-medium">{attr.key}:</span> {attr.value}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {product?.shipping && (
-          <div>
-            <p className="font-semibold text-gray-800 mb-1">Dimensions:</p>
-            <div className="grid grid-cols-2 gap-y-1 text-xs text-gray-600">
-              <span>Weight</span><span>{product.shipping.weight} kg</span>
-              <span>Length</span><span>{product.shipping.dimensions?.length} cm</span>
-              <span>Width</span><span>{product.shipping.dimensions?.width} cm</span>
-              <span>Height</span><span>{product.shipping.dimensions?.height} cm</span>
-          {volumetricWeight && (
-  <>
-    <span>Vol. Weight</span>
-    <span>{volumetricWeight} kg</span>
-  </>
-)}
-            </div>
-          </div>
+        
         )}
       </div>
     ),
-    specs: (
-      <div className="p-5">
-        {product?.specs?.length > 0 ? (
-          <table className="w-full text-xs">
-            <tbody>
-              {product.specs.map((spec, i) => (
-                <tr key={i} className={i % 2 === 0 ? "bg-amber-50" : "bg-white"}>
-                  <td className="py-2.5 px-3 font-bold text-gray-800 w-[35%]">{spec.label}</td>
-                  <td className="py-2.5 px-3 text-gray-600">{spec.value}</td>
+   specs: (
+  <div className="p-5">
+    {/* Specifications Table */}
+    {product?.specs?.length > 0 ? (
+      <table className="w-full text-xs mb-5">
+        <tbody>
+          {product.specs.map((spec, i) => (
+            <tr key={i} className={i % 2 === 0 ? "bg-amber-50" : "bg-white"}>
+              <td className="py-2.5 px-3 font-bold text-gray-800 w-[35%]">{spec.label}</td>
+              <td className="py-2.5 px-3 text-gray-600">{spec.value}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    ) : (
+      <p className="text-sm text-gray-400 mb-5">No specifications available.</p>
+    )}
+
+    {/* Highlights — description se aaya */}
+    {product?.attributes?.length > 0 && (
+      <div className="mb-5">
+        <p className="font-bold text-gray-800 text-xs uppercase tracking-wider mb-2">Highlights</p>
+        <ul className="list-disc pl-5 space-y-1 text-xs text-gray-600">
+          {product.attributes.map((attr, i) => (
+            <li key={i}><span className="font-medium">{attr.key}:</span> {attr.value}</li>
+          ))}
+        </ul>
+      </div>
+    )}
+
+    {/* Dimensions — description se aaya */}
+    {product?.shipping && (
+      <div>
+        <p className="font-bold text-gray-800 text-xs uppercase tracking-wider mb-2">Dimensions & Weight</p>
+        <table className="w-full text-xs">
+          <tbody>
+            {[
+              { label: "Weight", value: product.shipping.weight ? `${product.shipping.weight} kg` : null },
+              { label: "Length", value: product.shipping.dimensions?.length ? `${product.shipping.dimensions.length} cm` : null },
+              { label: "Width",  value: product.shipping.dimensions?.width  ? `${product.shipping.dimensions.width} cm`  : null },
+              { label: "Height", value: product.shipping.dimensions?.height ? `${product.shipping.dimensions.height} cm` : null },
+              { label: "Volumetric Weight", value: volumetricWeight ? `${volumetricWeight} kg` : null },
+            ]
+              .filter((row) => row.value)
+              .map((row, i) => (
+                <tr key={i}>
+                  <td className="py-2.5 px-3 font-bold text-gray-800 w-[35%]">{row.label}</td>
+                  <td className="py-2.5 px-3 text-gray-600">{row.value}</td>
                 </tr>
               ))}
-            </tbody>
-          </table>
-        ) : (
-          <p className="text-sm text-gray-400 p-5">No specifications available.</p>
-        )}
+          </tbody>
+        </table>
       </div>
-    ),
-    reviews: (
-      <div className="p-5">
-        {product?.reviews?.length > 0 ? (
-          <div className="space-y-4">
-            {product.reviews.map((rev, i) => (
-              <div key={i} className="border border-gray-200 rounded-xl p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <div
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-yellow-600"
-                    style={{ backgroundColor: rev.avatarBg ?? "#FEF3C7" }}
-                  >
-                    {rev.initials ?? rev.name?.[0]}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-gray-800">{rev.name}</span>
-                      {rev.verified && (
-                        <span className="text-[8px] font-bold text-green-700 bg-green-100 px-1.5 py-px rounded">VERIFIED</span>
-                      )}
-                    </div>
-                    <div className="text-[10px] text-gray-400 flex items-center gap-1">
-                      <MapPin size={9} /> {rev.location} · {rev.date}
-                    </div>
-                  </div>
+    )}
+  </div>
+),
+  reviews: (
+  <div className="p-5">
+    {(() => {
+      const totalReviews = reviewsList.length;
+      const starCounts = ratingIsPlaceholder
+        ? getFallbackDistribution(product).map(({ star, pct }) => ({ star, count: 0, pct }))
+        : [5, 4, 3, 2, 1].map((star) => {
+            const count = reviewsList.filter((r) => Math.round(r.rating) === star).length;
+            const pct = totalReviews > 0 ? Math.round((count / totalReviews) * 100) : 0;
+            return { star, count, pct };
+          });
+      const filteredReviews = filterStar
+        ? reviewsList.filter((r) => Math.round(r.rating) === filterStar)
+        : reviewsList;
+      const visibleReviews = filteredReviews.slice(0, visibleCount);
+
+      return (
+        <div className="flex flex-col gap-5">
+
+          {/* Rating summary */}
+          {reviewsLoading ? (
+            <p className="text-sm text-gray-500 py-2">Loading reviews…</p>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-3xl font-bold text-gray-900">
+                  {Number(displayAvg).toFixed(1)}
+                </span>
+                <div className="flex items-center gap-0.5">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star
+                      key={s}
+                      size={18}
+                      className={s <= Math.round(Number(displayAvg))
+                        ? "text-amber-400 fill-amber-400"
+                        : "text-gray-200 fill-gray-200"}
+                    />
+                  ))}
                 </div>
-                <div className="flex gap-0.5 mb-1">{renderStars(rev.rating)}</div>
-                <h4 className="text-xs font-bold text-gray-800 mb-1">{rev.title}</h4>
-                <p className="text-xs text-gray-600 leading-relaxed mb-3">{rev.text}</p>
-                <button className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-700 transition-colors">
-                  <ThumbsUp size={11} /> Helpful ({rev.helpfulCount ?? 0})
-                </button>
+                <span className="text-sm text-gray-500">
+                  {ratingIsPlaceholder
+                    ? `${displayCount} ratings`
+                    : `${displayCount} published ${displayCount === 1 ? "review" : "reviews"}`}
+                </span>
               </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-gray-400">No reviews yet.</p>
-        )}
-      </div>
-    ),
+
+              {/* Star bars */}
+              <div className="space-y-1.5">
+                {starCounts.map(({ star, pct }) => {
+                  const isActive = filterStar === star;
+                  return (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => { setFilterStar(filterStar === star ? null : star); setVisibleCount(3); }}
+                      className={`w-full flex items-center gap-2 sm:gap-3 px-2 py-1 rounded-lg transition-colors text-sm cursor-pointer ${isActive ? "bg-amber-50" : "hover:bg-gray-50"}`}
+                    >
+                      <span className="w-12 sm:w-14 text-left text-xs sm:text-sm text-gray-600 font-medium flex-shrink-0">
+                        {star} star
+                      </span>
+                      <div className="flex-1 h-2.5 sm:h-3 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${isActive ? "bg-amber-500" : "bg-amber-400"}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="w-10 text-right text-xs text-gray-500 flex-shrink-0">{pct}%</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {filterStar !== null && (
+                <button
+                  type="button"
+                  onClick={() => { setFilterStar(null); setVisibleCount(3); }}
+                  className="text-xs font-semibold text-amber-600 hover:text-amber-700 hover:underline cursor-pointer"
+                >
+                  × Clear filter
+                </button>
+              )}
+
+              {!isAuthenticated && (
+                <p className="text-sm text-gray-500">
+                  <button type="button" className="text-red-600 font-bold hover:underline">
+                    Log in
+                  </button>{" "}
+                  to leave a review
+                </p>
+              )}
+            </>
+          )}
+
+          {/* Your review form */}
+          {isAuthenticated && !reviewsLoading && (
+            <form
+              onSubmit={submitProductReview}
+              className="rounded-xl border border-gray-200 bg-gray-50/80 p-3 sm:p-4 space-y-3"
+            >
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                {myReview?._id ? "Your review" : "Rate this product"}
+              </p>
+              <StarRatingInput
+                value={reviewForm.rating}
+                onChange={(n) => setReviewForm((f) => ({ ...f, rating: n }))}
+                disabled={reviewSubmitting}
+                size={30}
+              />
+              {!showReviewComment ? (
+                <button
+                  type="button"
+                  onClick={() => setShowReviewComment(true)}
+                  className="text-sm font-bold text-yellow-600 hover:text-yellow-700 hover:underline cursor-pointer"
+                >
+                  Write a comment <span className="font-normal text-gray-500">(optional)</span>
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Comment (optional)</label>
+                  <textarea
+                    value={reviewForm.comment}
+                    onChange={(e) => setReviewForm((f) => ({ ...f, comment: e.target.value }))}
+                    rows={3}
+                    maxLength={2000}
+                    placeholder="Share your thoughts about this product…"
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-yellow-200 focus:border-yellow-300 transition"
+                  />
+                  <button
+                    type="button"
+                    disabled={reviewSubmitting}
+                    onClick={() => setShowReviewComment(false)}
+                    className="text-xs font-medium text-gray-500 hover:text-gray-800 cursor-pointer"
+                  >
+                    Hide comment
+                  </button>
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={reviewSubmitting || reviewForm.rating === 0}
+                className="text-sm font-semibold px-5 py-2 rounded-lg transition cursor-pointer bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-40"
+              >
+                {reviewSubmitting ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 size={14} className="animate-spin" /> Saving…
+                  </span>
+                ) : myReview?._id ? "Update review" : "Submit review"}
+              </button>
+            </form>
+          )}
+
+          {/* Published reviews list */}
+          {!reviewsLoading && (
+            reviewsList.length === 0 ? (
+              <p className="text-sm text-gray-500">No published reviews yet.</p>
+            ) : filteredReviews.length === 0 && filterStar !== null ? (
+              <p className="text-sm text-gray-500">No reviews with {filterStar} stars.</p>
+            ) : (
+              <>
+                <ul className="space-y-3 sm:space-y-4">
+                  {visibleReviews.map((r) => (
+                    <li key={r._id} className="border border-gray-100 rounded-xl p-3 sm:p-4 bg-white">
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-full bg-zinc-100 flex items-center justify-center flex-shrink-0">
+                          <span className="text-sm font-semibold text-zinc-700 uppercase">
+                            {typeof r.author === "string" && r.author.length > 0 ? r.author.charAt(0) : "?"}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-0.5">
+                            <span className="text-sm font-semibold text-gray-900 truncate">{r.author}</span>
+                            <span className="text-xs text-gray-400 flex-shrink-0">
+                              {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : ""}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-0.5 mb-1.5">
+                            {Array.from({ length: Math.round(r.rating) }).map((_, i) => (
+                              <Star key={i} size={13} className="text-amber-400 fill-amber-400" />
+                            ))}
+                          </div>
+                          {r.comment ? (
+                            <p className="text-sm text-gray-600 leading-relaxed">{r.comment}</p>
+                          ) : (
+                            <p className="text-xs text-gray-400 italic">No comment left</p>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                {visibleCount < filteredReviews.length && (
+                  <div className="flex flex-col items-center gap-2 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setVisibleCount((prev) => prev + 3)}
+                      className="border border-zinc-200 rounded-xl px-6 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:border-zinc-300 transition cursor-pointer"
+                    >
+                      Load more reviews
+                    </button>
+                    <p className="text-xs text-gray-400 text-center">
+                      Showing {Math.min(visibleCount, filteredReviews.length)} of {filteredReviews.length} reviews
+                    </p>
+                  </div>
+                )}
+              </>
+            )
+          )}
+
+        </div>
+      );
+    })()}
+  </div>
+),
     margin: (
       <div className="p-5">
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
@@ -2452,56 +2894,12 @@ const activeImg =
 
   // ── RENDER ────────────────────────────────────────────────────────────────
   return (
+   <>
     <div className="min-h-screen bg-gray-50">
 
       {/* Mobile image lightbox */}
-      {isVisible && (
-        <div
-          className="fixed inset-0 z-50 md:hidden bg-black/60 backdrop-blur-sm flex items-end"
-          onClick={() => setIsVisible(false)}
-        >
-          <div
-            className="w-full bg-white rounded-t-3xl px-4 pt-4 pb-8 max-h-[92vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-bold text-gray-800">{activeThumb + 1} / {images.length}</p>
-              <button
-                onClick={() => setIsVisible(false)}
-                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600"
-              >✕</button>
-            </div>
-            <div className="w-full flex items-center justify-center bg-amber-50 rounded-2xl overflow-hidden mb-4 relative" style={{ aspectRatio: "1/1" }}>
-              {activeImg
-                ? <img src={activeImg} loading="lazy" alt={title} className="w-full h-full object-contain p-4" onContextMenu={(e) => e.preventDefault()} />
-                : <Package size={48} className="text-gray-300" />}
-              {images.length > 1 && (
-                <>
-                  <button onClick={() => setActiveThumb((p) => (p - 1 + images.length) % images.length)} className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white shadow flex items-center justify-center text-gray-600">‹</button>
-                  <button onClick={() => setActiveThumb((p) => (p + 1) % images.length)} className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white shadow flex items-center justify-center text-gray-600">›</button>
-                </>
-              )}
-            </div>
-            {images.length > 1 && (
-              <div className="flex justify-center gap-1.5 mb-5">
-                {images.map((_, i) => (
-                  <button key={i} onClick={() => setActiveThumb(i)}
-                    className={`rounded-full transition-all duration-200 ${activeThumb === i ? "w-4 h-2 bg-yellow-400" : "w-2 h-2 bg-gray-300"}`} />
-                ))}
-              </div>
-            )}
-            <div className="grid grid-cols-5 gap-2">
-              {images.map((img, i) => (
-                <button key={i} onClick={() => setActiveThumb(i)}
-                  className={`rounded-xl overflow-hidden border-2 transition-all duration-200 aspect-square ${activeThumb === i ? "border-yellow-400 shadow-md scale-[1.04]" : "border-gray-200"}`}>
-                  <img src={img.url} alt={`thumb-${i}`} className="w-full h-full object-cover" />
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* {isVisible && (
+      )} */}
 
       <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
 
@@ -2518,230 +2916,230 @@ const activeImg =
               <ChevronRight size={11} />
             </>
           )}
-          <span className="text-gray-700 font-semibold">{title}</span>
+          {/* <span className="text-gray-700 font-semibold">{title}</span> */}
         </nav>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_440px] gap-8 items-start">
+<div className="relative grid grid-cols-1 lg:grid-cols-[1fr_440px] gap-8 items-start">
 
-          {/* LEFT COLUMN */}
-          <div className="flex flex-col gap-5">
+  {/* ══ LEFT COLUMN — desktop only ══ */}
+  <div className="flex flex-col gap-5 order-2 lg:order-1 relative">
 
-            {/* Image Card */}
-            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-              <div className="flex flex-row">
+    {/* Desktop Image Card — mobile pe hidden */}
+    <div className="hidden lg:block bg-white border border-gray-200 rounded-2xl overflow-hidden">
+      <div className="flex flex-row">
 
-                {/* Thumbnail sidebar */}
-                {images.length > 0 && (
-                  <div className="hidden lg:flex flex-col items-center gap-0 py-3 px-2 border-r border-gray-100 bg-gray-50 flex-shrink-0 w-[76px]">
-                    {images.length > 5 && (
-                      <button
-                        onClick={() => { const el = document.getElementById("thumb-list-ws"); el?.scrollBy({ top: -70, behavior: "smooth" }); }}
-                        className="w-8 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition flex-shrink-0"
-                      >▲</button>
-                    )}
-                    <div id="thumb-list-ws" className="flex flex-col gap-2 overflow-y-auto scrollbar-hide overflow-x-hidden flex-1" style={{ maxHeight: 380 }}>
-                      {images.map((img, i) => (
-                        <button key={i} onClick={() => setActiveThumb(i)}
-                          className={`flex-shrink-0 w-[56px] h-[56px] rounded-xl overflow-hidden border-2 transition-all duration-200 ${activeThumb === i ? "border-yellow-400 shadow-md scale-[1.04]" : "border-gray-200 hover:border-yellow-300"}`}>
-                          <img src={img.url} alt={`thumb-${i}`} className="w-full h-full object-cover" />
-                        </button>
-                      ))}
-                    </div>
-                    {images.length > 5 && (
-                      <button
-                        onClick={() => { const el = document.getElementById("thumb-list-ws"); el?.scrollBy({ top: 70, behavior: "smooth" }); }}
-                        className="w-8 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition flex-shrink-0"
-                      >▼</button>
-                    )}
-                  </div>
-                )}
-
-                {/* Main image + zoom */}
-               <div className="flex-1 flex flex-col">
- 
-  {isMobile ? (
-    // ── MOBILE: swipeable image carousel ──────────────────────────────────
-    <>
-      <MobileImageSwiper
-        images={images}
-        activeThumb={activeThumb}
-        setActiveThumb={setActiveThumb}
-        title={title}
-        onTap={() => setIsVisible(true)}
-      />
- 
-      {images.length > 1 && (
-        <div className="flex items-center justify-center gap-1.5 py-3">
-          {images.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setActiveThumb(i)}
-              className={`rounded-full transition-all duration-200 ${
-                activeThumb === i ? "w-4 h-2 bg-yellow-400" : "w-2 h-2 bg-gray-300"
-              }`}
-            />
-          ))}
-        </div>
-      )}
-    </>
-  ) : (
-    // ── DESKTOP: zoom panel (completely unchanged) ─────────────────────────
- <>
-  <div
-    ref={desktopWrapperRef}
-    className="relative w-full overflow-hidden select-none"
-    style={{ aspectRatio: "1 / 1" }}
-  >
-    <div
-      ref={desktopTrackRef}
-      className="flex h-full"
-      style={{
-        width: `${images.length * 100}%`,
-      }}
-    >
-      {images.map((img, i) => (
-        <div
-          key={img?.url || i}
-          className="flex-shrink-0 flex items-center justify-center bg-white relative"
-          style={{
-            width: `${100 / images.length}%`,
-            height: "100%",
-          }}
-        >
-          {img?.url ? (
-            <img
-              src={img.url}
-              alt={`${title} ${i + 1}`}
-              className="w-full h-full object-contain p-6 sm:p-8"
-              draggable={false}
-              onMouseEnter={() => setShowZoom(true)}
-              onMouseLeave={() => setShowZoom(false)}
-              onMouseMove={(e) =>
-                updatePosition(e.clientX, e.clientY)
-              }
-            />
-          ) : (
-            <Package
-              size={64}
-              className="text-gray-200"
-            />
-          )}
-        </div>
-      ))}
-    </div>
-
-    {/* arrows */}
-    {images.length > 1 && (
-      <>
-       // LEFT arrow
-<button
-  onClick={() => {
-    clearInterval(desktopAutoPlayRef.current);
-    const next =
-      desktopActiveRef.current <= 0
-        ? images.length - 1
-        : desktopActiveRef.current - 1;
-    desktopActiveRef.current = next;
-    setActiveThumb(next);
-    applyDesktopTransform(0, true);
-
-    // restart autoplay after manual nav
-    desktopAutoPlayRef.current = setInterval(() => {
-      const n =
-        desktopActiveRef.current >= images.length - 1
-          ? 0 : desktopActiveRef.current + 1;
-      desktopActiveRef.current = n;
-      setActiveThumb(n);
-      applyDesktopTransform(0, true);
-    }, 3000);
+        {/* Thumbnail sidebar */}
+        {images.length > 0 && (
+          <div className="hidden lg:flex flex-col items-center gap-0 py-3 px-2 border-r border-gray-100 bg-gray-50 flex-shrink-0 w-[76px]">
+            {images.length > 5 && (
+              <button onClick={() => { const el = document.getElementById("thumb-list-ws"); el?.scrollBy({ top: -70, behavior: "smooth" }); }}
+                className="w-8 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition flex-shrink-0">▲</button>
+            )}
+            <div id="thumb-list-ws" className="flex flex-col gap-2 overflow-y-auto scrollbar-hide overflow-x-hidden flex-1" style={{ maxHeight: 380 }}>
+              {images.map((img, i) => (
+                <button key={i} onClick={() => {
+                  desktopActiveRef.current = i;
+  setActiveThumb(i);
+  requestAnimationFrame(() => {
+  applyDesktopTransform(0, true);
+});
   }}
+                  className={`flex-shrink-0 w-[56px] h-[56px] rounded-xl overflow-hidden border-2 transition-all duration-200 ${activeThumb === i ? "border-yellow-400 shadow-md scale-[1.04]" : "border-gray-200 hover:border-yellow-300"}`}>
+                  <img src={img.url} alt={`thumb-${i}`} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+            {images.length > 5 && (
+              <button onClick={() => { const el = document.getElementById("thumb-list-ws"); el?.scrollBy({ top: 70, behavior: "smooth" }); }}
+                className="w-8 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition flex-shrink-0">▼</button>
+            )}
+          </div>
+        )}
+
+        {/* Desktop main image */}
+        <div className="flex-1 flex flex-col">
+        <div
+  ref={(el) => {
+    desktopWrapperRef.current = el;
+    containerRef.current = el;
+  }}
+  className="relative w-full overflow-hidden select-none"
+  style={{ aspectRatio: "1 / 1" }}
+
+ // ── Mouse handlers on the desktop image wrapper div ──────────────────────
+onMouseEnter={() => {
+  if (isMobile) return;
+
+  // ✅ stop EVERYTHING
+  clearInterval(desktopAutoPlayRef.current);
+
+  showZoomRef.current = true;
+  isHoveredRef.current = true;
+
+  // ✅ freeze current visible image
+  activeImgRef.current = actualActiveImg;
+
+  setShowZoom(true);
+}}
+
+onMouseLeave={(e) => {
+  if (isMobile) return;
+
+  if (
+    zoomRef.current &&
+    e.relatedTarget &&
+    zoomRef.current.contains(e.relatedTarget)
+  ) {
+    return;
+  }
+
+  setShowZoom(false);
+  showZoomRef.current = false;
+  isHoveredRef.current = false;        // ← unblock the existing interval
+  activeImgRef.current = null;
+
+  currentRef.current = { x: 0.5, y: 0.5 };
+  targetRef.current = { x: 0.5, y: 0.5 };
+  // ← NO new setInterval here
+}}
+
+onMouseMove={(e) => {
+  if (isMobile) return;
+  handleMouseMove(e);
+}}
+
+// onMouseMove={(e) => {
+//   if (desktopDragging.current) {
+//     // Dragging — only move track, do NOT update zoom position
+//     const rawDelta = e.clientX - desktopStartX.current;
+//     desktopDelta.current = rawDelta;
+//     requestAnimationFrame(() => {
+//       applyDesktopTransform(rawDelta * 0.12, false);
+//     });
+//   } else {
+//     // Just hovering — update zoom position only
+//     updatePosition(e.clientX, e.clientY);
+//   }
+// }}
+>
+  <div
+    ref={desktopTrackRef}
+    className="flex h-full"
+    style={{
+      width: `${images.length * 100}%`,
+      willChange: "transform",
+    }}
+  >
+    {images.map((img, i) => (
+      <div
+        key={img?.url || i}
+        className="flex-shrink-0 flex items-center justify-center bg-white relative"
+        style={{
+          width: `${100 / images.length}%`,
+          height: "100%",
+        }}
+      >
+        {img?.url ? (
+          <img
+            src={img.url}
+            alt={`${title} ${i + 1}`}
+            className="w-full h-full object-contain p-6 sm:p-8 pointer-events-none"
+            draggable={false}
+          />
+        ) : (
+          <Package size={64} className="text-gray-200" />
+        )}
+      </div>
+    ))}
+  </div>
+
+  {/* LEFT ARROW */}
+  {images.length > 1 && (
+    <>
+      {/* LEFT ARROW */}
+<button
+onClick={() => {
+  const next =
+    activeThumb <= 0
+      ? images.length - 1
+      : activeThumb - 1;
+
+  desktopActiveRef.current = next;
+
+  setActiveThumb(next);
+
+ requestAnimationFrame(() => {
+  applyDesktopTransform(0, true);
+});
+}}
   className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center z-10"
 >‹</button>
 
-// RIGHT arrow
-<button
-  onClick={() => {
-    clearInterval(desktopAutoPlayRef.current);
-    const next =
-      desktopActiveRef.current >= images.length - 1
-        ? 0
-        : desktopActiveRef.current + 1;
-    desktopActiveRef.current = next;
-    setActiveThumb(next);
-    applyDesktopTransform(0, true);
+      {/* RIGHT ARROW */}
+    <button
+ onClick={() => {
+  const next =
+    activeThumb >= images.length - 1
+      ? 0
+      : activeThumb + 1;
 
-    // restart autoplay after manual nav
-    desktopAutoPlayRef.current = setInterval(() => {
-      const n =
-        desktopActiveRef.current >= images.length - 1
-          ? 0 : desktopActiveRef.current + 1;
-      desktopActiveRef.current = n;
-      setActiveThumb(n);
-      applyDesktopTransform(0, true);
-    }, 3000);
-  }}
+  desktopActiveRef.current = next;
+
+  setActiveThumb(next);
+
+ requestAnimationFrame(() => {
+  applyDesktopTransform(0, true);
+});
+}}
   className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center z-10"
 >›</button>
-      </>
-    )}
-  </div>
+    </>
+  )}
 
-  {/* dots */}
-  {images.length > 1 && (
-    <div className="lg:hidden flex items-center justify-center gap-1.5 py-3">
-      {images.map((_, i) => (
-        <button
-          key={i}
-          onClick={() => {
-           desktopActiveRef.current = i;
-            setActiveThumb(i);
-            applyDesktopTransform(0, true);
-          }}
-          className={`rounded-full transition-all duration-200 ${
-            activeThumb === i
-              ? "w-4 h-2 bg-yellow-400"
-              : "w-2 h-2 bg-gray-300"
-          }`}
-        />
-      ))}
-    </div>
+  {/* ZOOM LENS */}
+  {showZoom && (
+    <div
+      ref={lensRef}
+      className="absolute pointer-events-none"
+      style={{
+        width: "160px",
+        height: "160px",
+        transform: "translate(-50%, -50%)",
+        border: "2px solid rgba(114, 67, 136, 0.6)",
+        backgroundColor: "rgba(59, 12, 87, 0.08)",
+        backgroundImage:
+          "radial-gradient(rgba(0,0,0,0.2) 1px, transparent 1px)",
+        backgroundSize: "6px 6px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+        borderRadius: "4px",
+        zIndex: 20,
+      }}
+    />
   )}
-</>
-  )}
- 
 </div>
-              </div>
-            </div>
+        </div>
+      </div>
+    </div>
 
-            {/* Zoom panel (desktop) */}
-            {showZoom && !isMobile && activeImg && (
-              <div
-                ref={zoomRef}
-                className="hidden lg:block fixed left-[60%] top-[26%] z-30 w-[26rem] h-[38rem] rounded-2xl shadow-xl bg-white border border-gray-100 pointer-events-none"
-                style={{
-                  backgroundImage: `url(${activeImg})`,
-                  backgroundRepeat: "no-repeat",
-                  backgroundSize: "250%",
-                }}
-              />
-            )}
 
-            {/* Tabs Card */}
-            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-              <div className="flex border-b border-gray-100 overflow-x-auto scrollbar-hide">
-                {tabs.map((tab) => (
-                  <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                    className={`flex-1 min-w-max px-4 py-3 text-xs font-bold border-b-2 -mb-px transition-colors whitespace-nowrap ${activeTab === tab.key ? "text-gray-900 border-yellow-400" : "text-gray-400 border-transparent hover:text-gray-700"}`}>
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-              {tabContent[activeTab]}
-            </div>
-          </div>
+    {/* Tabs Card */}
+    <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+      <div className="flex border-b border-gray-100 overflow-x-auto scrollbar-hide">
+        {tabs.map((tab) => (
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+            className={`flex-1 min-w-max px-4 py-3 text-xs font-bold border-b-2 -mb-px transition-colors whitespace-nowrap ${activeTab === tab.key ? "text-gray-900 border-yellow-400" : "text-gray-400 border-transparent hover:text-gray-700"}`}>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      {tabContent[activeTab]}
+    </div>
+
+  </div>
+  {/* ══ LEFT COLUMN ends ══ */}
 
           {/* RIGHT COLUMN — Sticky */}
-          <div className="flex flex-col gap-4 lg:sticky lg:top-[74px]">
+          <div className="flex flex-col gap-4 order-1 lg:order-2 lg:sticky lg:top-[74px]">
 
             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden" ref={variantRef}
 
@@ -2755,22 +3153,50 @@ const activeImg =
                   </div>
                 )}
                 <h1 className="text-lg sm:text-xl font-extrabold text-gray-900 leading-snug mb-2">{title}</h1>
-                {brand && (
+                                <div className="text-[10px] font-bold text-yellow-600 uppercase tracking-wider mb-1">{productCode}</div>
+                                     {/* ✅ Mobile Image — sirf mobile pe, desktop pe hidden */}
+        <div className="lg:hidden -mx-4 mb-3">
+          <MobileImageSwiper
+            images={images}
+            activeThumb={activeThumb}
+            setActiveThumb={setActiveThumb}
+            title={title}
+            onTap={() => setIsVisible(true)}
+          />
+          {images.length > 1 && (
+            <div className="flex items-center justify-center gap-1.5 py-3">
+              {images.map((_, i) => (
+                <button key={i} onClick={() => {
+                 desktopActiveRef.current = i;
+  setActiveThumb(i);
+    // applyDesktopTransform(0, true);  // ← yeh line missing thi
+}}
+                  className={`rounded-full transition-all duration-200 ${activeThumb === i ? "w-4 h-2 bg-yellow-400" : "w-2 h-2 bg-gray-300"}`} />
+              ))}
+            </div>
+          )}
+        </div>
+       {brand && (
                   <p className="text-xs text-gray-400 mb-2">
                     by <span className="text-[#478B8D] font-semibold">{brand}</span>
                   </p>
                 )}
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="flex gap-0.5">{renderStars(rating)}</div>
-                  <span className="text-xs font-bold text-gray-800">{rating}</span>
-                  <span className="text-xs text-gray-400">({ratingCnt} reviews)</span>
+<div className="flex gap-0.5">{renderStars(Number(displayAvg))}</div>
+<span className="text-xs font-bold text-gray-800">{Number(displayAvg).toFixed(1)}</span>
+<span className="text-xs text-gray-400">({displayCount} {displayCount === 1 ? "review" : "reviews"})</span>
                 </div>
                 {soldInfo > 0 && (
                   <div className="flex items-center gap-3 text-[10px] text-gray-400">
                     <span className="flex items-center gap-1">
                       <TrendingUp size={10} />
-                      <span className="font-bold text-red-500">{formatCount(soldInfo)} bought</span> in past month
-                    </span>
+<span className="font-extrabold text-[#E11D48]">
+  {formatCount(soldInfo)} bought
+</span>
+
+<span className="text-gray-500">
+  in past month
+</span>                    </span>
                     {product?.sku && <span>SKU: {product.sku}</span>}
                   </div>
                 )}
@@ -2816,6 +3242,25 @@ const activeImg =
   </div>
 )}
               </div>
+              <div className="flex flex-wrap items-center gap-2 mt-3">
+
+  {stock != null && stock <= 20 && stock > 0 && (
+    <div className="flex items-center gap-1 bg-orange-50 text-orange-600 border border-orange-100 px-2.5 py-1 rounded-full animate-pulse">
+      <Eye size={11} />
+      <span className="text-[10px] font-bold">
+        Only {stock} left
+      </span>
+    </div>
+  )}
+
+  <div className="flex items-center gap-1 bg-green-50 ml-4 text-green-700 border border-green-100 px-2.5 py-1 rounded-full">
+    <ShoppingBag size={11} />
+    <span className="text-[10px] font-bold">
+      High demand
+    </span>
+  </div>
+
+</div>
 
               {/* Volume pricing */}
               {volumePricing.length > 0 && (
@@ -3023,7 +3468,7 @@ const activeImg =
                                   setL("orderNow", false);
                                 }
                               }}
-                  className="w-full bg-[#478B8D] text-zinc-50 py-3 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-red-600 transition-colors active:scale-[0.98]"
+                  className="w-full bg-[#478B8D] hover:bg-[#478B8D]/50 text-zinc-50 py-3 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2  transition-colors active:scale-[0.98]"
                 >
                  {localLoading.orderNow
                                 ? <><Loader2 size={16} className="animate-spin" /> Processing...</>
@@ -3087,30 +3532,71 @@ const activeImg =
             </div>
 
             {/* Offers card */}
-            <div className="bg-white border border-gray-200 rounded-2xl p-4">
-              <p className="text-sm font-bold text-gray-900 mb-3">Offers</p>
-              <div className="flex flex-col divide-y divide-gray-100">
-                {[
-                  { label: "Get Flat ₹100 OFF on orders above ₹2000", code: "100 OFB" },
-                  { label: "Get Flat ₹150 OFF on orders above ₹3000", code: "150 OFB" },
-                  { label: "Get Flat ₹50 OFF on orders above ₹1000",  code: "50 OFB" },
-                ].map(({ label, code }) => (
-                  <div key={code} className="flex items-start justify-between py-3 gap-3">
-                    <div className="flex items-start gap-2.5">
-                      <Tag size={16} className="text-gray-400 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="text-xs font-medium text-gray-800">{label}</p>
-                        <p className="text-[10px] text-gray-400 mt-0.5">
-                          Use code — <span className="font-semibold text-gray-600">{code}</span>
-                        </p>
-                      </div>
-                    </div>
-                    <button className="text-xs font-semibold text-red-500 flex-shrink-0 hover:text-red-600 transition-colors">Details</button>
-                  </div>
-                ))}
+       <div className="bg-white border border-gray-200 rounded-2xl p-4">
+  <p className="text-sm font-bold text-gray-900 mb-3">
+    Offers
+  </p>
+
+  {couponsLoading ? (
+    <p className="text-xs text-gray-400">
+      Loading coupons...
+    </p>
+  ) : publicCoupons.length === 0 ? (
+    <p className="text-xs text-gray-400">
+      No offers available
+    </p>
+  ) : (
+    <div className="flex flex-col divide-y divide-gray-100">
+      {publicCoupons.slice(0, 3).map((coupon) => {
+        const label = formatCouponLabel(coupon);
+
+        return (
+          <div
+            key={coupon._id}
+            className="flex items-start justify-between py-3 gap-3"
+          >
+            <div className="flex items-start gap-2.5">
+              <Tag
+                size={16}
+                className="text-gray-400 mt-0.5 flex-shrink-0"
+              />
+
+              <div>
+                <p className="text-xs font-medium text-gray-800">
+                  {label}
+                </p>
+
+                <p className="text-[10px] text-gray-400 mt-0.5">
+                  Use code —
+                  <span className="font-semibold text-gray-600 ml-1">
+                    {coupon.code}
+                  </span>
+                </p>
               </div>
-              <p className="text-[10px] text-gray-400 mt-1">*Coupons can be applied at checkout</p>
             </div>
+
+            <button
+              onClick={() => handleCopyCouponCode(coupon.code)}
+              className={`text-xs font-semibold flex-shrink-0 transition-colors ${
+                copiedCouponCode === String(coupon.code).trim().toUpperCase()
+                  ? "text-green-600"
+                  : "text-red-500 hover:text-red-600"
+              }`}
+            >
+              {copiedCouponCode === String(coupon.code).trim().toUpperCase()
+                ? "Copied"
+                : "Copy"}
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  )}
+
+  <p className="text-[10px] text-gray-400 mt-1">
+    *Coupons can be applied at checkout
+  </p>
+</div>
 
           {/* Product Meta */}
 {(product?.hsnCode || product?.gstRate != null) && (
@@ -3165,6 +3651,19 @@ const activeImg =
     </div>
   </div>
 )}
+{showZoom && !isMobile && activeImg && (
+  <div
+    ref={zoomRef}
+    className="hidden lg:block w-[28rem] absolute z-10 h-[36rem] rounded-2xl shadow-lg bg-white border border-gray-200"
+    style={{
+      backgroundImage: `url(${activeImg})`,
+      backgroundRepeat: "no-repeat",
+      backgroundSize: "250%",
+      top: "0px",
+      left: "-1rem",   // positions it to the LEFT of the right column, over the image area
+    }}
+  />
+)}
 
           </div>{/* end right column */}
         </div>{/* end grid */}
@@ -3199,9 +3698,11 @@ const activeImg =
                 </div>
               </div>
             )}
-      </div>{/* end container */}
+   </div>
     </div>
+  </>
   );
 };
+
 
 export default WholesaleProductDetail;

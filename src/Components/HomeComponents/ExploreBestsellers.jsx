@@ -73,7 +73,7 @@ const dispatch = useDispatch();
     <div>
       <h2 className="text-2xl sm:text-3xl lg:text-5xl text-navy flex items-center gap-2">
         <span className="w-1 h-5 sm:h-6 bg-gold rounded-full" />
-        Explore <span className="text-gold ml-2">Bestsellers</span>
+        Explore <span className="text-[#D92243] ml-2">Bestsellers</span>
       </h2>
       <p className="text-[12px] sm:text-[14px] text-muted font-semibold uppercase mt-1 ml-3">
         Best bulk pricing tiers for your business

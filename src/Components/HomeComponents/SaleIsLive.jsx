@@ -64,7 +64,7 @@ const SaleIsLive = () => {
       <div className="flex flex-col justify-between items-start gap-4 mb-6 sm:mb-10">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-orange-500 text-white px-3 py-1 rounded-full animate-pulse shadow-lg shadow-orange-200">
+            <div className="flex items-center gap-2 bg-[#D92243] text-white px-3 py-1 rounded-full animate-pulse shadow-lg shadow-[#D92243]">
               <Flame size={18} fill="currentColor" />
               <span className="text-[10px] font-black uppercase tracking-tighter">
                 Live Now
@@ -80,7 +80,7 @@ const SaleIsLive = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full">
           <div>
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl flex items-center gap-3 sm:gap-4 text-[#0F172A] tracking-tighter uppercase">
-              Sale <span className="text-[#F59E0B]">is Live</span>
+              Sale <span className="text-[#D92243]">is Live</span>
             </h2>
             <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.2em] flex items-center gap-2">
               Exclusive Bulk Inventory for Partners{' '}

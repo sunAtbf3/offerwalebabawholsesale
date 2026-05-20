@@ -392,7 +392,7 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
             <button
               onClick={handleAddToCart}
               disabled={localLoading.add}
-              className="w-full py-2 sm:py-3 text-[10px] sm:text-xs font-bold rounded-xl bg-[#478B8D]/95 text-white hover:bg-[#478B8D] transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer disabled:opacity-60"
+              className="w-full py-2 sm:py-3 text-[10px] sm:text-xs font-bold rounded-xl bg-[#35858E]/95 text-white hover:bg-[#35858E] transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer disabled:opacity-60"
             >
               {localLoading.add
                 ? <><Loader2 size={12} className="animate-spin" /> Adding...</>

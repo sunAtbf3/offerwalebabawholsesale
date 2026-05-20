@@ -157,7 +157,7 @@ const price =
             className={`
               flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest
               transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed
-              ${inStock ? 'text-[#F7A221] hover:text-black' : 'text-gray-300'}
+              ${inStock ? 'text-[#478B8D] hover:text-black' : 'text-gray-300'}
             `}
           >
             {isMoving
@@ -495,7 +495,7 @@ const variant   = item.product?.variants?.find(
               {!isLoggedIn && (
                 <div className="my-6 p-5 bg-gray-50 rounded-[24px] border border-dashed border-gray-200">
                   <div className="flex items-start gap-3">
-                    <Star size={16} className="text-[#F7A221] mt-1 shrink-0" />
+                    <Star size={16} className="text-[#478B8D] mt-1 shrink-0" />
                     <div>
                       <p className="text-[11px] font-black uppercase tracking-tight text-gray-900">
                         Sign in to sync
@@ -505,7 +505,7 @@ const variant   = item.product?.variants?.find(
                       </p>
                       <button
                         onClick={() => { onOpenAuth(); onClose(); }}
-                        className="mt-3 text-[10px] font-black uppercase tracking-widest text-[#F7A221] hover:underline cursor-pointer"
+                        className="mt-3 text-[10px] font-black uppercase tracking-widest text-[#478B8D] hover:underline cursor-pointer"
                       >
                         Login Now →
                       </button>

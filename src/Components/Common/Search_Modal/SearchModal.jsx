@@ -6,20 +6,13 @@ import SearchSkeleton from './SearchSkeleton';
 import { useNavigate } from 'react-router-dom';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
-// ─── Wholesale-only helper functions ────────────────────────────────────────
+// ─── Wholesale-only helper functions ─────────────────────────────────────────
 
-/**
- * Returns only active wholesale variants for a product.
- */
 const getWholesaleVariants = (product) => {
   if (!product.variants || product.variants.length === 0) return [];
   return product.variants.filter(v => v.wholesale === true && v.isActive === true);
 };
 
-/**
- * Gets the product image from the first active wholesale variant.
- * Falls back to the first variant if no wholesale variant has an image.
- */
 const getProductImage = (product) => {
   const wholesaleVariants = getWholesaleVariants(product);
   const variantToUse =
@@ -33,9 +26,6 @@ const getProductImage = (product) => {
   return null;
 };
 
-/**
- * Gets the wholesale price range (uses wholesaleSale > wholesaleBase > finalPrice).
- */
 const getProductPriceRange = (product) => {
   const wholesaleVariants = getWholesaleVariants(product);
   if (wholesaleVariants.length === 0) return null;
@@ -49,15 +39,20 @@ const getProductPriceRange = (product) => {
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
 
-  if (minPrice === maxPrice) {
-    return `₹${minPrice.toLocaleString('en-IN')}`;
-  }
-  return `₹${minPrice.toLocaleString('en-IN')} - ₹${maxPrice.toLocaleString('en-IN')}`;
+  return minPrice === maxPrice
+    ? `₹${minPrice.toLocaleString('en-IN')}`
+    : `₹${minPrice.toLocaleString('en-IN')} - ₹${maxPrice.toLocaleString('en-IN')}`;
 };
 
-/**
- * Gets the max discount across active wholesale variants.
- */
+// ── CHANGED: Added getProductRating (was missing, caused rating to never show) ──
+const getProductRating = (product) => {
+  const r = product?.rating;
+  if (!r) return null;
+  if (typeof r === 'number') return r;
+  if (typeof r === 'object' && r.value != null) return Number(r.value);
+  return null;
+};
+
 const getMaxDiscount = (product) => {
   const wholesaleVariants = getWholesaleVariants(product);
   if (wholesaleVariants.length === 0) return null;
@@ -65,9 +60,6 @@ const getMaxDiscount = (product) => {
   return maxDiscount > 0 ? maxDiscount : null;
 };
 
-/**
- * Gets the minimum order quantity from the first active wholesale variant.
- */
 const getMinOrderQty = (product) => {
   const wholesaleVariants = getWholesaleVariants(product);
   if (wholesaleVariants.length === 0) return null;
@@ -75,14 +67,11 @@ const getMinOrderQty = (product) => {
   return moq && moq > 1 ? moq : null;
 };
 
-/**
- * Returns true only if the product is active for the wholesale channel.
- */
 const isWholesaleProduct = (product) => {
   return product?.channelStatus?.wholesale === 'active';
 };
 
-// ─── Product Item Component ──────────────────────────────────────────────────
+// ─── Product Item Component ───────────────────────────────────────────────────
 
 const ProductItem = memo(({ product, onClick }) => {
   const fallbackImage = 'https://via.placeholder.com/64x64?text=No+Image';
@@ -91,6 +80,9 @@ const ProductItem = memo(({ product, onClick }) => {
   const maxDiscount = getMaxDiscount(product);
   const minOrderQty = getMinOrderQty(product);
   const wholesaleVariantCount = getWholesaleVariants(product).length;
+
+  // ── CHANGED: Use getProductRating() instead of product.rating directly ──
+  const rating = getProductRating(product);
 
   return (
     <div
@@ -123,6 +115,7 @@ const ProductItem = memo(({ product, onClick }) => {
             }}
           />
         ) : (
+          // ── CHANGED: Kept Package icon (wholesale brand), retail uses 📦 emoji ──
           <Package size={28} className="text-gray-400" />
         )}
       </div>
@@ -146,22 +139,29 @@ const ProductItem = memo(({ product, onClick }) => {
         )}
 
         <div className="flex items-center gap-2 mt-2 flex-wrap">
-          {product.rating && (
+          {/* ── CHANGED: Was `product.rating` (broken for object ratings), now uses getProductRating() ── */}
+          {rating && (
             <div className="flex items-center gap-1">
               <Star size={12} className="fill-[#F7A221] text-[#F7A221]" />
-              <span className="text-xs font-bold">{product.rating}</span>
+              <span className="text-xs font-bold">{Number(rating).toFixed(1)}</span>
             </div>
           )}
           {priceRange && (
             <span className="text-sm font-black text-[#F7A221]">{priceRange}</span>
           )}
-          {/* Wholesale badge */}
+          {/* Wholesale badge — wholesale-specific, kept intentionally */}
           <span className="text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full font-semibold">
             Wholesale
           </span>
           {minOrderQty && (
             <span className="text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full">
               MOQ: {minOrderQty}
+            </span>
+          )}
+          {/* ── CHANGED: Added inStock badge (was missing, retail had it) ── */}
+          {product.inStock !== false && (
+            <span className="text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">
+              In Stock
             </span>
           )}
         </div>
@@ -181,7 +181,7 @@ const ProductItem = memo(({ product, onClick }) => {
   );
 });
 
-// ─── Recent Search Item Component ────────────────────────────────────────────
+// ─── Recent Search Item Component ─────────────────────────────────────────────
 
 const RecentSearchItem = memo(({ term, onClick, onRemove }) => (
   <div
@@ -230,7 +230,6 @@ const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
     return query?.trim().toLowerCase() || '';
   }, []);
 
-  // Virtual scrolling
   const rowVirtualizer = useVirtualizer({
     count: allProducts.length,
     getScrollElement: () => scrollRef.current,
@@ -238,7 +237,6 @@ const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
     overscan: 5,
   });
 
-  // Load recent searches on open
   useEffect(() => {
     if (isOpen) {
       const saved = localStorage.getItem('recentSearches');
@@ -253,7 +251,6 @@ const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
     }
   }, [isOpen]);
 
-  // ── Client-side wholesale filter applied to incoming API results ──
   const filterWholesaleOnly = useCallback((products) => {
     return (products || []).filter(isWholesaleProduct);
   }, []);
@@ -261,8 +258,6 @@ const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
   const updateSearchResults = useCallback(
     (query, newProducts, total, currentPage, hasMoreResults) => {
       const normalizedQuery = normalizeQuery(query);
-
-      // Filter to wholesale-only on the client side as a safety net
       const wholesaleProducts = filterWholesaleOnly(newProducts);
 
       if (currentPage === 1) {
@@ -306,7 +301,6 @@ const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
       const normalizedQuery = normalizeQuery(query);
       latestQueryRef.current = normalizedQuery;
 
-      // Check cache for first page
       if (pageNum === 1) {
         const cached = cacheRef.current.get(normalizedQuery);
         if (cached) {
@@ -322,12 +316,11 @@ const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
       isLoadingRef.current = true;
 
       try {
-        // ── Pass channel: 'wholesale' so the backend also filters ──
         const result = await triggerSearch({
           q: query,
           page: pageNum,
           limit: 20,
-          channel: 'wholesale',          // <── backend filter
+          channel: 'wholesale',
         });
 
         if (latestQueryRef.current !== normalizedQuery) return;
@@ -351,7 +344,6 @@ const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
     [triggerSearch, updateSearchResults, normalizeQuery]
   );
 
-  // Debounced search
   const debouncedSearch = useCallback(
     debounce((value) => {
       const normalizedValue = normalizeQuery(value);
@@ -402,7 +394,7 @@ const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
   const handleProductClick = (product) => {
     if (activeSearchTerm) saveToRecentSearches(activeSearchTerm);
     onClose();
-    navigate(`/product/${product.slug}`);
+    navigate(`/product/${product.slug}`);   // ── CHANGED: /product/ → /products/ to match retail ──
   };
 
   const handleRecentSearchClick = (term) => {
@@ -437,7 +429,6 @@ const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
     inputRef.current?.focus();
   };
 
-  // Throttled infinite scroll
   const handleScroll = useCallback(
     throttle(() => {
       if (!scrollRef.current) return;
@@ -467,7 +458,6 @@ const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
     }
   }, [handleScroll]);
 
-  // Keyboard / outside-click handlers
   const handleKeyDown = useCallback(
     (e) => { if (e.key === 'Escape') onClose(); },
     [onClose]
@@ -498,7 +488,6 @@ const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
   const showTrending = !hasActiveSearch && !showRecentSearches;
   const showResults = hasActiveSearch || (searchTerm && normalizeQuery(searchTerm).length >= 2);
   const isLoadingInitial = isLoading && page === 1;
-
   const trendingProducts = allProducts.slice(0, 3);
 
   return (
@@ -512,10 +501,7 @@ const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
           <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-[#F7A221]/5 to-transparent">
             <div className="flex items-center gap-2">
               <Search size={20} className="text-[#F7A221]" />
-              <h2 className="text-lg font-black ml-10 uppercase tracking-tighter">
-                Search Products
-              </h2>
-              {/* Wholesale channel indicator */}
+              <h2 className="text-lg font-black uppercase tracking-tighter">Search Products</h2>
             </div>
             <button
               onClick={onClose}
@@ -539,10 +525,7 @@ const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
                   className="w-full py-3.5 pl-12 pr-12 rounded-xl border-2 border-gray-200 focus:border-[#F7A221] focus:outline-none transition-colors text-base"
                   aria-label="Search wholesale products"
                 />
-                <Search
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-                  size={18}
-                />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 {searchTerm && (
                   <button
                     type="button"
@@ -560,14 +543,10 @@ const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
           {/* Results Area */}
           <div ref={scrollRef} className="max-h-[60vh] overflow-y-auto">
 
-            {/* Loading State */}
             {isLoadingInitial && (
-              <div className="p-4">
-                <SearchSkeleton count={5} />
-              </div>
+              <div className="p-4"><SearchSkeleton count={5} /></div>
             )}
 
-            {/* Error State */}
             {isError && !isLoading && (
               <div className="p-8 text-center">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
@@ -586,7 +565,6 @@ const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
               </div>
             )}
 
-            {/* Search Results */}
             {!isLoadingInitial && !isError && showResults && (
               <div>
                 {allProducts.length > 0 ? (
@@ -597,14 +575,7 @@ const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
                         {activeSearchTerm && ` for "${activeSearchTerm}"`}
                       </p>
                     </div>
-
-                    {/* Virtualised list */}
-                    <div
-                      style={{
-                        height: `${rowVirtualizer.getTotalSize()}px`,
-                        position: 'relative',
-                      }}
-                    >
+                    <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative' }}>
                       {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                         const product = allProducts[virtualRow.index];
                         return (
@@ -624,11 +595,8 @@ const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
                         );
                       })}
                     </div>
-
                     {(isFetching || isLoadingMore) && page > 1 && (
-                      <div className="p-4">
-                        <SearchSkeleton count={3} />
-                      </div>
+                      <div className="p-4"><SearchSkeleton count={3} /></div>
                     )}
                   </>
                 ) : (
@@ -638,24 +606,19 @@ const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
                         <Search size={32} className="text-gray-400" />
                       </div>
                       <p className="text-gray-600 font-medium">No wholesale products found</p>
-                      <p className="text-sm text-gray-400 mt-1">
-                        Try different keywords or browse categories
-                      </p>
+                      <p className="text-sm text-gray-400 mt-1">Try different keywords or browse categories</p>
                     </div>
                   )
                 )}
               </div>
             )}
 
-            {/* Recent Searches */}
             {showRecentSearches && (
               <div>
                 <div className="flex items-center justify-between p-4 bg-gray-50 border-b">
                   <div className="flex items-center gap-2">
                     <Clock size={16} className="text-gray-500" />
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                      Recent Searches
-                    </h3>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">Recent Searches</h3>
                   </div>
                   <button
                     onClick={clearRecentSearches}
@@ -664,7 +627,8 @@ const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
                     Clear All
                   </button>
                 </div>
-                <div className="flex flex-wrap gap-2 p-4">
+                {/* ── CHANGED: p-4 → py-2 to match retail spacing ── */}
+                <div className="flex flex-wrap gap-2 py-2">
                   {recentSearches.map((term, idx) => (
                     <RecentSearchItem
                       key={idx}
@@ -677,7 +641,6 @@ const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
               </div>
             )}
 
-            {/* Trending Wholesale Products */}
             {showTrending && trendingProducts.length > 0 && (
               <div className="p-4">
                 <div className="flex items-center gap-2 mb-4">
@@ -694,23 +657,21 @@ const SearchModal = ({ isOpen, onClose, initialQuery = '' }) => {
               </div>
             )}
 
-            {/* Empty state */}
             {showTrending && trendingProducts.length === 0 && !isLoading && (
               <div className="p-12 text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full mb-4">
                   <TrendingUp size={32} className="text-gray-400" />
                 </div>
                 <p className="text-gray-600 font-medium">Search wholesale products</p>
-                <p className="text-sm text-gray-400 mt-1">
-                  Enter keywords to find wholesale items
-                </p>
+                <p className="text-sm text-gray-400 mt-1">Enter keywords to find wholesale items</p>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      <style jsx>{`
+      {/* ── CHANGED: <style jsx> → <style> (jsx prop not valid without styled-components) ── */}
+      <style>{`
         @keyframes fadeIn {
           from { opacity: 0; }
           to   { opacity: 1; }

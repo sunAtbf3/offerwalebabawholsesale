@@ -172,8 +172,8 @@ const LoginPage = ({ onLoginSuccess }) => {
       </form>
 
       {/* Activate account hint */}
-      <div className="text-center p-3 bg-amber-50 border border-amber-200 rounded-xl">
-        <p className="text-xs text-amber-700 font-medium">
+      <div className="text-center p-3 bg-[#478B8D]/15 border border-[#478B8D]/15 rounded-xl">
+        <p className="text-xs text-[#478B8D] font-medium">
           Already approved?{" "}
           <a href="/activate" className="font-black underline underline-offset-2">
             Activate your account here

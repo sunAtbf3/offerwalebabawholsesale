@@ -21,7 +21,7 @@ const getColumnCount = () => {
 };
 
 // ✅ Grid class bhi 2xl pe match
-const GRID_CLASS = "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-6";
+const GRID_CLASS = "grid grid-cols-2 md:grid-cols-4 min-[1085px]:grid-cols-6 gap-3 gap-y-4";
 
 const VirtualizedProductGrid = ({ products, loadingMore }) => {
   const parentRef = useRef(null);
@@ -157,7 +157,7 @@ const CategorySection = ({ slug, title }) => {
 
   return (
     // ✅ max-w-[1600px] — 6 cards fit hone ke liye enough width
-    <section ref={sentinelRef} className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10 lg:py-14">
+<section ref={sentinelRef} className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10 lg:py-14">
 
       {!shouldFetch ? (
         <div style={{ minHeight: '480px' }} aria-hidden="true" />
@@ -208,10 +208,15 @@ const CategorySection = ({ slug, title }) => {
           {/* GRID */}
           {products.length > 0 ? (
             <>
-             <VirtualizedProductGrid
-  products={products.slice(0, 6)}
-  loadingMore={false}
-/>
+<div className="grid grid-cols-2 md:grid-cols-4 min-[1085px]:grid-cols-6 gap-3 gap-y-4">
+  {products.slice(0, 6).map((product, i) => (
+    <WholesaleProductCard
+      key={product._id}
+      product={product}
+      index={i}
+    />
+  ))}
+</div>
 
               {/* VIEW ALL */}
               <div className="flex justify-center mt-6">
@@ -233,14 +238,9 @@ const CategorySection = ({ slug, title }) => {
               </div>
             </>
           ) : (
-            <div className="py-20 text-center">
-              <p className="text-sm text-muted mb-4">Coming Soon...</p>
-              <button
-                onClick={() => navigate('/')}
-                className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold bg-black text-white rounded-lg hover:opacity-80 transition"
-              >
-                Explore All
-              </button>
+            <div className="py-20 bg-zinc-100 border border-zinc-200 rounded-lg text-center">
+          
+              <p className="text-2xl uppercase font-bold text-zinc-500 mb-4">New Products Are Being Added Soon. Stay tuned!</p>
             </div>
           )}
         </>

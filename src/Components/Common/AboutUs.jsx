@@ -278,11 +278,11 @@ export default function AboutUs() {
             viewport={{ once: true }}
             variants={fadeUp}
           >
-            <p className="text-xs uppercase tracking-[4px] text-amber-500 font-bold">
+            <p className="text-xs uppercase tracking-[4px] text-[#478B8D] font-bold">
               Our Story
             </p>
 
-            <div className="mt-4 h-[2px] w-14 bg-amber-500" />
+            <div className="mt-4 h-[2px] w-14 bg-[#478B8D]" />
 
             <h2 className="mt-6 text-5xl font-black leading-tight tracking-[-2px]">
               From a Local Store <br />
@@ -309,7 +309,7 @@ export default function AboutUs() {
           >
             <div className="rounded-[32px] border border-amber-500/10 bg-[#111827] p-10 text-white shadow-2xl">
 
-              <p className="text-xs uppercase tracking-[3px] text-amber-400">
+              <p className="text-xs uppercase tracking-[3px] text-[#478B8D]">
                 Our Foundation
               </p>
 
@@ -344,11 +344,11 @@ export default function AboutUs() {
             viewport={{ once: true }}
             variants={fadeUp}
           >
-            <p className="text-xs uppercase tracking-[4px] text-amber-500 font-bold">
+            <p className="text-xs uppercase tracking-[4px] text-[#478B8D] font-bold">
               What We Offer
             </p>
 
-            <div className="mt-4 h-[2px] w-14 bg-amber-500" />
+            <div className="mt-4 h-[2px] w-14 bg-[#478B8D]" />
 
             <h2 className="mt-6 text-5xl font-black tracking-[-2px]">
               One Platform, <br />
@@ -374,10 +374,10 @@ export default function AboutUs() {
                   whileInView="visible"
                   viewport={{ once: true }}
                   variants={fadeUp}
-                  className="group rounded-3xl border border-gray-200 bg-[#fafafa] p-7 transition hover:-translate-y-2 hover:border-amber-400 hover:shadow-2xl"
+                  className="group rounded-3xl border border-gray-200 bg-[#fafafa] p-7 transition hover:-translate-y-2 hover:border-[#478B8D] hover:shadow-2xl"
                 >
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 transition group-hover:bg-amber-400/20">
-                    <Icon className="h-6 w-6 text-amber-500" />
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#478B8D]/15 transition group-hover:bg-[#478B8D]/30">
+                    <Icon className="h-6 w-6 text-[#478B8D]" />
                   </div>
 
                   <h3 className="mt-6 text-xl font-bold">
@@ -388,7 +388,7 @@ export default function AboutUs() {
                     {item.desc}
                   </p>
 
-                  <Link to={item.path} className="mt-6 text-sm font-bold text-amber-500 transition hover:translate-x-1">
+                  <Link to={item.path} className="mt-6 text-sm font-bold text-[#478B8D] transition hover:translate-x-1">
                     View Products →
                   </Link>
                 </MotionLink>
@@ -410,11 +410,11 @@ export default function AboutUs() {
             viewport={{ once: true }}
             variants={fadeUp}
           >
-            <p className="text-xs uppercase tracking-[4px] text-amber-400 font-bold">
+            <p className="text-xs uppercase tracking-[4px] text-[#478B8D] font-bold">
               Why Choose Us
             </p>
 
-            <div className="mt-4 h-[2px] w-14 bg-amber-400" />
+            <div className="mt-4 h-[2px] w-14 bg-[#478B8D]" />
 
             <h2 className="mt-6 text-5xl font-black tracking-[-2px]">
               The Offer Wale Baba Advantage
@@ -438,10 +438,10 @@ export default function AboutUs() {
                   whileInView="visible"
                   viewport={{ once: true }}
                   variants={fadeUp}
-                  className="rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl transition hover:-translate-y-2 hover:border-amber-400/30"
+                  className="rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl transition hover:-translate-y-2 hover:border-[#478B8D]/50"
                 >
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-400/10">
-                    <Icon className="h-6 w-6 text-amber-400" />
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#478B8D]/10">
+                    <Icon className="h-6 w-6 text-[#478B8D]/50" />
                   </div>
 
                   <h3 className="mt-6 text-2xl font-bold">
@@ -468,11 +468,11 @@ export default function AboutUs() {
             viewport={{ once: true }}
             variants={fadeUp}
           >
-            <p className="text-xs uppercase tracking-[4px] text-amber-500 font-bold">
+            <p className="text-xs uppercase tracking-[4px] text-[#478B8D] font-bold">
               Our Values
             </p>
 
-            <div className="mt-4 h-[2px] w-14 bg-amber-500" />
+            <div className="mt-4 h-[2px] w-14 bg-[#478B8D]" />
 
             <h2 className="mt-6 text-5xl font-black tracking-[-2px]">
               What We Stand For
@@ -493,8 +493,8 @@ export default function AboutUs() {
                   variants={fadeUp}
                   className="group rounded-3xl border border-gray-200 bg-white p-10 text-center transition hover:-translate-y-2 hover:shadow-2xl"
                 >
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 transition group-hover:scale-110">
-                    <Icon className="h-7 w-7 text-amber-500" />
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#478B8D]/25 transition group-hover:scale-110">
+                    <Icon className="h-7 w-7 text-[#478B8D]" />
                   </div>
 
                   <h3 className="mt-7 text-2xl font-bold">
@@ -524,11 +524,11 @@ export default function AboutUs() {
                 Offer Wale Baba
               </h2>
 
-              <p className="mt-2 text-amber-500">
+              <p className="mt-2 text-[#478B8D]">
                 Ulhasnagar, Maharashtra · Serving PAN India
               </p>
 
-              <blockquote className="mt-8 border-l-4 border-amber-400 pl-6 text-lg leading-9 text-gray-600 italic">
+              <blockquote className="mt-8 border-l-4 border-[#478B8D] pl-6 text-lg leading-9 text-gray-600 italic">
                 “We started with one goal — to become the most reliable
                 wholesale partner for every business and shopper in India.”
               </blockquote>
@@ -538,7 +538,7 @@ export default function AboutUs() {
       </section>
 
       {/* CTA */}
-      <section className="relative overflow-hidden bg-[#F7A221] px-6 py-28 text-center text-black">
+      <section className="relative overflow-hidden bg-white px-6 py-28 text-center text-black">
 
         <div className="absolute left-1/2 top-[-150px] h-[450px] w-[450px] -translate-x-1/2 rounded-full bg-black/10 blur-[100px]" />
 

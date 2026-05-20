@@ -287,7 +287,7 @@ const Footer = () => {
           </div>
             {/* Contact Info */}
               <div className="
-                  pt-4 grid grid-cols-1 min-[500px]:grid-cols-2 gap-3 w-full
+                  pt-4 grid grid-cols-1 min-[800px]:grid-cols-2 gap-3 w-full
               ">
                 {/* EMAIL */}
 <a
@@ -334,6 +334,7 @@ const Footer = () => {
 
   <div className="min-w-0">
 
+   
     <p
       className="
         text-[10px]
@@ -349,18 +350,18 @@ const Footer = () => {
 
     </p>
 
-    <p
-      className="
-        text-sm
-        text-slate-500
-        font-medium
-        break-all
-      "
-    >
-
-      support.offerwalebaba@gmail.com
-
-    </p>
+  <p
+  className="
+    text-xs sm:text-sm
+    text-slate-500
+    font-medium
+    break-words
+    leading-relaxed
+    w-full
+  "
+>
+  support.offerwalebaba@gmail.com
+</p>
 
   </div>
 
@@ -565,7 +566,7 @@ const Footer = () => {
             {/* Fine Print Links */}
             <div className="flex items-center gap-4 sm:gap-6 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
               <a href="/contact" className="hover:text-amber-500 transition-colors underline underline-offset-4 decoration-slate-100">Contact Us</a>
-              <a href="/contact" className="hover:text-amber-500 transition-colors underline underline-offset-4 decoration-slate-100">Sitemap</a>
+              <a href="/contact" className="hover:text-amber-500 transition-colors underline underline-offset-4 decoration-slate-100">map</a>
               {/* <a href="#" className="hover:text-amber-500 transition-colors underline underline-offset-4 decoration-slate-100">MSME Verified Portal</a> */}
             </div>
           </div>

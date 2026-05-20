@@ -42,8 +42,8 @@ const Particles = () => {
 // ── Stat badge ────────────────────────────────────────────────────────────────
 const StatBadge = ({ icon: Icon, value, label }) => (
   <div className="flex items-center gap-3 bg-white/5 hover:bg-white/10 transition-all duration-300 rounded-2xl px-4 py-3 border border-white/10">
-    <div className="w-9 h-9 rounded-xl bg-amber-400/20 flex items-center justify-center flex-shrink-0">
-      <Icon size={16} className="text-amber-400" />
+    <div className="w-9 h-9 rounded-xl bg-[#478B8D]/20 flex items-center justify-center flex-shrink-0">
+      <Icon size={16} className="text-[#478B8D]" />
     </div>
     <div>
       <div className="text-white font-bold text-sm leading-none">{value}</div>
@@ -60,14 +60,14 @@ const InfoRow = ({ icon: Icon, label, value, href }) => (
     rel="noreferrer"
     className="group flex items-start gap-4 py-3 border-b border-white/8 last:border-0 hover:pl-1 transition-all duration-200"
   >
-    <div className="w-8 h-8 rounded-lg bg-amber-400/15 border border-amber-400/20 flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-amber-400/25 transition-colors">
-      <Icon size={14} className="text-amber-400" />
+    <div className="w-8 h-8 rounded-lg bg-[#478B8D]/15 border border-amber-400/20 flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-[#478B8D]/25 transition-colors">
+      <Icon size={14} className="text-[#478B8D]" />
     </div>
     <div>
       <p className="text-[12px] text-gray-500 uppercase tracking-widest font-semibold">{label}</p>
-      <p className="text-gray-200 text-md mt-0.5 group-hover:text-amber-300 transition-colors">{value}</p>
+<p className="text-gray-200 text-sm mt-0.5 group-hover:text-[#478B8D] transition-colors break-all">{value}</p>
     </div>
-    <ArrowRight size={13} className="text-gray-600 group-hover:text-amber-400 ml-auto mt-2 transition-colors" />
+    <ArrowRight size={13} className="text-gray-600 group-hover:text-[#478B8D] ml-auto mt-2 transition-colors" />
   </a>
 );
 
@@ -148,7 +148,7 @@ const handleCaptchaChange = (e) => {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
+    <div className="min-h-screen bg-gray-50 font-sans overflow-x-hidden">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
         .contact-root { font-family: 'DM Sans', sans-serif; }
@@ -169,12 +169,12 @@ const handleCaptchaChange = (e) => {
       <div className="contact-root max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
 
         {/* ── Page header ── */}
-        <div className="mb-10 slide-up slide-up-1">
-          <div className="inline-flex items-center gap-2 bg-[#478B8D]/20 border border-amber-200 text-[#478B8D] text-xs font-bold px-3 py-1.5 rounded-full mb-4 uppercase tracking-wider">
+<div className="mb-6 sm:mb-10 slide-up slide-up-1">
+          <div className="inline-flex items-center gap-2 bg-[#478B8D]/20 border border-[#478B8D]] text-[#478B8D] text-xs font-bold px-3 py-1.5 rounded-full mb-4 uppercase tracking-wider">
             <span className="w-1.5 h-1.5 bg-[#478B8D] rounded-full animate-pulse" />
             We're here to help
           </div>
-          <h1 className="font-satoshi text-4xl sm:text-5xl font-extrabold text-gray-900 leading-tight">
+<h1 className="font-satoshi text-3xl sm:text-5xl font-extrabold text-gray-900 leading-tight">
             Get in <span className="text-[#478B8D]">Touch</span>
           </h1>
           {/* <p className="text-gray-500 mt-3 text-base max-w-md">
@@ -183,13 +183,13 @@ const handleCaptchaChange = (e) => {
         </div>
 
         {/* ── Main grid ── */}
-        <div className="grid lg:grid-cols-5 gap-6">
+<div className="grid lg:grid-cols-5 gap-4 sm:gap-6">
 
           {/* ── LEFT PANEL ── */}
           <div className="lg:col-span-2 flex flex-col gap-5">
 
             {/* Dark card */}
-            <div className="relative bg-gray-900 rounded-3xl overflow-hidden p-7 slide-up slide-up-2">
+<div className="relative bg-gray-900 rounded-3xl overflow-hidden p-4 sm:p-7 slide-up slide-up-2">
               <Particles />
 
               {/* Top accent line */}
@@ -197,7 +197,7 @@ const handleCaptchaChange = (e) => {
 
               <div className="relative z-10">
 
-                <h2 className="font-satoshi text-2xl font-bold text-white mb-1">Offer Wale Baba</h2>
+<h2 className="font-satoshi text-xl sm:text-2xl font-bold text-white mb-1">Offer Wale Baba</h2>
                 <p className="text-[#478B8D] text-xs font-semibold uppercase tracking-widest mb-5">
                   Wholesale &amp; Retail
                 </p>
@@ -248,7 +248,7 @@ const handleCaptchaChange = (e) => {
                 { emoji:  <BadgeIndianRupee />, text: "Best Price" },
               ].map((b) => (
                 <div key={b.text} className="bg-white border border-gray-200 rounded-2xl p-3 text-center hover:border-amber-300 hover:shadow-sm transition-all duration-200">
-                  <div className="text-xl ml-10 mb-1">{b.emoji}</div>
+<div className="flex justify-center mb-1 text-gray-700">{b.emoji}</div>
                   <p className="text-[10px] font-bold text-gray-600 leading-tight">{b.text}</p>
                 </div>
               ))}
@@ -257,10 +257,10 @@ const handleCaptchaChange = (e) => {
 
           {/* ── RIGHT PANEL: Form ── */}
           <div className="lg:col-span-3 slide-up slide-up-3">
-            <div className="bg-white border border-gray-200 rounded-3xl p-7 sm:p-9 h-full">
+<div className="bg-white border border-gray-200 rounded-3xl p-4 sm:p-9 h-full">
 
               <div className="mb-7">
-                <h2 className="font-display text-2xl font-bold text-gray-900">Send a Message</h2>
+<h2 className="font-display text-xl sm:text-2xl font-bold text-gray-900">Send a Message</h2>
                 <p className="text-gray-400 text-sm mt-1">We reply within 24 hours on business days.</p>
               </div>
 
@@ -461,7 +461,7 @@ const handleCaptchaChange = (e) => {
         </div>
 
         {/* ── Map embed ── */}
-        <div className="mt-6 rounded-3xl overflow-hidden border border-gray-200 slide-up slide-up-5" style={{ height: 260 }}>
+<div className="mt-6 rounded-3xl overflow-hidden border border-gray-200 slide-up slide-up-5" style={{ height: 200 }}>
           <iframe
             title="OfferWaleBaba Location"
             src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3767.0!2d73.155!3d19.215!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3be7950000000001%3A0x0!2sUlhasnagar%2C+Maharashtra+421004!5e0!3m2!1sen!2sin!4v1"

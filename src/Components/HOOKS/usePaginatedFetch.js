@@ -17,48 +17,42 @@ import { useState, useCallback, useRef, useEffect } from "react";
  * @param {string}   dataKey    — key in the response that holds the array (default "products")
  * @param {boolean}  skip       — whether to skip the query (default false)
  */
-const usePaginatedFetch = ({ useQuery, baseArgs, limit = 12, dataKey = "products", skip = false,  }) => {
+const usePaginatedFetch = ({ useQuery, baseArgs, limit = 12, dataKey = "products", skip = false }) => {
   const [page, setPage] = useState(1);
-  // Track whether this is a "load more" vs fresh/first load
+  const [resetKey, setResetKey] = useState(0); // ✅ force re-mount trick
   const isFetchingMoreRef = useRef(false);
 
-  // When baseArgs change (e.g. slug changes) → reset to page 1
   const prevArgsRef = useRef(baseArgs);
- useEffect(() => {
-  if (JSON.stringify(prevArgsRef.current) !== JSON.stringify(baseArgs)) {
-    setPage(1);
-    isFetchingMoreRef.current = false;
-  }
-
-  prevArgsRef.current = baseArgs;
-}, [baseArgs]);
+  useEffect(() => {
+    if (JSON.stringify(prevArgsRef.current) !== JSON.stringify(baseArgs)) {
+      setPage(1);
+      setResetKey((k) => k + 1); // ✅ reset cache on slug change
+      isFetchingMoreRef.current = false;
+    }
+    prevArgsRef.current = baseArgs;
+  }, [baseArgs]);
 
   const { data: rawData, isLoading, isFetching, isError, error, refetch } = useQuery(
-    { ...baseArgs, page, limit },
-    { skip}  // don't fire until we have a slug
+    { ...baseArgs, page, limit, _resetKey: resetKey }, // ✅ resetKey args mein pass karo
+    { skip }
   );
 
-  // RTK Query's merge gives us the full accumulated array in rawData
- const data = rawData?.[dataKey] ?? [];
+  const data = rawData?.[dataKey] ?? [];
+  const total = rawData?.total ?? 0;
+  const currentPage = rawData?.page ?? 1;
+  const currentLimit = rawData?.limit ?? limit;
+  const totalPages = Math.ceil(total / currentLimit);
+  const hasNextPage = currentPage < totalPages;
 
-const total = rawData?.total ?? 0;
-const currentPage = rawData?.page ?? 1;
-const currentLimit = rawData?.limit ?? limit;
+  const pagination = {
+    total,
+    page: currentPage,
+    limit: currentLimit,
+    totalPages,
+    hasNextPage,
+    hasPrevPage: currentPage > 1,
+  };
 
-const totalPages = Math.ceil(total / currentLimit);
-
-const hasNextPage = currentPage < totalPages;
-
-const pagination = {
-  total,
-  page: currentPage,
-  limit: currentLimit,
-  totalPages,
-  hasNextPage,
-  hasPrevPage: currentPage > 1,
-};
-
-  // isFetchingMore = we already have data AND we're fetching the next page
   const isFetchingMore = isFetching && data.length > 0 && page > 1;
 
   const loadMore = useCallback(() => {
@@ -70,11 +64,12 @@ const pagination = {
   const reset = useCallback(() => {
     isFetchingMoreRef.current = false;
     setPage(1);
+    setResetKey((k) => k + 1); // ✅ yahi key change karke cache bust hoga
   }, []);
 
   return {
     data,
-    isLoading: isLoading && data.length === 0, // true only on first load
+    isLoading: isLoading && data.length === 0,
     isFetchingMore,
     isFetching,
     pagination,
@@ -85,5 +80,6 @@ const pagination = {
     refetch,
   };
 };
+
 
 export default usePaginatedFetch;

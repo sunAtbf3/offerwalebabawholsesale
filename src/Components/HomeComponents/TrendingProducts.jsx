@@ -85,7 +85,7 @@ xl:px-12
       <div className="mb-6 sm:mb-10">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-orange-500 mb-4 text-white px-3 py-1 rounded-full shadow-lg shadow-green-200">
+            <div className="flex items-center gap-2 bg-[#D92243] mb-4 text-white px-3 py-1 rounded-full shadow-lg shadow-[#D92243]">
               <Package size={15} fill="currentColor" />
               <span className="text-[10px] font-black uppercase tracking-tighter">
                 Fresh Stock
@@ -101,7 +101,7 @@ xl:px-12
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full">
           <div>
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl flex items-center gap-3 sm:gap-4 text-[#0F172A] tracking-tighter uppercase">
-              Today <span className="text-[#F59E0B]">Arrivals</span>
+              Today <span className="text-[#D92243]">Arrivals</span>
             </h2>
             <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.2em] flex items-center gap-2">
               Freshly stocked for bulk orders{' '}

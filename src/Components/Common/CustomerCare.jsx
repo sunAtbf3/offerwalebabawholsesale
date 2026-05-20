@@ -86,7 +86,7 @@ const WhatsAppIcon = () => (
     {/* badge */}
     <div className="flex justify-center mb-8">
       <div className="flex items-center gap-2 bg-white border border-slate-200 shadow-sm px-5 py-2 rounded-full">
-        <div className="w-2 h-2 rounded-full bg-[#f7a221] animate-pulse"></div>
+        <div className="w-2 h-2 rounded-full bg-[#478B8D] animate-pulse"></div>
 
         <span className="uppercase tracking-[0.25em] text-[10px] font-black text-slate-500">
           Concierge Desk
@@ -98,14 +98,14 @@ const WhatsAppIcon = () => (
     <div className="text-center mb-20">
       <h1 className="text-[42px] lg:text-[72px] leading-none font-light uppercase tracking-tight text-[#16233b]">
         Elite Support &{" "}
-        <span className="text-[#f7a221] font-normal">
+        <span className="text-[#478B8D] font-normal">
           Seamless Solutions
         </span>
       </h1>
 
       <p className="mt-6 text-slate-500 text-lg">
         Select a channel below to connect with{" "}
-        <span className="text-[#f7a221] font-bold underline">
+        <span className="text-[#478B8D] font-bold underline">
           OFFER WALE BABA
         </span>.
       </p>
@@ -141,7 +141,7 @@ const WhatsAppIcon = () => (
 
           {/* content */}
           <div className="flex-1">
-            <h3 className="text-[28px] leading-tight font-black uppercase text-[#16233b] mb-4 group-hover:text-[#f7a221] transition-colors">
+            <h3 className="text-[28px] leading-tight font-black uppercase text-[#16233b] mb-4 group-hover:text-[#478B8D] transition-colors">
               {item.title}
             </h3>
 
@@ -155,7 +155,7 @@ const WhatsAppIcon = () => (
           </div>
 
           {/* button */}
-          <button className="mt-10 bg-[#081226] hover:bg-[#f7a221] transition-all text-white rounded-2xl h-[58px] px-6 flex items-center justify-between uppercase tracking-[0.2em] text-[11px] font-black">
+          <button className="mt-10 bg-[#081226] hover:bg-[#478B8D] transition-all text-white rounded-2xl h-[58px] px-6 flex items-center justify-between uppercase tracking-[0.2em] text-[11px] font-black">
             {item.action}
 
             <ArrowUpRight
