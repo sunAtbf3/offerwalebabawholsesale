@@ -1,5 +1,5 @@
 import React from "react";
-import { ToastContainer } from "react-toastify";
+import { Slide, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { X, Check } from "lucide-react";
 
@@ -13,17 +13,21 @@ const CloseButton = ({ closeToast }) => (
 );
 
 const ToastConfig = () => {
+  console.log("hi i m toast");
+  
   return (
-    <ToastContainer
-      position="top-right"
-      autoClose={3000}
-      hideProgressBar={false}
-      newestOnTop
-      closeOnClick={false}
-      pauseOnHover
-      draggable
-      theme="dark"
-      closeButton={CloseButton}
+   <ToastContainer
+  position="top-right"
+  autoClose={1000}
+  hideProgressBar={false}
+  newestOnTop
+  closeOnClick={true}
+  pauseOnHover={false}
+  draggable={false}
+  pauseOnFocusLoss={false}
+  theme="dark"
+  closeButton={CloseButton}
+  transition={Slide}
       icon={({ type }) => (
         <div className="flex items-center justify-center w-6 h-6 bg-[#F7A221] rounded-lg shadow-[0_0_10px_rgba(247,162,33,0.3)]">
           <Check size={14} strokeWidth={4} className="text-black" />

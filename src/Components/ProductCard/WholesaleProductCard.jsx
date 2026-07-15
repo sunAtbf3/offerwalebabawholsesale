@@ -5,10 +5,26 @@ import { Eye, Star, ShoppingBag, Package, Heart, Loader2, Minus, Plus } from "lu
 import LazyImage from "./LazyImage/LazyImage";
 
 import { useGetAllCategoriesQuery } from "../REDUX_FEATURES/REDUX_SLICES/SHOP_BY_CATEGORY/categoriesApi";
-import { addToCart, updateCartItem, removeCartItem, addGuestCartItem, updateGuestCartItem, removeGuestCartItem, selectCartItemBySlug } from "../REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice";
-import { addToWishlist, removeFromWishlist, addGuestItem, removeGuestItem, selectIsWishlisted } from "../REDUX_FEATURES/REDUX_SLICES/UserWIshlist/userWishlistSLice";
+import {
+  addToCart,
+  updateCartItem,
+  removeCartItem,
+  addGuestCartItem,
+  updateGuestCartItem,
+  removeGuestCartItem,
+  selectCartItemBySlug,
+} from "../REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice";
+import {
+  addToWishlist,
+  removeFromWishlist,
+  addGuestItem,
+  removeGuestItem,
+  selectIsWishlisted,
+} from "../REDUX_FEATURES/REDUX_SLICES/UserWIshlist/userWishlistSLice";
 import { toast } from "react-toastify";
+import { selectIsAuthenticated } from "../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice";
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatPrice = (n) => {
   if (n == null) return "—";
   return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(n);
@@ -20,27 +36,29 @@ const formatCount = (count) => {
   return Math.floor(count / 100) * 100 + "+";
 };
 
+// ── From Version 2 (old) — full availability meta with MOQ/NOT_LISTED support ─
 const getAvailabilityMeta = (availability) => {
   const status = availability?.status || "IN_STOCK";
   if (status === "OUT_OF_STOCK") return { label: "Out of stock", chipClass: "bg-red-100 text-red-700" };
-  if (status === "MOQ_UNMET") return { label: "MOQ not met", chipClass: "bg-amber-100 text-amber-700" };
-  if (status === "NOT_LISTED") return { label: "Not available", chipClass: "bg-gray-100 text-gray-600" };
+  if (status === "MOQ_UNMET")    return { label: "MOQ not met",  chipClass: "bg-yellow-100 text-amber-800" };
+  if (status === "NOT_LISTED")   return { label: "Not available", chipClass: "bg-gray-100 text-gray-600" };
   return { label: "In stock", chipClass: "bg-green-100 text-green-700" };
 };
 
+// ─── Component ────────────────────────────────────────────────────────────────
 const WholesaleProductCard = ({ product, index = 0 }) => {
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
-
-  const wishlisted = useSelector(selectIsWishlisted(product?.slug));
-  const cartItem   = useSelector(selectCartItemBySlug(product?.slug));
+  const navigate        = useNavigate();
+  const dispatch        = useDispatch();
+  const wishlisted      = useSelector(selectIsWishlisted(product?.slug));
+  const cartItem        = useSelector(selectCartItemBySlug(product?.slug));
+  const isAuthenticated = useSelector(selectIsAuthenticated);
 
   const { data: categories = [] } = useGetAllCategoriesQuery();
 
   const [localLoading, setLocalLoading] = React.useState({
     add: false, update: false, remove: false, wishlist: false,
   });
-  const setL = (k, v) => setLocalLoading((p) => ({ ...p, [k]: v }));
+  const setL        = (k, v) => setLocalLoading((p) => ({ ...p, [k]: v }));
   const isProcessing = localLoading.add || localLoading.update || localLoading.remove;
 
   const getCategoryName = (productCategory) => {
@@ -51,28 +69,31 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
     return found ? found.name : productCategory;
   };
 
-  const variant     = product?.variants?.[0] ?? {};
-  const title       = product?.title || product?.name || "Product";
-  const basePrice   = variant.price?.base ?? null;
-  const salePrice   = variant.price?.sale ?? null;
-  const hasDiscount = basePrice != null && salePrice != null && salePrice < basePrice;
-  const discountPct = hasDiscount
+  // ── Derived product values ────────────────────────────────────────────────
+  const variant      = product?.variants?.[0] ?? {};
+  const title        = product?.title || product?.name || "Product";
+  const basePrice    = variant.price?.base ?? null;
+  const salePrice    = variant.price?.sale ?? null;
+  const hasDiscount  = basePrice != null && salePrice != null && salePrice < basePrice;
+  const discountPct  = hasDiscount
     ? Math.round(((basePrice - salePrice) / basePrice) * 100)
     : null;
-  const moq      = variant.minimumOrderQuantity ?? variant.price?.minimumOrderQuantity ?? null;
-  const availability = variant?.availability || null;
+  const moq          = variant.minimumOrderQuantity ?? variant.price?.minimumOrderQuantity ?? null;
+
+  // ── From Version 2: full availability logic ───────────────────────────────
+  const availability     = variant?.availability || null;
   const availabilityMeta = getAvailabilityMeta(availability);
-  const imgUrl   = variant.images?.[0]?.url || null;
-  const maxStock = variant.inventory?.trackInventory
+  const imgUrl           = variant.images?.[0]?.url || null;
+  const maxStock         = variant.inventory?.trackInventory
     ? (variant.inventory?.quantity ?? 0)
     : Infinity;
-  const fallbackInStock = maxStock > 0;
-  const canPurchase = availability?.purchasable ?? fallbackInStock;
-  const inStock    = canPurchase;
-  const isInCart   = !!cartItem;
-  const currentQty = cartItem?.quantity ?? 0;
-  const isAtMax    = currentQty >= maxStock && maxStock !== Infinity;
-  const category   = typeof product?.category === "object"
+  const fallbackInStock  = maxStock > 0;
+  const canPurchase      = availability?.purchasable ?? fallbackInStock; // v2 uses canPurchase
+  const inStock          = canPurchase;
+  const isInCart         = !!cartItem;
+  const currentQty       = cartItem?.quantity ?? 0;
+  const isAtMax          = currentQty >= maxStock && maxStock !== Infinity;
+  const category         = typeof product?.category === "object"
     ? product.category?.name
     : product?.category || "";
 
@@ -80,18 +101,31 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
     if (product?.slug) navigate(`/product/${product.slug}`);
   };
 
-  // ── Wishlist — guest only abhi ke liye ────────────────────────────────────
+  // ── Wishlist handler (both versions identical) ────────────────────────────
   const handleWishlist = async (e) => {
     e.stopPropagation();
     if (!product?.slug || localLoading.wishlist) return;
     setL("wishlist", true);
     try {
-      if (wishlisted) {
-        dispatch(removeGuestItem(product.slug));
-        toast.success("Removed", { icon: "💔" });
+      if (isAuthenticated) {
+        if (wishlisted) {
+          await dispatch(removeFromWishlist({ productSlug: product.slug })).unwrap();
+          toast.success("Removed from wishlist", { icon: "💔" });
+        } else {
+          await dispatch(addToWishlist({
+            productSlug: product.slug,
+            variantId:   variant?._id?.toString() || "",
+          })).unwrap();
+          toast.success("Saved to wishlist", { icon: "❤️" });
+        }
       } else {
-        dispatch(addGuestItem(product.slug));
-        toast.success("Saved to wishlist", { icon: "❤️" });
+        if (wishlisted) {
+          dispatch(removeGuestItem(product.slug));
+          toast.success("Removed", { icon: "💔" });
+        } else {
+          dispatch(addGuestItem(product.slug));
+          toast.success("Saved to wishlist", { icon: "❤️" });
+        }
       }
     } catch (err) {
       toast.error(err?.message || "Wishlist action failed");
@@ -100,18 +134,34 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
     }
   };
 
-  // ── Cart — guest only abhi ke liye ───────────────────────────────────────
+  // ── Add to cart — Version 1 (isAuthenticated branch) ─────────────────────
   const handleAddToCart = async (e) => {
     e.stopPropagation();
     if (isInCart || isProcessing || !canPurchase || !product?.slug) return;
     setL("add", true);
     try {
-      dispatch(addGuestCartItem({
-        productId:   product._id,
-        productSlug: product.slug,
-        variantId:   variant?._id?.toString() || "",
-        quantity:    moq || 1,
-      }));
+      if (isAuthenticated) {
+        await dispatch(addToCart({
+          productSlug: product.slug,
+          productId:   product._id,
+          variantId:   variant?._id?.toString() || "",
+          quantity:    moq || 1,
+        })).unwrap();
+      } else {
+        dispatch(addGuestCartItem({
+          productId:   product._id,
+          productSlug: product.slug,
+          variantId:   variant?._id?.toString() || "",
+          quantity:    moq || 1,
+           moq:                moq || 1,                                    // ✅ MOQ store karo
+  wholesalePrice:     variant.price?.wholesaleSale ?? variant.price?.wholesaleBase ?? variant.price?.sale ?? null,
+  wholesaleBasePrice: variant.price?.wholesaleBase ?? variant.price?.base ?? null,
+  productName:        product.title || product.name,               // ✅ naam store karo
+  image:              variant.images?.[0]?.url ?? null,            // ✅ image store karo
+  variantLabel:       variant.attributes?.map(a => `${a.key}: ${a.value}`).join(', ') ?? null,
+  discountPercentage: discountPct ?? 0,
+        }));
+      }
       toast.success("Added to cart");
     } catch (err) {
       toast.error(err?.message || "Failed to add to cart");
@@ -120,17 +170,27 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
     }
   };
 
+  // ── Increment — Version 1 (isAuthenticated branch) ───────────────────────
   const handleIncrement = async (e) => {
     e.stopPropagation();
     if (isAtMax) { toast.warning(`Max stock: ${maxStock}`); return; }
     if (isProcessing) return;
     setL("update", true);
     try {
-      dispatch(updateGuestCartItem({
-        productSlug: product.slug,
-        variantId:   variant?._id?.toString() || "",
-        quantity:    currentQty + 1,
-      }));
+      if (isAuthenticated) {
+        await dispatch(updateCartItem({
+          productId:   product._id,
+          variantId:   variant?._id?.toString() || "",
+          quantity:    currentQty + 1,
+          productSlug: product.slug,
+        })).unwrap();
+      } else {
+        dispatch(updateGuestCartItem({
+          productSlug: product.slug,
+          variantId:   variant?._id?.toString() || "",
+          quantity:    currentQty + 1,
+        }));
+      }
     } catch (err) {
       toast.error(err?.message || "Failed to update");
     } finally {
@@ -138,25 +198,44 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
     }
   };
 
+  // ── Decrement — Version 1 auth branches + Version 2 MOQ-aware threshold ──
   const handleDecrement = async (e) => {
     e.stopPropagation();
     if (isProcessing) return;
     const newQty = currentQty - 1;
     try {
-      if (newQty <= 0) {
+      // Version 2: remove when below MOQ, not just <= 0
+      if (newQty < (moq || 1)) {
         setL("remove", true);
-        dispatch(removeGuestCartItem({
-          productSlug: product.slug,
-          variantId:   variant?._id?.toString() || "",
-        }));
+        if (isAuthenticated) {
+          await dispatch(removeCartItem({
+            productId:   product._id,
+            variantId:   variant?._id?.toString() || "",
+            productSlug: product.slug,
+          })).unwrap();
+        } else {
+          dispatch(removeGuestCartItem({
+            productSlug: product.slug,
+            variantId:   variant?._id?.toString() || "",
+          }));
+        }
         toast.info("Removed from cart");
       } else {
         setL("update", true);
-        dispatch(updateGuestCartItem({
-          productSlug: product.slug,
-          variantId:   variant?._id?.toString() || "",
-          quantity:    newQty,
-        }));
+        if (isAuthenticated) {
+          await dispatch(updateCartItem({
+            productId:   product._id,
+            variantId:   variant?._id?.toString() || "",
+            quantity:    newQty,
+            productSlug: product.slug,
+          })).unwrap();
+        } else {
+          dispatch(updateGuestCartItem({
+            productSlug: product.slug,
+            variantId:   variant?._id?.toString() || "",
+            quantity:    newQty,
+          }));
+        }
       }
     } catch (err) {
       toast.error(err?.message || "Failed to update");
@@ -184,6 +263,7 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
 
+        {/* Version 2: uses canPurchase + availabilityMeta label (not just "Out of Stock") */}
         {!canPurchase && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
             <span className="text-white text-[10px] md:text-[13px] font-black uppercase tracking-widest bg-black/60 px-3 py-1 rounded-full">
@@ -192,22 +272,23 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
           </div>
         )}
 
-        {discountPct && canPurchase && (
-          <div className="absolute top-2 left-2 z-10">
-            <span className="text-[10px] bg-[#EB4C4C] text-white px-2 py-0.5 rounded-md shadow-sm font-bold">
-              {discountPct}% OFF
-            </span>
-          </div>
-        )}
+   <div className="flex flex-col gap-6">
+  {discountPct && canPurchase && (
+    <div className="absolute top-2 left-2 z-10">
+      <span className="text-[14px] bg-[#EB4C4C] text-white px-2 py-0.5 rounded-md shadow-sm font-bold">
+        {discountPct}% OFF
+      </span>
+    </div>
+  )}
 
-        {moq && (
-          <div className={`absolute ${discountPct ? "top-8" : "top-2"} left-2 z-10`}>
-            <span className="flex items-center gap-1 text-[10px] bg-[#F7A221] text-white px-2 py-0.5 rounded-md shadow-sm font-bold">
-              <Package size={9} />
-              MOQ: {moq}
-            </span>
-          </div>
-        )}
+  {moq && (
+    <div className={`absolute ${discountPct && canPurchase ? "top-8" : "top-2"} left-2 z-10`}>
+      <span className="flex items-center gap-1 text-[12px] bg-gray-200 text-zinc-900 px-2 py-0.5 mt-1 rounded-md shadow-sm font-bold">
+        MOQ: <span className="font-bold">{moq}</span>
+      </span>
+    </div>
+  )}
+</div>
 
         <div className="absolute top-2 right-2 flex flex-col gap-1.5 z-10
           md:translate-x-10 md:opacity-0
@@ -250,7 +331,7 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
         )}
 
         <div className="flex items-start justify-between gap-1">
-          <h3 className="text-xs sm:text-sm font-semibold text-zinc-900 line-clamp-2 group-hover:text-[#F7A221] transition-colors leading-snug flex-1">
+          <h3 className="text-xs sm:text-sm font-semibold text-zinc-900 line-clamp-2 group-hover:text-[#478B8D] transition-colors leading-snug flex-1">
             {title}
           </h3>
           <div className="flex items-center gap-0.5 flex-shrink-0 mt-0.5">
@@ -269,7 +350,7 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
         )}
 
         <div className="flex flex-col gap-0.5 mt-1">
-          <span className="text-[9px] uppercase tracking-widest text-[#F7A221] font-bold">
+          <span className="text-[9px] uppercase tracking-widest text-[#478B8D] font-bold">
             Wholesale Price
           </span>
           <div className="flex items-center gap-1.5">
@@ -288,9 +369,13 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
               <span className="text-zinc-800 font-bold">{moq} pcs</span>
             </p>
           )}
+
+          {/* Version 2: availability chip */}
           <span className={`inline-flex w-fit items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${availabilityMeta.chipClass}`}>
             {availabilityMeta.label}
           </span>
+
+          {/* Version 2: MOQ_UNMET warning */}
           {availability?.status === "MOQ_UNMET" && (
             <p className="text-[10px] text-amber-700 font-semibold">
               Min qty {availability?.requiredQuantity ?? moq ?? 0}, available {availability?.quantity ?? 0}
@@ -307,7 +392,7 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
             <button
               onClick={handleAddToCart}
               disabled={localLoading.add}
-              className="w-full py-2 sm:py-3 text-[10px] sm:text-xs font-bold rounded-xl bg-zinc-900 text-white hover:bg-[#F7A221] transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer disabled:opacity-60"
+              className="w-full py-2 sm:py-3 text-[10px] sm:text-xs font-bold rounded-xl bg-[#35858E]/95 text-white hover:bg-[#35858E] transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer disabled:opacity-60"
             >
               {localLoading.add
                 ? <><Loader2 size={12} className="animate-spin" /> Adding...</>
@@ -316,7 +401,8 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
             </button>
           ) : (
             <div className="flex flex-col gap-1">
-              <div className="flex items-center w-full border-2 border-zinc-900 rounded-xl overflow-hidden">
+              <div className="flex items-center w-full border-2 border-[#478B8D] rounded-xl overflow-hidden">
+                {/* Version 2: disabled when at or below MOQ */}
                 <button
                   onClick={handleDecrement}
                   disabled={isProcessing}
@@ -336,7 +422,7 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
                 <button
                   onClick={handleIncrement}
                   disabled={isAtMax || isProcessing}
-                  className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-zinc-900 text-white hover:bg-[#F7A221] transition-colors disabled:opacity-40 flex-shrink-0"
+                  className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-[#478B8D]/90 text-white hover:bg-[#478B8D] transition-colors disabled:opacity-40 flex-shrink-0"
                 >
                   {localLoading.update
                     ? <Loader2 size={11} className="animate-spin" />

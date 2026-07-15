@@ -169,6 +169,23 @@ const ProductFormBody = ({
 
   const mainGalleryImage = galleryImages.find((img) => img.isMain) || galleryImages[0] || null;
 
+  /** Same rule as ecomm admin: warn when wholesale MOQ exceeds tracked stock. */
+  const isWholesaleMoqUnmet = (variant) => {
+    if (!variant?.wholesale) return false;
+    if (variant?.inventory?.trackInventory === false) return false;
+    const quantity = Number(variant?.inventory?.quantity ?? 0);
+    const moq = Number(variant?.minimumOrderQuantity ?? 1);
+    return Number.isFinite(quantity) && Number.isFinite(moq) && moq > quantity;
+  };
+
+  const isCreateWholesaleMoqUnmet = () => {
+    if (!formData.wholesale) return false;
+    if (formData.inventory?.trackInventory === false) return false;
+    const quantity = Number(formData.inventory?.quantity ?? 0);
+    const moq = Number(formData.minimumOrderQuantity ?? 1);
+    return Number.isFinite(quantity) && Number.isFinite(moq) && moq > quantity;
+  };
+
   return (
     <div className="grid grid-cols-3 gap-6">
 
@@ -375,6 +392,12 @@ const ProductFormBody = ({
                         className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-400"
                         placeholder="Minimum quantity for wholesale price" />
                     </div>
+                    {isWholesaleMoqUnmet(primaryVariant) && (
+                      <p className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg px-2 py-1">
+                        Wholesale warning: MOQ ({primaryVariant.minimumOrderQuantity ?? 1}) is greater than stock (
+                        {primaryVariant.inventory?.quantity ?? 0})
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -523,6 +546,12 @@ const ProductFormBody = ({
                         className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-400"
                         placeholder="Minimum quantity for wholesale price" />
                     </div>
+                    {isCreateWholesaleMoqUnmet() && (
+                      <p className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg px-2 py-1">
+                        Wholesale warning: MOQ ({formData.minimumOrderQuantity ?? 1}) is greater than stock (
+                        {formData.inventory?.quantity ?? 0})
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -763,6 +792,13 @@ const ProductFormBody = ({
                               {variant.wholesale && (
                                 <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full font-medium">
                                   🏷️ Wholesale
+                                </span>
+                              )}
+                              {isWholesaleMoqUnmet(variant) && (
+                                <span
+                                  className="px-2 py-0.5 bg-red-50 text-red-700 text-xs rounded-full font-medium border border-red-200"
+                                  title={`MOQ ${variant.minimumOrderQuantity ?? 1} exceeds stock ${variant.inventory?.quantity ?? 0}`}>
+                                  ⚠ MOQ &gt; stock
                                 </span>
                               )}
                               <span className="text-gray-400 text-xs">·</span>

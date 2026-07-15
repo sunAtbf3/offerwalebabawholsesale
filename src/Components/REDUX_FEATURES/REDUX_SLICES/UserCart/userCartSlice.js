@@ -316,21 +316,39 @@ const userCartSlice = createSlice({
       console.log(`🛒 [loadGuestCart] Loaded ${state.guestItems.length} guest items`);
     },
 
-    addGuestCartItem: (state, action) => {
-      const { productId, productSlug, variantId, quantity = 1 } = action.payload;
-      const existing = state.guestItems.find(
-        (i) => i.productSlug === productSlug && i.variantId === variantId
-      );
-      if (existing) {
-        existing.quantity += quantity;
-        console.log(`🛒 [addGuestCartItem] slug="${productSlug}" qty → ${existing.quantity}`);
-      } else {
-        state.guestItems.push({ productId, productSlug, variantId, quantity });
-        console.log(`🛒 [addGuestCartItem] slug="${productSlug}" added qty=${quantity}`);
-      }
-      state.totalItems = state.guestItems.reduce((sum, i) => sum + (i.quantity || 1), 0);
-      saveGuestCart(state.guestItems);
-    },
+   addGuestCartItem: (state, action) => {
+  const { 
+    productId, productSlug, variantId, quantity = 1,
+    moq = 1,                  // ✅ add karo
+    wholesalePrice,
+    wholesaleBasePrice,
+    productName,
+    image,
+    variantLabel,
+    discountPercentage,
+  } = action.payload;
+  
+  const existing = state.guestItems.find(
+    (i) => i.productSlug === productSlug && i.variantId === variantId
+  );
+  
+  if (existing) {
+    existing.quantity += quantity;
+  } else {
+    state.guestItems.push({ 
+      productId, productSlug, variantId, quantity,
+      moq,                    // ✅ localStorage mein save hoga
+      wholesalePrice,
+      wholesaleBasePrice,
+      productName,
+      image,
+      variantLabel,
+      discountPercentage,
+    });
+  }
+  state.totalItems = state.guestItems.reduce((sum, i) => sum + (i.quantity || 1), 0);
+  saveGuestCart(state.guestItems);
+},
     // data store with product slug but backend expect with productid upper code have 
     // addGuestCartItem: (state, action) => {
     //   const { productSlug, variantId, quantity = 1 } = action.payload;
@@ -348,25 +366,28 @@ const userCartSlice = createSlice({
     //   saveGuestCart(state.guestItems);
     // },
 
-    updateGuestCartItem: (state, action) => {
-      const { productSlug, variantId, quantity } = action.payload;
-      const item = state.guestItems.find(
-        (i) => i.productSlug === productSlug && i.variantId === variantId
+ updateGuestCartItem: (state, action) => {
+  const { productSlug, variantId, quantity } = action.payload;
+  console.log("productSlug", productSlug, "variantId", variantId, "quantity", quantity);
+  const item = state.guestItems.find(
+    (i) => i.productSlug === productSlug && i.variantId === variantId
+  );
+  
+  if (item) {
+    const moq = item.moq ?? 1; // ✅ slice level pe bhi guard
+    if (quantity < moq) return; // ← MOQ se kam nahi jaane dena
+    
+    if (quantity <= 0) {
+      state.guestItems = state.guestItems.filter(
+        (i) => !(i.productSlug === productSlug && i.variantId === variantId)
       );
-      if (item) {
-        if (quantity <= 0) {
-          state.guestItems = state.guestItems.filter(
-            (i) => !(i.productSlug === productSlug && i.variantId === variantId)
-          );
-          console.log(`🛒 [updateGuestCartItem] slug="${productSlug}" removed`);
-        } else {
-          item.quantity = quantity;
-          console.log(`🛒 [updateGuestCartItem] slug="${productSlug}" qty=${quantity}`);
-        }
-        state.totalItems = state.guestItems.reduce((sum, i) => sum + (i.quantity || 1), 0);
-        saveGuestCart(state.guestItems);
-      }
-    },
+    } else {
+      item.quantity = quantity;
+    }
+    state.totalItems = state.guestItems.reduce((sum, i) => sum + (i.quantity || 1), 0);
+    saveGuestCart(state.guestItems);
+  }
+},
 
     removeGuestCartItem: (state, action) => {
       const { productSlug, variantId } = action.payload;
@@ -398,17 +419,19 @@ const userCartSlice = createSlice({
         state.loading.fetch = true;
         state.error.fetch = null;
       })
-      .addCase(fetchCart.fulfilled, (state, action) => {
-        state.loading.fetch = false;
-        const rawItems = action.payload?.items || [];
-        // build slugMap from populated productId if available
-        state.slugMap = buildSlugMap(state.slugMap, rawItems);
-        const items = applySlugMap(rawItems, state.slugMap);
-        state.items = items;
-        state.totalAmount = action.payload?.totalAmount ?? 0;
-        state.totalItems = items.reduce((sum, i) => sum + (i.quantity || 1), 0);
-        console.log(`✅ [fetchCart] Stored ${items.length} items with slugs`);
-      })
+     .addCase(fetchCart.fulfilled, (state, action) => {
+  state.loading.fetch = false;
+  const rawItems = action.payload?.items || [];
+  
+  // ✅ Pehle existing slugMap preserve karo, phir nayi values se update karo
+  state.slugMap = buildSlugMap(state.slugMap, rawItems);
+  
+  // ✅ Apply karo — existing slugMap se slugs milenge even if backend populate nahi karta
+  const items = applySlugMap(rawItems, state.slugMap);
+  state.items = items;
+  state.totalAmount = action.payload?.totalAmount ?? 0;
+  state.totalItems = items.reduce((sum, i) => sum + (i.quantity || 1), 0);
+})
       .addCase(fetchCart.rejected, (state, action) => {
         state.loading.fetch = false;
         state.error.fetch = action.payload || { message: "Failed to fetch cart" };
@@ -420,32 +443,27 @@ const userCartSlice = createSlice({
         state.loading.add = true;
         state.error.add = null;
       })
-      .addCase(addToCart.fulfilled, (state, action) => {
-        state.loading.add = false;
-        const { cart, productSlug } = action.payload;
-        const rawItems = cart?.items || [];
-        // ✅ find the item we just added and inject its slug into slugMap
-        const addedItem = rawItems.find((item) => {
-          const id = String(item.productId?._id || item.productId);
-          return state.slugMap[id] === productSlug || item._productSlug === productSlug;
-        });
-        // build slug map — also inject productSlug for the newly added item
-        state.slugMap = buildSlugMap(state.slugMap, rawItems);
-        // find the item by matching variantId or last item and attach slug manually
-        rawItems.forEach((item) => {
-          const id = String(item.productId?._id || item.productId);
-          if (!state.slugMap[id] && productSlug) {
-            // The item we just added — attach slug
-            // We identify it by it being the only new one or by variantId match
-            state.slugMap[id] = productSlug;
-          }
-        });
-        const items = applySlugMap(rawItems, state.slugMap);
-        state.items = items;
-        state.totalAmount = cart?.totalAmount ?? 0;
-        state.totalItems = items.reduce((sum, i) => sum + (i.quantity || 1), 0);
-        console.log(`✅ [addToCart.fulfilled] slug="${productSlug}" stored in slugMap`);
-      })
+    .addCase(addToCart.fulfilled, (state, action) => {
+  state.loading.add = false;
+  const { cart, productSlug, variantId } = action.payload;
+  const rawItems = cart?.items || [];
+  
+  // ✅ variantId se exact item dhundo aur uska productId slugMap mein daalo
+  const addedItem = rawItems.find(
+    (item) => String(item.variantId) === String(variantId)
+  );
+  
+  if (addedItem && productSlug) {
+    const id = String(addedItem.productId?._id || addedItem.productId);
+    state.slugMap[id] = productSlug; // ✅ yeh ab persist rahega is session mein
+  }
+  
+  state.slugMap = buildSlugMap(state.slugMap, rawItems);
+  const items = applySlugMap(rawItems, state.slugMap);
+  state.items = items;
+  state.totalAmount = cart?.totalAmount ?? 0;
+  state.totalItems = items.reduce((sum, i) => sum + (i.quantity || 1), 0);
+})
       .addCase(addToCart.rejected, (state, action) => {
         state.loading.add = false;
         state.error.add = action.payload || { message: "Failed to add to cart" };
@@ -602,14 +620,36 @@ export const selectLastOrder = (state) => state.userCart.lastOrder;
 // ✅ FIXED — uses _productSlug we attached, works for both fresh + refresh
 export const selectCartItemBySlug = (productSlug) => (state) => {
   if (!productSlug) return null;
+  const isAuth = state.auth?.isAuthenticated ?? state.auth?.isLoggedIn ?? false;
+  if (isAuth) {
+    return state.userCart.items.find(
+      (item) => item._productSlug === productSlug
+    ) ?? null;
+  }
+  return state.userCart.guestItems.find(
+    (i) => i.productSlug === productSlug
+  ) ?? null;
+};
 
-  const { isLoggedIn } = state.auth;
+// ── Selectors ke end mein — REPLACE karo purana selectDisplayCartCount ──
+export const selectDisplayCartCount = (state) => {
+  // ✅ Dono possible field names try karo
+  const isAuth = state.auth?.isAuthenticated ?? state.auth?.isLoggedIn ?? false;
+  return isAuth
+    ? state.userCart.totalItems
+    : state.userCart.guestItems.reduce((sum, i) => sum + (i.quantity || 1), 0);
+};
 
-  const list = isLoggedIn
-    ? state.userCart?.items
-    : state.userCart?.guestItems;
-
-  return list.find((i) => i?.productSlug === productSlug) ?? null;
+// ✅ selectIsInCart bhi fix karo same tarah
+export const selectIsInCart = (productSlug) => (state) => {
+  if (!productSlug) return false;
+  const isAuth = state.auth?.isAuthenticated ?? state.auth?.isLoggedIn ?? false;
+  if (isAuth) {
+    return state.userCart.items.some(
+      (item) => item._productSlug === productSlug
+    );
+  }
+  return state.userCart.guestItems.some((i) => i.productSlug === productSlug);
 };
 
 export default userCartSlice.reducer;

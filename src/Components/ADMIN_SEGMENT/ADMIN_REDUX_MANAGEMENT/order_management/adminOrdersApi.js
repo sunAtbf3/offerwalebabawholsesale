@@ -1,6 +1,6 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 // import axiosInstance from '../../../../SERVICES/axiosInstance';
-import wholesaleAxios from "../../../../SERVICES/wholesaleAxios";
+import wholesaleAxios from "../../../../SERVICES/Wholesaleaxios";
 
 /**
  * Axios adapter for RTK Query — matches userAnalyticsApi pattern; never use raw axios in components.
@@ -44,7 +44,8 @@ const axiosBaseQuery =
 export const adminOrdersApi = createApi({
   reducerPath: 'adminOrdersApi',
   baseQuery: axiosBaseQuery({ baseUrl: '' }),
-  tagTypes: ['AdminOrdersSummary', 'AdminOrdersList'],
+  // ADDED: AdminOrderTracking tag type (was missing in wholesale)
+  tagTypes: ['AdminOrdersSummary', 'AdminOrdersList', 'AdminOrderTracking'],
   keepUnusedDataFor: 30,
   endpoints: (builder) => ({
     /**
@@ -120,6 +121,239 @@ export const adminOrdersApi = createApi({
       }),
       providesTags: (result, error, orderId) => [{ type: 'AdminOrdersList', id: orderId }],
     }),
+
+    // ADDED: Live tracking + timeline sync from provider (was missing in wholesale)
+    // GET /api/orders/items/:orderId/track
+    getAdminOrderTracking: builder.query({
+      query: (orderId) => ({
+        url: `/orders/items/${encodeURIComponent(String(orderId))}/track`,
+        method: 'GET',
+      }),
+      providesTags: (result, error, orderId) => [{ type: 'AdminOrderTracking', id: orderId }],
+    }),
+
+    // ADDED: Return request list (was missing in wholesale)
+    getAdminReturnRequests: builder.query({
+      query: (arg = {}) => ({
+        url: '/orders/admin/returns/requests',
+        method: 'GET',
+        params: {
+          page: arg.page ?? 1,
+          limit: arg.limit ?? 20,
+          ...(arg.status ? { status: arg.status } : {}),
+        },
+      }),
+      providesTags: [{ type: 'AdminOrderTracking', id: 'RETURNS_LIST' }],
+    }),
+
+    // ADDED: Return request detail (was missing in wholesale)
+    getAdminReturnRequestDetail: builder.query({
+      query: (orderId) => ({
+        url: `/orders/admin/returns/requests/${encodeURIComponent(String(orderId))}`,
+        method: 'GET',
+      }),
+      providesTags: (result, error, orderId) => [{ type: 'AdminOrderTracking', id: `RETURN_${orderId}` }],
+    }),
+
+    // ADDED: Approve / reject a return (was missing in wholesale)
+    decideAdminReturnRequest: builder.mutation({
+      query: ({ orderId, decision, decisionReason }) => ({
+        url: `/orders/admin/returns/requests/${encodeURIComponent(String(orderId))}/decision`,
+        method: 'POST',
+        data: { decision, decisionReason },
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'AdminOrderTracking', id: 'RETURNS_LIST' },
+        { type: 'AdminOrderTracking', id: `RETURN_${arg.orderId}` },
+        { type: 'AdminOrdersList', id: arg.orderId },
+      ],
+    }),
+
+    // ADDED: Initiate refund for approved return (was missing in wholesale)
+    initiateAdminReturnRefund: builder.mutation({
+      query: ({ orderId }) => ({
+        url: `/orders/admin/returns/requests/${encodeURIComponent(String(orderId))}/refund`,
+        method: 'POST',
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'AdminOrderTracking', id: 'RETURNS_LIST' },
+        { type: 'AdminOrderTracking', id: `RETURN_${arg.orderId}` },
+        { type: 'AdminOrdersList', id: arg.orderId },
+      ],
+    }),
+
+    // ADDED: Retry reverse pickup for a return (was missing in wholesale)
+    adminReturnReversePickupRetry: builder.mutation({
+      query: ({ orderId }) => ({
+        url: `/orders/admin/returns/requests/${encodeURIComponent(String(orderId))}/reverse-pickup/retry`,
+        method: 'POST',
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'AdminOrderTracking', id: 'RETURNS_LIST' },
+        { type: 'AdminOrderTracking', id: `RETURN_${arg.orderId}` },
+        { type: 'AdminOrdersList', id: arg.orderId },
+      ],
+    }),
+
+    // ADDED: Create / ensure Shiprocket shipment (was missing in wholesale)
+    adminFulfillmentEnsureShipment: builder.mutation({
+      query: (orderId) => ({
+        url: `/orders/admin/items/${encodeURIComponent(String(orderId))}/fulfillment/ensure-shipment`,
+        method: 'POST',
+      }),
+      invalidatesTags: (result, error, orderId) => [
+        { type: 'AdminOrdersList', id: orderId },
+        { type: 'AdminOrderTracking', id: orderId },
+      ],
+    }),
+
+    // ADDED: Assign courier + generate AWB (was missing in wholesale)
+    adminFulfillmentAssignShip: builder.mutation({
+      query: ({ orderId, courierId }) => ({
+        url: `/orders/admin/items/${encodeURIComponent(String(orderId))}/fulfillment/assign-ship`,
+        method: 'POST',
+        data: courierId != null ? { courierId } : {},
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'AdminOrdersList', id: arg.orderId },
+        { type: 'AdminOrderTracking', id: arg.orderId },
+      ],
+    }),
+
+    // ADDED: Schedule pickup date (was missing in wholesale)
+    adminFulfillmentSchedulePickup: builder.mutation({
+      query: ({ orderId, pickupDate }) => ({
+        url: `/orders/admin/items/${encodeURIComponent(String(orderId))}/fulfillment/schedule-pickup`,
+        method: 'POST',
+        data: { pickupDate },
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'AdminOrdersList', id: arg.orderId },
+        { type: 'AdminOrderTracking', id: arg.orderId },
+      ],
+    }),
+
+    // ADDED: Bulk confirm pending orders (was missing in wholesale)
+    adminBulkApprovalConfirm: builder.mutation({
+      query: (arg = {}) => ({
+        url: '/orders/admin/items/bulk-approval/confirm',
+        method: 'POST',
+        data: {
+          orderIds: arg.orderIds,
+          ...(arg.concurrency != null && arg.concurrency !== '' ? { concurrency: arg.concurrency } : {}),
+        },
+      }),
+      invalidatesTags: (result, error, arg) => {
+        if (error) return [];
+        const tags = [
+          { type: 'AdminOrdersList', id: 'PARTIAL' },
+          { type: 'AdminOrdersSummary', id: 'SUMMARY' },
+        ];
+        const ids = Array.isArray(arg?.orderIds) ? arg.orderIds : [];
+        for (const oid of ids) {
+          tags.push({ type: 'AdminOrdersList', id: oid }, { type: 'AdminOrderTracking', id: oid });
+        }
+        return tags;
+      },
+    }),
+
+    // ADDED: Bulk cancel pending orders (was missing in wholesale)
+    adminBulkApprovalCancel: builder.mutation({
+      query: (arg = {}) => ({
+        url: '/orders/admin/items/bulk-approval/cancel',
+        method: 'POST',
+        data: {
+          orderIds: arg.orderIds,
+          ...(arg.concurrency != null && arg.concurrency !== '' ? { concurrency: arg.concurrency } : {}),
+        },
+      }),
+      invalidatesTags: (result, error, arg) => {
+        if (error) return [];
+        const tags = [
+          { type: 'AdminOrdersList', id: 'PARTIAL' },
+          { type: 'AdminOrdersSummary', id: 'SUMMARY' },
+        ];
+        const ids = Array.isArray(arg?.orderIds) ? arg.orderIds : [];
+        for (const oid of ids) {
+          tags.push({ type: 'AdminOrdersList', id: oid }, { type: 'AdminOrderTracking', id: oid });
+        }
+        return tags;
+      },
+    }),
+
+    // ADDED: Bulk ship-now across multiple orders (was missing in wholesale)
+    adminBulkFulfillmentShipNow: builder.mutation({
+      query: (arg = {}) => ({
+        url: '/orders/admin/items/bulk-fulfillment/ship-now',
+        method: 'POST',
+        data: {
+          orderIds: arg.orderIds,
+          ...(arg.concurrency != null && arg.concurrency !== '' ? { concurrency: arg.concurrency } : {}),
+          ...(arg.courierId != null && arg.courierId !== '' ? { courierId: arg.courierId } : {}),
+        },
+      }),
+      invalidatesTags: (result, error, arg) => {
+        if (error) return [];
+        const tags = [
+          { type: 'AdminOrdersList', id: 'PARTIAL' },
+          { type: 'AdminOrdersSummary', id: 'SUMMARY' },
+        ];
+        const ids = Array.isArray(arg?.orderIds) ? arg.orderIds : [];
+        for (const oid of ids) {
+          tags.push({ type: 'AdminOrdersList', id: oid }, { type: 'AdminOrderTracking', id: oid });
+        }
+        return tags;
+      },
+    }),
+
+    // ADDED: Bulk schedule pickup across multiple orders (was missing in wholesale)
+    adminBulkFulfillmentSchedulePickup: builder.mutation({
+      query: (arg = {}) => ({
+        url: '/orders/admin/items/bulk-fulfillment/schedule-pickup',
+        method: 'POST',
+        data: {
+          orderIds: arg.orderIds,
+          pickupDate: arg.pickupDate,
+          ...(arg.concurrency != null && arg.concurrency !== '' ? { concurrency: arg.concurrency } : {}),
+        },
+      }),
+      invalidatesTags: (result, error, arg) => {
+        if (error) return [];
+        const tags = [
+          { type: 'AdminOrdersList', id: 'PARTIAL' },
+          { type: 'AdminOrdersSummary', id: 'SUMMARY' },
+        ];
+        const ids = Array.isArray(arg?.orderIds) ? arg.orderIds : [];
+        for (const oid of ids) {
+          tags.push({ type: 'AdminOrdersList', id: oid }, { type: 'AdminOrderTracking', id: oid });
+        }
+        return tags;
+      },
+    }),
+
+    // ADDED: Get / generate shipping label URL (was missing in wholesale)
+    adminFulfillmentShippingLabel: builder.mutation({
+      query: (orderId) => ({
+        url: `/orders/admin/items/${encodeURIComponent(String(orderId))}/fulfillment/shipping-label`,
+        method: 'POST',
+      }),
+      invalidatesTags: (result, error, orderId) => [
+        { type: 'AdminOrdersList', id: orderId },
+        { type: 'AdminOrderTracking', id: orderId },
+      ],
+    }),
+
+    // ADDED: Cancel shipment on Shiprocket (was missing in wholesale)
+    adminFulfillmentCancelShipment: builder.mutation({
+      query: (orderId) => ({
+        url: `/orders/admin/items/${encodeURIComponent(String(orderId))}/fulfillment/cancel-shipment`,
+        method: 'POST',
+      }),
+      invalidatesTags: (result, error, orderId) => [
+        { type: 'AdminOrdersList', id: orderId },
+        { type: 'AdminOrderTracking', id: orderId },
+      ],
+    }),
   }),
 });
 
@@ -128,4 +362,20 @@ export const {
   useGetAdminOrdersListQuery,
   useGetAdminOrderDetailQuery,
   useLazyGetAdminOrderDetailQuery,
+  // ADDED exports:
+  useGetAdminOrderTrackingQuery,
+  useGetAdminReturnRequestsQuery,
+  useGetAdminReturnRequestDetailQuery,
+  useDecideAdminReturnRequestMutation,
+  useInitiateAdminReturnRefundMutation,
+  useAdminReturnReversePickupRetryMutation,
+  useAdminFulfillmentEnsureShipmentMutation,
+  useAdminFulfillmentAssignShipMutation,
+  useAdminFulfillmentSchedulePickupMutation,
+  useAdminFulfillmentShippingLabelMutation,
+  useAdminFulfillmentCancelShipmentMutation,
+  useAdminBulkApprovalConfirmMutation,
+  useAdminBulkApprovalCancelMutation,
+  useAdminBulkFulfillmentShipNowMutation,
+  useAdminBulkFulfillmentSchedulePickupMutation,
 } = adminOrdersApi;

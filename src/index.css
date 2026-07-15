@@ -42,6 +42,19 @@ img {
   height: auto;
   display: block;
 }
+.font-lato {
+  font-family:  'Lato', 'sans-serif';
+}
+.main-product-swiper .swiper-pagination-bullet {
+  background: #d1d5db;
+  opacity: 1;
+}
+.main-product-swiper .swiper-pagination-bullet-active {
+  background: #facc15;
+  width: 16px;
+  border-radius: 4px;
+  transition: width 0.2s;
+}
 
 
 

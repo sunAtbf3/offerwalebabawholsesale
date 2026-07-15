@@ -21,6 +21,8 @@ import { authApi } from "../REDUX_SLICES/authApi/authApi";
 import authReducer from "../REDUX_SLICES/authApi/authSlice";
 
 // ========== ADMIN PANEL IMPORTS (EXTRACTED FROM FIRST FILE) ==========
+import { adminAuthApi } from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/adminAuthApi";
+import adminAuthReducer from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/adminAuthSlice";
 import adminProductCreateReducer from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/adminProductCreateSlice";
 import adminGetProductsReducer from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/adminGetProductsSlice";
 import adminEditProductReducer from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/adminEditProductSlice";
@@ -34,6 +36,12 @@ import { adminOrdersApi } from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/order
 import staffReducer from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/staffSlice";
 import { wholesalerApi as adminWholesalerApi } from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/wholesalerApi/wholesalerApi";
 import userWishlistReducer from "../REDUX_SLICES/UserWIshlist/userWishlistSLice";
+import userAddressReducer from "../REDUX_SLICES/Useraddressslice";
+import { searchApi } from "../REDUX_SLICES/searchApi";
+import orderReducer from "../REDUX_SLICES/orderSlice";
+import checkoutReducer from "../REDUX_SLICES/checkoutSlice/checkoutSlice";
+import couponReducer from '../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/couponApi/CouponSlice';
+import { couponApi } from '../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/couponApi/couponApi';
 
 export const store = configureStore({
   reducer: {
@@ -43,13 +51,19 @@ export const store = configureStore({
     [categoriesApi.reducerPath]: categoriesApi.reducer,
     [productsApi.reducerPath]: productsApi.reducer,
     [wholesalerApi.reducerPath]: wholesalerApi.reducer,
+    [searchApi.reducerPath]: searchApi.reducer,
     userCategories: userCategoriesReducer,
     userProducts: userProductsReducer,
     wholesaler: wholesalerReducer,
      userCart: userCartReducer,
      userWishlist: userWishlistReducer,
+     userAddress: userAddressReducer,
+       orders: orderReducer,
+           checkout: checkoutReducer,
+
 
     // ========== ADMIN PANEL REDUCERS (EXTRACTED FROM FIRST FILE) ==========
+    adminAuth: adminAuthReducer,
     adminProductCreate: adminProductCreateReducer,
     adminGetProducts: adminGetProductsReducer,
     adminEditProduct: adminEditProductReducer,
@@ -59,9 +73,11 @@ export const store = configureStore({
     staff: staffReducer,
     seoUi: seoUiReducer,
     adminOrdersUi: adminOrdersUiReducer,
+        [couponApi.reducerPath]: couponApi.reducer,
     [userAnalyticsApi.reducerPath]: userAnalyticsApi.reducer,
     [seoAnalyticsApi.reducerPath]: seoAnalyticsApi.reducer,
     [adminOrdersApi.reducerPath]: adminOrdersApi.reducer,
+    [adminAuthApi.reducerPath]: adminAuthApi.reducer,
     [adminWholesalerApi.reducerPath]: adminWholesalerApi.reducer,
   },
 
@@ -79,11 +95,14 @@ export const store = configureStore({
       productsApi.middleware,
       wholesalerApi.middleware,
       authApi.middleware,
+      searchApi.middleware,
       // ADMIN MIDDLEWARES (EXTRACTED FROM FIRST FILE)
+      adminAuthApi.middleware,
       userAnalyticsApi.middleware,
       seoAnalyticsApi.middleware,
       adminOrdersApi.middleware,
       adminWholesalerApi.middleware,
+            couponApi.middleware,
     ),
   
   devTools: import.meta.env.MODE !== "production",

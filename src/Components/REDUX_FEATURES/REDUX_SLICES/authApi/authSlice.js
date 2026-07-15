@@ -1,6 +1,8 @@
-// REDUX_SLICES/authSlice.js
+// // REDUX_SLICES/authSlice.js
+// REDUX_SLICES/authApi/authSlice.js
 import { createSlice } from '@reduxjs/toolkit';
 import { authApi } from './authApi';
+import { WHOLESALE_USER_ACCESS_TOKEN_KEY } from '../../../../SERVICES/Wholesaleaxios';
 
 const logError = (context, error) => {
   console.error(`[authSlice][${context}]`, {
@@ -31,7 +33,7 @@ const authSlice = createSlice({
       state.error = null;
 
       if (accessToken) {
-        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem(WHOLESALE_USER_ACCESS_TOKEN_KEY, accessToken);
       }
     },
     // Manual logout (clear state)
@@ -40,19 +42,18 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.loading = false;
       state.error = null;
-      localStorage.removeItem('accessToken');
+      localStorage.removeItem(WHOLESALE_USER_ACCESS_TOKEN_KEY);
     },
-    // Clear error
     clearError: (state) => {
       state.error = null;
     },
-    // Set loading
     setLoading: (state, action) => {
       state.loading = action.payload;
     },
   },
   extraReducers: (builder) => {
-    // Handle login mutation
+
+    // ── login ──────────────────────────────────────────────────────────────
     builder
       .addMatcher(authApi.endpoints.login.matchPending, (state) => {
         state.loading = true;
@@ -63,9 +64,8 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.user = payload.user;
         state.error = null;
-        // Store token in localStorage
         if (payload.accessToken) {
-          localStorage.setItem('accessToken', payload.accessToken);
+          localStorage.setItem(WHOLESALE_USER_ACCESS_TOKEN_KEY, payload.accessToken);
         }
       })
       .addMatcher(authApi.endpoints.login.matchRejected, (state, { error }) => {
@@ -76,7 +76,7 @@ const authSlice = createSlice({
         logError('login.rejected', error);
       });
 
-    // Handle getMe query
+    // ── getMe ──────────────────────────────────────────────────────────────
     builder
       .addMatcher(authApi.endpoints.getMe.matchPending, (state) => {
         state.loading = true;
@@ -91,14 +91,13 @@ const authSlice = createSlice({
         state.loading = false;
         state.isAuthenticated = false;
         state.user = null;
-        // Don't set error on 401 - just not authenticated
         if (error?.status !== 401) {
           state.error = error?.data?.message || 'Failed to fetch user';
         }
         logError('getMe.rejected', error);
       });
 
-    // Handle logout mutation
+    // ── logout ─────────────────────────────────────────────────────────────
     builder
       .addMatcher(authApi.endpoints.logout.matchPending, (state) => {
         state.loading = true;
@@ -108,24 +107,161 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.loading = false;
         state.error = null;
-        localStorage.removeItem('accessToken');
+        localStorage.removeItem(WHOLESALE_USER_ACCESS_TOKEN_KEY);
       })
       .addMatcher(authApi.endpoints.logout.matchRejected, (state) => {
         state.user = null;
         state.isAuthenticated = false;
         state.loading = false;
-        localStorage.removeItem('accessToken');
+        localStorage.removeItem(WHOLESALE_USER_ACCESS_TOKEN_KEY);
         logError('logout.rejected', { message: 'Logout failed but state cleared' });
       });
+
+    // ── updateProfile ──────────────────────────────────────────────────────
+    // This handles the updateProfile thunk defined inside UserProfile.jsx.
+    // It merges the returned user fields into state so the navbar/dashboard
+    // immediately reflect the new name without a page refresh.
+    builder
+      .addMatcher(
+        (action) => action.type === 'auth/updateProfile/fulfilled',
+        (state, { payload }) => {
+          if (payload?.user) {
+            // Merge — don't replace — so fields not returned (e.g. role) are kept
+            state.user = { ...state.user, ...payload.user };
+          }
+        }
+      )
+      .addMatcher(
+        (action) => action.type === 'auth/updateProfile/rejected',
+        (state, { error }) => {
+          logError('updateProfile.rejected', error);
+        }
+      );
   },
 });
 
 export const { setAuthenticatedSession, logout, clearError, setLoading } = authSlice.actions;
 
-// Selectors
-export const selectUser = (state) => state.auth.user;
+// ── Selectors ──────────────────────────────────────────────────────────────
+export const selectUser            = (state) => state.auth.user;
 export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
-export const selectAuthLoading = (state) => state.auth.loading;
-export const selectAuthError = (state) => state.auth.error;
+export const selectAuthLoading     = (state) => state.auth.loading;
+export const selectAuthError       = (state) => state.auth.error;   // ← was missing
 
 export default authSlice.reducer;
+// import { createSlice } from '@reduxjs/toolkit';
+// import { authApi } from './authApi';
+
+// const logError = (context, error) => {
+//   console.error(`[authSlice][${context}]`, {
+//     message: error?.message || 'Unknown error',
+//     timestamp: new Date().toISOString(),
+//   });
+// };
+
+// const initialState = {
+//   user: null,
+//   isAuthenticated: false,
+//   loading: false,
+//   error: null,
+// };
+
+// const authSlice = createSlice({
+//   name: 'auth',
+//   initialState,
+//   reducers: {
+//     // Manual logout (clear state)
+//     logout: (state) => {
+//       state.user = null;
+//       state.isAuthenticated = false;
+//       state.loading = false;
+//       state.error = null;
+//       localStorage.removeItem('accessToken');
+//     },
+//     // Clear error
+//     clearError: (state) => {
+//       state.error = null;
+//     },
+//     // Set loading
+//     setLoading: (state, action) => {
+//       state.loading = action.payload;
+//     },
+//   },
+//   extraReducers: (builder) => {
+//     // Handle login mutation
+//     builder
+//       .addMatcher(authApi.endpoints.login.matchPending, (state) => {
+//         state.loading = true;
+//         state.error = null;
+//       })
+//       .addMatcher(authApi.endpoints.login.matchFulfilled, (state, { payload }) => {
+//         state.loading = false;
+//         state.isAuthenticated = true;
+//         state.user = payload.user;
+//         state.error = null;
+//         // Store token in localStorage
+//         if (payload.accessToken) {
+//           localStorage.setItem('accessToken', payload.accessToken);
+//         }
+//       })
+//       .addMatcher(authApi.endpoints.login.matchRejected, (state, { error }) => {
+//         state.loading = false;
+//         state.isAuthenticated = false;
+//         state.user = null;
+//         state.error = error?.data?.message || 'Login failed';
+//         logError('login.rejected', error);
+//       });
+
+//     // Handle getMe query
+//     builder
+//       .addMatcher(authApi.endpoints.getMe.matchPending, (state) => {
+//         state.loading = true;
+//       })
+//       .addMatcher(authApi.endpoints.getMe.matchFulfilled, (state, { payload }) => {
+//         state.loading = false;
+//         state.isAuthenticated = true;
+//         state.user = payload.user || payload;
+//         state.error = null;
+//       })
+//       .addMatcher(authApi.endpoints.getMe.matchRejected, (state, { error }) => {
+//         state.loading = false;
+//         state.isAuthenticated = false;
+//         state.user = null;
+//         // Don't set error on 401 - just not authenticated
+//         if (error?.status !== 401) {
+//           state.error = error?.data?.message || 'Failed to fetch user';
+//         }
+//         logError('getMe.rejected', error);
+//       });
+
+//     // Handle logout mutation
+//     builder
+//       .addMatcher(authApi.endpoints.logout.matchPending, (state) => {
+//         state.loading = true;
+//       })
+//       .addMatcher(authApi.endpoints.logout.matchFulfilled, (state) => {
+//         state.user = null;
+//         state.isAuthenticated = false;
+//         state.loading = false;
+//         state.error = null;
+//         localStorage.removeItem('accessToken');
+//       })
+//       .addMatcher(authApi.endpoints.logout.matchRejected, (state) => {
+//         state.user = null;
+//         state.isAuthenticated = false;
+//         state.loading = false;
+//         localStorage.removeItem('accessToken');
+//         logError('logout.rejected', { message: 'Logout failed but state cleared' });
+//       });
+//   },
+// });
+
+// export const { logout, clearError, setLoading } = authSlice.actions;
+
+// // Selectors
+// export const selectUser = (state) => state.auth.user;
+// export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
+// export const selectAuthLoading = (state) => state.auth.loading;
+// export const selectAuthError = (state) => state.auth.error;
+
+// export default authSlice.reducer;

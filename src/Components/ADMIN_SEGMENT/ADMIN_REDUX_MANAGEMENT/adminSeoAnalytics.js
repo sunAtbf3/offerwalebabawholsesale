@@ -2,7 +2,7 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { createSlice } from '@reduxjs/toolkit';
 // import axiosInstance from '../../../SERVICES/wholesaleAxios';
-import wholesaleAxios from "../../../SERVICES/wholesaleAxios"; // Use your existing axios instance with interceptors
+import wholesaleAxios from "../../../SERVICES/Wholesaleaxios"; // Use your existing axios instance with interceptors
 
 // ==================== RTK QUERY SETUP ====================
 

@@ -1,7 +1,7 @@
 // ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/wholesalerApi.js
 
 import { createApi } from '@reduxjs/toolkit/query/react';
-import axiosInstance from "../../../../SERVICES/axiosInstance";
+import wholesaleAxios from "../../../../SERVICES/Wholesaleaxios";
 
 const logError = (context, error) => {
   console.error(`[wholesalerApi] ${context}`, {
@@ -14,7 +14,7 @@ const logError = (context, error) => {
 
 const baseQuery = async ({ url, method, body, params }) => {
   try {
-    const response = await axiosInstance({
+    const response = await wholesaleAxios({
       url: `/wholesaler${url}`,
       method: method || 'GET',
       data: body,

@@ -19,6 +19,7 @@ const UserTab = () => {
 
         {/* Logo Section */}
         <div className="pt-8 pb-4 flex justify-center border-b border-[#1f1f1f]">
+          
           {/* <img src={LOGO} alt="logo" className="h-7 brightness-110 hover:brightness-150 transition-all duration-300" /> */}
         </div>
 

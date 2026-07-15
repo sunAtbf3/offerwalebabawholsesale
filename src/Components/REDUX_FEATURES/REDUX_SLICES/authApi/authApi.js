@@ -1,7 +1,7 @@
 // REDUX_SLICES/authApi.js
 import { createApi } from '@reduxjs/toolkit/query/react';
 // import axiosInstance from '../../SERVICES/axiosInstance';
-import wholesaleAxios from "../../../../SERVICES/wholesaleAxios";
+import wholesaleAxios from "../../../../SERVICES/Wholesaleaxios";
 
 const logError = (context, error) => {
   console.error(`[authApi][${context}]`, {
@@ -42,7 +42,11 @@ export const authApi = createApi({
       query: ({ identifier, password }) => ({
         url: '/auth/login',
         method: 'POST',
-        body: { identifier, password },
+        body: {
+          identifier,
+          password,
+          portal: 'wholesale',
+        },
       }),
       invalidatesTags: ['User'],
     }),
@@ -52,8 +56,9 @@ export const authApi = createApi({
       query: () => ({
         url: '/auth/logout',
         method: 'POST',
+        body: { portal: 'wholesale' },
       }),
-      invalidatesTags: ['User'],
+      // invalidatesTags: ['User'],
     }),
 
     // Get current user profile
@@ -70,6 +75,7 @@ export const authApi = createApi({
       query: () => ({
         url: '/auth/refresh',
         method: 'POST',
+        body: { portal: 'wholesale' },
       }),
     }),
 

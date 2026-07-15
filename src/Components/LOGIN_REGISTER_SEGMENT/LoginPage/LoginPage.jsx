@@ -12,6 +12,32 @@ const logError = (context, error) => {
   });
 };
 
+const getLoginErrorMessage = (error) => {
+  const status = error?.status;
+  const code = error?.data?.code;
+  const message = error?.data?.message || "";
+
+  if (code === "PORTAL_ACCESS_DENIED") {
+    return "This account is not allowed on the wholesale app. Please use the correct login portal.";
+  }
+  if (code === "PORTAL_REQUIRED_FOR_PRIVILEGED_ACCOUNT") {
+    return "Admin or staff accounts must login from the admin portal.";
+  }
+  if (code === "INVALID_PORTAL") {
+    return "Login configuration is invalid. Please refresh and try again.";
+  }
+  if (status === 401 || status === 400) {
+    return "Invalid mobile/email or password. Please try again.";
+  }
+  if (status === 403) {
+    return "Your account is not active or not allowed on this portal. Please contact support.";
+  }
+  if (status === 404) {
+    return "No account found. Please register first.";
+  }
+  return message || "Login failed. Please try again.";
+};
+
 const LoginPage = ({ onLoginSuccess }) => {
   const [form, setForm] = useState({ mobileOrEmail: "", password: "" });
   const [errors, setErrors] = useState({});
@@ -56,24 +82,12 @@ const LoginPage = ({ onLoginSuccess }) => {
       }
     } catch (err) {
       logError("handleSubmit", err);
-      
-      const status = err?.status;
-      const message = err?.data?.message || "";
 
-      if (status === 401 || status === 400) {
-        toast.error("Invalid mobile/email or password. Please try again.");
+      const resolvedMessage = getLoginErrorMessage(err);
+      toast.error(resolvedMessage);
+      if (err?.status === 401 || err?.status === 400) {
         setErrors({ password: "Incorrect credentials" });
-        return;
       }
-      if (status === 403) {
-        toast.error("Your account is not active. Please contact support.");
-        return;
-      }
-      if (status === 404) {
-        toast.error("No account found. Please register first.");
-        return;
-      }
-      toast.error(message || "Login failed. Please try again.");
     }
   };
 
@@ -158,11 +172,11 @@ const LoginPage = ({ onLoginSuccess }) => {
       </form>
 
       {/* Activate account hint */}
-      <div className="text-center p-3 bg-amber-50 border border-amber-200 rounded-xl">
-        <p className="text-xs text-amber-700 font-medium">
-          Already approved?{" "}
+      <div className="text-center p-3 bg-[#478B8D]/15 border border-[#478B8D]/15 rounded-xl">
+        <p className="text-xs text-[#478B8D] font-medium">
+          Approved? Complete details &amp; activate OTP{" "}
           <a href="/activate" className="font-black underline underline-offset-2">
-            Activate your account here
+            here
           </a>
         </p>
       </div>

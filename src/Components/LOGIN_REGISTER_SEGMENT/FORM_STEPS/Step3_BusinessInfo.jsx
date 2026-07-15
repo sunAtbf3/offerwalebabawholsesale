@@ -15,22 +15,9 @@ import {
 } from "../../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerSlice";
 import { useSubmitWholesalerRequestMutation } from "../../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerApi";
 import { logError } from "../../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerApi";
+import { useGetAllCategoriesQuery } from "../../REDUX_FEATURES/REDUX_SLICES/SHOP_BY_CATEGORY/categoriesApi";
 
-// ── Product categories matching your backend expectations ───────────────────
-const CATEGORIES = [
-  "Electronics",
-  "Smart Life Gadgets",
-  "Home & Kitchen",
-  "Fashion World",
-  "Sports & Fitness",
-  "Stationary",
-  "Baby Items",
-  "Car Accessories",
-  "Cleaning Supplies",
-  "Gifts",
-  "Tours & Travels",
-  "Mix / General",
-];
+
 
 const validate = (data) => {
   const errors = {};
@@ -38,14 +25,14 @@ const validate = (data) => {
     errors.sellingPlaceFrom = "Selling place is required";
   if (!data.sellingZoneCity.trim())
     errors.sellingZoneCity = "City / zone is required";
-  if (!data.productCategory.trim())
-    errors.productCategory = "Please select a category";
-  if (!data.monthlyEstimatedPurchase || isNaN(Number(data.monthlyEstimatedPurchase)) || Number(data.monthlyEstimatedPurchase) <= 0)
-    errors.monthlyEstimatedPurchase = "Enter a valid monthly purchase amount";
-  if (!data.idProofFile)
-    errors.idProofFile = "ID proof document is required";
-  if (!data.businessAddressProofFile)
-    errors.businessAddressProofFile = "Business address proof is required";
+  // if (!data.productCategory.trim())
+  //   errors.productCategory = "Please select a category";
+  // if (!data.monthlyEstimatedPurchase || isNaN(Number(data.monthlyEstimatedPurchase)) || Number(data.monthlyEstimatedPurchase) <= 0)
+  //   errors.monthlyEstimatedPurchase = "Enter a valid monthly purchase amount";
+  // if (!data.idProofFile)
+  //   errors.idProofFile = "ID proof document is required";
+  // if (!data.businessAddressProofFile)
+  //   errors.businessAddressProofFile = "Business address proof is required";
   return errors;
 };
 
@@ -55,7 +42,7 @@ const FileUpload = ({ label, hint, file, onFileChange, error }) => {
   return (
     <div className="flex flex-col gap-1.5">
       <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-        {label} <span className="text-red-500">*</span>
+        {label}
       </label>
       {hint && <p className="text-[11px] text-slate-400">{hint}</p>}
       <button
@@ -129,6 +116,7 @@ const Step3_BusinessInfo = () => {
   const [submitRequest, { isLoading }] = useSubmitWholesalerRequestMutation();
   const [errors, setErrors]   = useState({});
   const [touched, setTouched] = useState({});
+  const { data: apiCategories = [] } = useGetAllCategoriesQuery();
 
   const handleChange = (field) => (value) => {
     dispatch(updateFormData({ [field]: value }));
@@ -167,7 +155,7 @@ const Step3_BusinessInfo = () => {
     fd.append("whatsappNumber",            formData.whatsappNumber.trim());
     fd.append("permanentAddress",          formData.permanentAddress.trim());
     fd.append("businessAddress",           formData.businessAddress.trim());
-    fd.append("deliveryAddress",           formData.deliveryAddress.trim());
+    fd.append("deliveryAddress",           formData.deliveryAddress.trim());  
     fd.append("haveShop",                  String(formData.haveShop));
     fd.append("sellingPlaceFrom",          formData.sellingPlaceFrom.trim());
     fd.append("sellingZoneCity",           formData.sellingZoneCity.trim());
@@ -260,7 +248,7 @@ const Step3_BusinessInfo = () => {
       </div>
 
       {/* Product Category */}
-      <InputField label="Product Category" required error={errors.productCategory}>
+      <InputField label="Product Category" error={errors.productCategory}>
         <div className="relative">
           <Tag size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <select
@@ -275,8 +263,8 @@ const Step3_BusinessInfo = () => {
               }`}
           >
             <option value="">Select a category</option>
-            {CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>{cat}</option>
+            {apiCategories.map((cat) => (
+              <option key={cat._id || cat.name} value={cat.name}>{cat.name}</option>
             ))}
           </select>
         </div>
@@ -286,7 +274,6 @@ const Step3_BusinessInfo = () => {
       <InputField
         label="Monthly Estimated Purchase (₹)"
         icon={IndianRupee}
-        required
         type="number"
         min="1"
         placeholder="e.g. 50000"

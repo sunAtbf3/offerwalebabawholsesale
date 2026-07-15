@@ -36,8 +36,8 @@ const ProfileTab = () => {
                   </button>
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900 uppercase">MEHTA MART MHM</h3>
-                  <p className="text-sm text-gray-500 font-medium">8850998536</p>
+                  <h3 className="text-lg font-bold text-gray-900 uppercase">Offer Wale Baba</h3>
+                  <p className="text-sm text-gray-500 font-medium">9370686008</p>
                   <p className="text-xs text-gray-400 mt-1">Store ID - 5656117</p>
                 </div>
               </div>
@@ -65,7 +65,7 @@ const ProfileTab = () => {
               <div className="max-w-2xl">
                 <p className="text-[11px]  text-gray-400 uppercase tracking-wider mb-1">Store description</p>
                 <p className="text-sm text-gray-500 leading-relaxed">
-                  Email: Customersupport@offerwale.com Welcome to OWB OfferWaleBaba! The World of Offers. 
+                  Email: support@offerwale.com Welcome to OWB OfferWaleBaba! The World of Offers. 
                   We invite you to avail all the best offers displayed by us with the safest Payment Gateways. 
                   We started in the year 2015...
                 </p>

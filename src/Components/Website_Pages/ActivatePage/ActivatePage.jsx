@@ -1,16 +1,29 @@
-import React, { useState } from "react";
-import { Phone, KeyRound, Lock, Eye, EyeOff, Loader2, CheckCircle2, ArrowRight, ShieldCheck } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Phone,
+  KeyRound,
+  Lock,
+  Eye,
+  EyeOff,
+  Loader2,
+  CheckCircle2,
+  ArrowRight,
+  ShieldCheck,
+  Clock,
+  XCircle,
+} from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import {
+  useLazyGetWholesalerOnboardingStatusQuery,
   useSendActivationOtpMutation,
   useVerifyActivationOtpMutation,
   logError,
 } from "../../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerApi";
 import { setAuthenticatedSession } from "../../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice";
+import CompleteDetailsForm from "./CompleteDetailsForm";
 
-// ── Inline field component ────────────────────────────────────────────────────
 const Field = ({ label, icon: Icon, error, hint, rightEl, ...props }) => (
   <div className="flex flex-col gap-1.5">
     <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
@@ -27,9 +40,10 @@ const Field = ({ label, icon: Icon, error, hint, rightEl, ...props }) => (
         {...props}
         className={`w-full ${Icon ? "pl-9" : "pl-4"} ${rightEl ? "pr-12" : "pr-4"} py-3.5 rounded-xl border-2
           text-sm font-medium bg-slate-50 focus:bg-white focus:outline-none transition-all duration-200
-          ${error
-            ? "border-red-400 focus:border-red-500"
-            : "border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10"
+          ${
+            error
+              ? "border-red-400 focus:border-red-500"
+              : "border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10"
           }`}
       />
       {rightEl && (
@@ -40,45 +54,121 @@ const Field = ({ label, icon: Icon, error, hint, rightEl, ...props }) => (
   </div>
 );
 
-// ── Phase 1: enter mobile ─────────────────────────────────────────────────────
-const Phase1 = ({ onSuccess }) => {
-  const [mobile, setMobile]     = useState("");
-  const [error, setError]       = useState("");
-  const [sendOtp, { isLoading }] = useSendActivationOtpMutation();
+function normalizeMobile(raw) {
+  return String(raw || "").replace(/\D/g, "").slice(-10);
+}
 
-  const handleSend = async () => {
-    if (!mobile.trim() || !/^\d{10}$/.test(mobile.trim())) {
-      setError("Enter a valid 10-digit registered mobile number");
-      return;
+/**
+ * Resolve which Activate UI stage to show from onboarding status.
+ * Details-incomplete approved users always land on complete-details (not OTP first).
+ */
+async function resolveActivateRoute({
+  mobileNumber,
+  preferredStep,
+  lookup,
+  sendOtp,
+  autoSendOtp = true,
+}) {
+  const m = normalizeMobile(mobileNumber);
+  if (!/^\d{10}$/.test(m)) {
+    return { ok: false, error: "Enter a valid 10-digit registered mobile number" };
+  }
+
+  const result = await lookup(m).unwrap();
+  const req = result?.request;
+  if (!req) {
+    return { ok: false, error: "No request found for this number." };
+  }
+
+  if (req.status === "pending") {
+    return { ok: true, stage: "pending", mobile: m, request: req };
+  }
+  if (req.status === "rejected") {
+    return { ok: true, stage: "rejected", mobile: m, request: req };
+  }
+  if (req.status === "activated") {
+    return { ok: true, stage: "activated", mobile: m, request: req };
+  }
+
+  // Approved: KYC first whenever details are incomplete — ignores preferredStep=otp.
+  if (req.status === "approved" && req.canCompleteDetails) {
+    return { ok: true, stage: "complete", mobile: m, request: req };
+  }
+
+  if (req.status === "approved" && req.canRequestActivationOtp) {
+    if (preferredStep === "complete") {
+      // Details already done; fall through to OTP.
     }
+    if (autoSendOtp && sendOtp) {
+      try {
+        await sendOtp({ mobileNumber: m }).unwrap();
+        return { ok: true, stage: "otp", mobile: m, request: req, otpSent: true };
+      } catch (otpErr) {
+        logError("sendActivationOtp", otpErr);
+        if (otpErr?.data?.code === "WHOLESALER_DETAILS_INCOMPLETE") {
+          return { ok: true, stage: "complete", mobile: m, request: req };
+        }
+        return {
+          ok: true,
+          stage: "otp",
+          mobile: m,
+          request: req,
+          otpSent: false,
+          otpWarning: otpErr?.data?.message || "OTP could not be sent automatically. Use Resend OTP.",
+        };
+      }
+    }
+    return { ok: true, stage: "otp", mobile: m, request: req, otpSent: false };
+  }
+
+  return { ok: false, error: "Unexpected onboarding state. Please contact support." };
+}
+
+const LookupPhase = ({ onRoute, initialMobile = "" }) => {
+  const [mobile, setMobile] = useState(initialMobile);
+  const [error, setError] = useState("");
+  const [lookup] = useLazyGetWholesalerOnboardingStatusQuery();
+  const [sendOtp, { isLoading: sendingOtp }] = useSendActivationOtpMutation();
+  const [isFetching, setIsFetching] = useState(false);
+  const busy = isFetching || sendingOtp;
+
+  const handleContinue = async () => {
     setError("");
-
+    setIsFetching(true);
     try {
-      await sendOtp({ mobileNumber: mobile.trim() }).unwrap();
-      toast.info("OTP sent to your registered mobile number!");
-      onSuccess(mobile.trim());
+      const routed = await resolveActivateRoute({
+        mobileNumber: mobile,
+        lookup,
+        sendOtp,
+        autoSendOtp: true,
+      });
+      if (!routed.ok) {
+        setError(routed.error);
+        if (routed.error?.includes("No request") || routed.error?.includes("register")) {
+          toast.error("No request found. Please register first.");
+        }
+        return;
+      }
+      if (routed.stage === "activated") {
+        toast.info("Account already activated. Please log in.");
+      }
+      if (routed.otpSent) {
+        toast.info("OTP sent to your registered contact!");
+      } else if (routed.otpWarning) {
+        toast.warning(routed.otpWarning);
+      }
+      onRoute(routed);
     } catch (err) {
-      logError("sendActivationOtp", err);
-
-      const status  = err?.status;
-      const message = err?.data?.message ?? "";
-
-      if (status === 404) {
-        setError("No approved request found for this number. Contact admin.");
-        toast.error("This mobile is not approved yet.");
+      logError("getWholesalerOnboardingStatus", err);
+      if (err?.status === 404) {
+        setError("No wholesaler request found for this number. Register interest first.");
+        toast.error("No request found. Please register first.");
         return;
       }
-      if (status === 429) {
-        setError("Too many attempts. Please try again after some time.");
-        toast.error("Rate limited. Please wait before trying again.");
-        return;
-      }
-      if (status === 400) {
-        setError(message || "Invalid mobile number.");
-        return;
-      }
-      setError("Something went wrong. Please try again.");
-      toast.error("Failed to send OTP. Please retry.");
+      setError(err?.data?.message || "Something went wrong. Please try again.");
+      toast.error("Could not check status.");
+    } finally {
+      setIsFetching(false);
     }
   };
 
@@ -88,9 +178,10 @@ const Phase1 = ({ onSuccess }) => {
         <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
           <Phone size={32} className="text-amber-600" />
         </div>
-        <h2 className="text-2xl font-black text-[#0F172A]">Activate Your Account</h2>
+        <h2 className="text-2xl font-black text-[#0F172A]">Continue Setup</h2>
         <p className="text-sm text-slate-500 mt-2 max-w-sm mx-auto">
-          Enter your registered mobile number. We'll send an OTP to verify and set up your password.
+          Enter your registered mobile. If you&apos;re approved, you&apos;ll complete business
+          details first, then activate with OTP.
         </p>
       </div>
 
@@ -105,48 +196,80 @@ const Phase1 = ({ onSuccess }) => {
           setMobile(e.target.value.replace(/\D/g, ""));
           if (error) setError("");
         }}
-        onKeyDown={(e) => e.key === "Enter" && handleSend()}
+        onKeyDown={(e) => e.key === "Enter" && handleContinue()}
         error={error}
       />
 
       <button
-        onClick={handleSend}
-        disabled={isLoading}
+        type="button"
+        onClick={handleContinue}
+        disabled={busy}
         className="w-full flex items-center justify-center gap-2 bg-[#0F172A] hover:bg-slate-800
           text-white font-black py-4 rounded-xl transition-all duration-200 uppercase tracking-wider
           disabled:opacity-70 disabled:cursor-not-allowed"
       >
-        {isLoading ? (
-          <><Loader2 size={16} className="animate-spin" /> Sending OTP...</>
+        {busy ? (
+          <>
+            <Loader2 size={16} className="animate-spin" /> Checking...
+          </>
         ) : (
-          <>Send OTP <ArrowRight size={16} /></>
+          <>
+            Continue <ArrowRight size={16} />
+          </>
         )}
       </button>
 
       <p className="text-center text-xs text-slate-400">
-        Not approved yet?{" "}
+        Not registered yet?{" "}
         <a href="/" className="text-amber-600 font-bold underline underline-offset-2">
-          Go back home
+          Submit interest from home
         </a>
       </p>
     </div>
   );
 };
 
-// ── Phase 2: OTP + password ───────────────────────────────────────────────────
-const Phase2 = ({ mobileNumber, onBack }) => {
+const StatusCard = ({ icon: Icon, title, body, tone = "amber", onBack }) => {
+  const tones = {
+    amber: "bg-amber-100 text-amber-600",
+    red: "bg-red-100 text-red-600",
+    blue: "bg-blue-100 text-blue-600",
+    green: "bg-green-100 text-green-600",
+  };
+  return (
+    <div className="flex flex-col gap-5 text-center">
+      <div
+        className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto ${tones[tone]}`}
+      >
+        <Icon size={32} />
+      </div>
+      <h2 className="text-2xl font-black text-[#0F172A]">{title}</h2>
+      <p className="text-sm text-slate-500 max-w-sm mx-auto">{body}</p>
+      <button
+        type="button"
+        onClick={onBack}
+        className="w-full py-3.5 rounded-xl border-2 border-slate-200 font-black text-sm uppercase tracking-wider"
+      >
+        Back
+      </button>
+    </div>
+  );
+};
+
+const OtpPhase = ({ mobileNumber, onBack }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [form, setForm]           = useState({ otp: "", password: "", confirmPassword: "" });
-  const [errors, setErrors]       = useState({});
-  const [showPass, setShowPass]   = useState(false);
-  const [showConf, setShowConf]   = useState(false);
+  const [form, setForm] = useState({ otp: "", password: "", confirmPassword: "" });
+  const [errors, setErrors] = useState({});
+  const [showPass, setShowPass] = useState(false);
+  const [showConf, setShowConf] = useState(false);
   const [verifyOtp, { isLoading }] = useVerifyActivationOtpMutation();
+  const [sendOtp, { isLoading: resending }] = useSendActivationOtpMutation();
 
   const validate = () => {
     const errs = {};
     if (!form.otp.trim() || !/^\d{4,8}$/.test(form.otp.trim()))
-      errs.otp = "Enter the OTP received on your mobile";
+      errs.otp = "Enter the OTP received";
     if (!form.password || form.password.length < 6)
       errs.password = "Password must be at least 6 characters";
     if (form.password !== form.confirmPassword)
@@ -159,41 +282,64 @@ const Phase2 = ({ mobileNumber, onBack }) => {
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
   };
 
+  const handleResend = async () => {
+    try {
+      await sendOtp({ mobileNumber }).unwrap();
+      toast.info("OTP resent successfully.");
+    } catch (err) {
+      logError("sendActivationOtp.resend", err);
+      if (err?.data?.code === "WHOLESALER_DETAILS_INCOMPLETE") {
+        toast.error("Complete business details before requesting OTP.");
+        onBack();
+        return;
+      }
+      toast.error(err?.data?.message || "Could not resend OTP.");
+    }
+  };
+
   const handleVerify = async () => {
     const errs = validate();
-    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      return;
+    }
 
     try {
       const result = await verifyOtp({
         mobileNumber,
-        otp:      form.otp.trim(),
+        otp: form.otp.trim(),
         password: form.password,
       }).unwrap();
 
-      // Save authenticated session so navbar/app state reflects login immediately.
-      dispatch(setAuthenticatedSession({
-        user: result?.user ?? null,
-        accessToken: result?.accessToken ?? null,
-      }));
-      toast.success(`🎉 Welcome, ${result.user?.name ?? "Wholesaler"}! Account activated successfully.`, {
-        autoClose: 5000,
-      });
+      dispatch(
+        setAuthenticatedSession({
+          user: result?.user ?? null,
+          accessToken: result?.accessToken ?? null,
+        })
+      );
+      toast.success(
+        `Welcome, ${result.user?.name ?? "Wholesaler"}! Account activated successfully.`,
+        { autoClose: 5000 }
+      );
       navigate("/");
-
     } catch (err) {
       logError("verifyActivationOtp", err);
-
-      const status  = err?.status;
+      const status = err?.status;
       const message = err?.data?.message ?? "";
+      const code = err?.data?.code;
 
+      if (code === "WHOLESALER_DETAILS_INCOMPLETE") {
+        toast.error("Complete business details first.");
+        onBack();
+        return;
+      }
       if (status === 400) {
         if (message.toLowerCase().includes("expired")) {
-          setErrors({ otp: "OTP has expired. Go back and request a new one." });
-          toast.error("OTP expired. Please request a new one.");
+          setErrors({ otp: "OTP expired. Resend a new one." });
           return;
         }
         if (message.toLowerCase().includes("invalid")) {
-          setErrors({ otp: "Incorrect OTP. Please check and try again." });
+          setErrors({ otp: "Incorrect OTP. Please try again." });
           return;
         }
         setErrors({ otp: message || "Invalid input." });
@@ -201,15 +347,6 @@ const Phase2 = ({ mobileNumber, onBack }) => {
       }
       if (status === 429) {
         setErrors({ otp: "Too many wrong attempts. Request a new OTP." });
-        toast.error("Too many attempts. Please request a new OTP.");
-        return;
-      }
-      if (status === 404) {
-        toast.error("Account not found. Please contact support.");
-        return;
-      }
-      if (status === 409) {
-        toast.error(message || "A conflict occurred. Please contact support.");
         return;
       }
       toast.error(message || "Verification failed. Please try again.");
@@ -224,12 +361,11 @@ const Phase2 = ({ mobileNumber, onBack }) => {
         </div>
         <h2 className="text-2xl font-black text-[#0F172A]">Verify & Set Password</h2>
         <p className="text-sm text-slate-500 mt-2">
-          OTP sent to{" "}
+          OTP for{" "}
           <span className="font-black text-[#0F172A]">+91 {mobileNumber}</span>
         </p>
       </div>
 
-      {/* OTP */}
       <Field
         label="One-Time Password (OTP)"
         icon={KeyRound}
@@ -240,10 +376,9 @@ const Phase2 = ({ mobileNumber, onBack }) => {
         value={form.otp}
         onChange={(e) => handleChange("otp")(e.target.value.replace(/\D/g, ""))}
         error={errors.otp}
-        hint="Check your registered mobile number"
+        hint="Check your registered email / mobile"
       />
 
-      {/* Password */}
       <Field
         label="Create Password"
         icon={Lock}
@@ -263,7 +398,6 @@ const Phase2 = ({ mobileNumber, onBack }) => {
         }
       />
 
-      {/* Confirm Password */}
       <Field
         label="Confirm Password"
         icon={Lock}
@@ -283,28 +417,40 @@ const Phase2 = ({ mobileNumber, onBack }) => {
         }
       />
 
-      {/* Actions */}
+      <button
+        type="button"
+        onClick={handleResend}
+        disabled={resending || isLoading}
+        className="text-xs text-amber-600 font-bold underline underline-offset-2 self-start disabled:opacity-50"
+      >
+        {resending ? "Resending..." : "Resend OTP"}
+      </button>
+
       <div className="flex gap-3">
         <button
+          type="button"
           onClick={onBack}
           disabled={isLoading}
           className="px-6 py-4 rounded-xl border-2 border-slate-200 text-slate-600 font-black text-sm
-            hover:bg-slate-50 transition-all duration-200 uppercase tracking-wider
-            disabled:opacity-50 disabled:cursor-not-allowed"
+            hover:bg-slate-50 uppercase tracking-wider disabled:opacity-50"
         >
           Back
         </button>
         <button
+          type="button"
           onClick={handleVerify}
           disabled={isLoading}
           className="flex-1 flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600
-            text-[#0F172A] font-black py-4 rounded-xl transition-all duration-200 uppercase tracking-wider
-            disabled:opacity-70 disabled:cursor-not-allowed"
+            text-[#0F172A] font-black py-4 rounded-xl uppercase tracking-wider disabled:opacity-70"
         >
           {isLoading ? (
-            <><Loader2 size={16} className="animate-spin" /> Activating...</>
+            <>
+              <Loader2 size={16} className="animate-spin" /> Activating...
+            </>
           ) : (
-            <><CheckCircle2 size={16} /> Activate Account</>
+            <>
+              <CheckCircle2 size={16} /> Activate Account
+            </>
           )}
         </button>
       </div>
@@ -312,31 +458,132 @@ const Phase2 = ({ mobileNumber, onBack }) => {
   );
 };
 
-// ── Page shell ────────────────────────────────────────────────────────────────
 const ActivatePage = () => {
-  const [phase, setPhase]   = useState(1); // 1 | 2
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [stage, setStage] = useState("boot"); // boot | lookup | complete | otp | pending | rejected | activated
   const [mobile, setMobile] = useState("");
+  const [lookup] = useLazyGetWholesalerOnboardingStatusQuery();
+  const [sendOtp] = useSendActivationOtpMutation();
+  const bootedRef = useRef(false);
 
-  const handleOtpSent = (mobileNumber) => {
-    setMobile(mobileNumber);
-    setPhase(2);
-  };
+  const handleRoute = useCallback((routed) => {
+    setMobile(routed.mobile);
+    setStage(routed.stage);
+    // Keep deep-link mobile in URL for refresh; sync step for shareability.
+    const next = new URLSearchParams();
+    next.set("mobile", routed.mobile);
+    if (routed.stage === "complete") next.set("step", "complete");
+    if (routed.stage === "otp") next.set("step", "otp");
+    setSearchParams(next, { replace: true });
+  }, [setSearchParams]);
+
+  useEffect(() => {
+    if (bootedRef.current) return;
+    bootedRef.current = true;
+
+    const qMobile = normalizeMobile(searchParams.get("mobile"));
+    const qStep = String(searchParams.get("step") || "").toLowerCase();
+
+    if (!/^\d{10}$/.test(qMobile)) {
+      setStage("lookup");
+      return;
+    }
+
+    (async () => {
+      try {
+        const routed = await resolveActivateRoute({
+          mobileNumber: qMobile,
+          preferredStep: qStep === "otp" ? "otp" : "complete",
+          lookup,
+          sendOtp,
+          // Don't auto-send OTP when opening complete-details deep link.
+          autoSendOtp: qStep === "otp",
+        });
+        if (!routed.ok) {
+          setMobile(qMobile);
+          setStage("lookup");
+          toast.error(routed.error || "Could not open setup link.");
+          return;
+        }
+        if (routed.otpSent) {
+          toast.info("OTP sent to your registered contact!");
+        } else if (routed.otpWarning) {
+          toast.warning(routed.otpWarning);
+        }
+        handleRoute(routed);
+      } catch (err) {
+        logError("activateDeepLink", err);
+        setMobile(qMobile);
+        setStage("lookup");
+        toast.error(err?.data?.message || "Could not open setup link.");
+      }
+    })();
+  }, [searchParams, lookup, sendOtp, handleRoute]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-amber-50/30 flex items-center justify-center px-4 py-16">
       <div className="w-full max-w-md">
-        {/* Card */}
         <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8">
-          {phase === 1 && <Phase1 onSuccess={handleOtpSent} />}
-          {phase === 2 && (
-            <Phase2
+          {stage === "boot" && (
+            <div className="flex flex-col items-center gap-3 py-10 text-slate-500">
+              <Loader2 size={28} className="animate-spin text-amber-500" />
+              <p className="text-sm font-medium">Opening your setup…</p>
+            </div>
+          )}
+
+          {stage === "lookup" && (
+            <LookupPhase onRoute={handleRoute} initialMobile={mobile} />
+          )}
+
+          {stage === "complete" && (
+            <CompleteDetailsForm
               mobileNumber={mobile}
-              onBack={() => setPhase(1)}
+              onBack={() => setStage("lookup")}
+              onOtpReady={() =>
+                handleRoute({ stage: "otp", mobile, otpSent: true })
+              }
+            />
+          )}
+
+          {stage === "otp" && (
+            <OtpPhase
+              mobileNumber={mobile}
+              onBack={() => setStage("lookup")}
+            />
+          )}
+
+          {stage === "pending" && (
+            <StatusCard
+              icon={Clock}
+              tone="amber"
+              title="Awaiting Approval"
+              body="Your interest is submitted and pending owner review. We'll notify you on WhatsApp after a decision."
+              onBack={() => setStage("lookup")}
+            />
+          )}
+
+          {stage === "rejected" && (
+            <StatusCard
+              icon={XCircle}
+              tone="red"
+              title="Request Not Approved"
+              body="Unfortunately this wholesaler request was not approved. Contact support if you need help."
+              onBack={() => setStage("lookup")}
+            />
+          )}
+
+          {stage === "activated" && (
+            <StatusCard
+              icon={CheckCircle2}
+              tone="green"
+              title="Already Active"
+              body="This account is already activated. Please log in with your email/mobile and password."
+              onBack={() => navigate("/")}
             />
           )}
         </div>
 
-        {/* Footer note */}
         <p className="text-center text-xs text-slate-400 mt-6">
           Offer Wale Baba — Wholesale Portal &nbsp;|&nbsp;
           <a href="/" className="text-amber-600 font-bold underline underline-offset-2">

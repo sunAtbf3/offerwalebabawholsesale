@@ -16,9 +16,25 @@ import {
   useGetAdminOrdersSummaryQuery,
   useGetAdminOrdersListQuery,
   useGetAdminOrderDetailQuery,
+  // ADDED: tracking + bulk mutation hooks (were missing in wholesale)
+  useGetAdminOrderTrackingQuery,
+  useAdminBulkApprovalCancelMutation,
+  useAdminBulkApprovalConfirmMutation,
+  useAdminBulkFulfillmentShipNowMutation,
+  useAdminBulkFulfillmentSchedulePickupMutation,
 } from "../../ADMIN_REDUX_MANAGEMENT/order_management/adminOrdersApi";
+// ADDED: isPostConfirmOrderStatus (was missing in wholesale)
+import { isPostConfirmOrderStatus } from "../../ADMIN_REDUX_MANAGEMENT/order_management/adminOrdersSlice";
+// ADDED: eligibility helpers (were missing in wholesale)
+import {
+  canAdminBulkCancelOrderRow,
+  canAdminBulkConfirmOrderRow,
+} from "../../../../utils/adminOrderFulfillmentEligibility";
 import AdminOrderDetailView from "./AdminOrderDetailView";
+// ADDED: wholesaleAxios for bulk document downloads (replaces axiosInstance from ecomm)
+import wholesaleAxios from "../../../../SERVICES/Wholesaleaxios";
 
+// KEPT: wholesale uses "Others" not "Cancelled"
 const TAB_ORDER = [
   "All",
   "Pending",
@@ -26,7 +42,7 @@ const TAB_ORDER = [
   "Processing",
   "In transit",
   "Delivered",
-  "Others",
+  "Cancelled",
 ];
 
 function formatInr(amount) {
@@ -58,6 +74,52 @@ function toLocalYmd(d) {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+// ADDED: helper for default pickup date (was missing in wholesale)
+function addLocalDaysYmd(days) {
+  const t = new Date();
+  t.setDate(t.getDate() + days);
+  return toLocalYmd(t);
+}
+
+// ADDED: mutation error string helper (was missing in wholesale)
+function mutationErrorToString(err) {
+  if (!err) return "Request failed.";
+  const d = err.data;
+  if (typeof d === "object" && d && d.message) return String(d.message);
+  if (typeof d === "string") return d;
+  return err.message || "Request failed.";
+}
+
+// ADDED: blob error reader for ZIP downloads (was missing in wholesale)
+async function messageFromMaybeErrorBlob(blob) {
+  if (!(blob instanceof Blob)) return "Request failed.";
+  try {
+    const text = await blob.text();
+    const j = JSON.parse(text);
+    if (j && typeof j === "object" && j.message) return String(j.message);
+    if (j && typeof j === "object" && j.code) return String(j.code);
+    return text.slice(0, 500) || "Request failed.";
+  } catch {
+    return "Request failed.";
+  }
+}
+
+// ADDED: blob file downloader (was missing in wholesale)
+function downloadBlobFile(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 function ApiErrorBanner({ error }) {
@@ -110,14 +172,145 @@ const OrderTab = () => {
     skip: !selectedOrderId,
   });
 
+  // ADDED: tracking query (was missing in wholesale)
+  const {
+    data: trackingRes,
+    isLoading: trackingLoading,
+    isFetching: trackingFetching,
+    error: trackingError,
+    isError: trackingIsError,
+    refetch: refetchTracking,
+  } = useGetAdminOrderTrackingQuery(selectedOrderId, {
+    skip: !selectedOrderId,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
+    pollingInterval: selectedOrderId ? 30000 : 0,
+  });
+
   const summary = summaryRes?.data;
   const listPayload = listRes?.data;
   const orders = listPayload?.orders ?? [];
   const pagination = listPayload?.pagination;
   const detailOrder = detailRes?.order;
+  // ADDED: fulfillmentPaymentGate from detail response (was missing in wholesale)
+  const fulfillmentPaymentGate = detailRes?.fulfillmentPaymentGate;
+  // ADDED: tracking data (was missing in wholesale)
+  const tracking = trackingRes?.tracking || null;
 
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [showBulkMenu, setShowBulkMenu] = useState(false);
+  // ADDED: bulk action state (were missing in wholesale)
+  const [bulkPickupPanelOpen, setBulkPickupPanelOpen] = useState(false);
+  const [bulkPickupDate, setBulkPickupDate] = useState("");
+  const [bulkInlineError, setBulkInlineError] = useState(null);
+  const [bulkFeedback, setBulkFeedback] = useState(null);
+
+  // ADDED: bulk mutations (were missing in wholesale)
+  const [bulkConfirm, bulkConfirmState] = useAdminBulkApprovalConfirmMutation();
+  const [bulkCancel, bulkCancelState] = useAdminBulkApprovalCancelMutation();
+  const [bulkShipNow, bulkShipNowState] = useAdminBulkFulfillmentShipNowMutation();
+  const [bulkSchedulePickup, bulkSchedulePickupState] = useAdminBulkFulfillmentSchedulePickupMutation();
+  const bulkBusy =
+    bulkConfirmState.isLoading ||
+    bulkCancelState.isLoading ||
+    bulkShipNowState.isLoading ||
+    bulkSchedulePickupState.isLoading;
+  const [bulkZipBusy, setBulkZipBusy] = useState(false);
+  const [bulkInvoiceAwbModalOpen, setBulkInvoiceAwbModalOpen] = useState(false);
+  const bulkActionsBusy = bulkBusy || bulkZipBusy;
+
+  // ADDED: orderById map for eligibility checks (was missing in wholesale)
+  const orderById = useMemo(() => new Map(orders.map((o) => [o.orderId, o])), [orders]);
+
+  // ADDED: all eligibility memos (were missing in wholesale)
+  const eligibleBulkInvoiceIds = useMemo(
+    () =>
+      selectedOrders.filter((id) => {
+        const o = orderById.get(id);
+        if (!o) return false;
+        return isPostConfirmOrderStatus(o.orderStatus);
+      }),
+    [selectedOrders, orderById]
+  );
+
+  const eligibleBulkLabelIds = useMemo(
+    () =>
+      selectedOrders.filter((id) => {
+        const o = orderById.get(id);
+        if (!o) return false;
+        const st = String(o.orderStatus || "").toLowerCase();
+        if (st === "cancelled" || st === "payment_failed") return false;
+        return Boolean(o.hasShipmentId && o.hasAwb);
+      }),
+    [selectedOrders, orderById]
+  );
+
+  const invoiceSelectionMissingAwb = useMemo(
+    () => eligibleBulkInvoiceIds.filter((id) => !orderById.get(id)?.hasAwb).length,
+    [eligibleBulkInvoiceIds, orderById]
+  );
+
+  const showBulkTaxInvoicesZip = ui.activeTabLabel === "Confirmed";
+  const showBulkShippingLabelsZip =
+    ui.activeTabLabel === "All" ||
+    ui.activeTabLabel === "Confirmed" ||
+    ui.activeTabLabel === "Processing" ||
+    ui.activeTabLabel === "In transit";
+
+  const eligibleBulkPendingIds = useMemo(
+    () =>
+      selectedOrders.filter((id) => {
+        const o = orderById.get(id);
+        return canAdminBulkCancelOrderRow(o);
+      }),
+    [selectedOrders, orderById]
+  );
+
+  const eligibleBulkConfirmIds = useMemo(
+    () =>
+      selectedOrders.filter((id) => {
+        const o = orderById.get(id);
+        return canAdminBulkConfirmOrderRow(o);
+      }),
+    [selectedOrders, orderById]
+  );
+
+  const showBulkPendingActions =
+    ui.activeTabLabel === "Pending" || ui.activeTabLabel === "All";
+
+  const eligibleBulkShipIds = useMemo(
+    () =>
+      selectedOrders.filter((id) => {
+        const o = orderById.get(id);
+        if (!o) return false;
+        const st = String(o.orderStatus || "").toLowerCase();
+        return st === "confirmed" && !o.hasAwb;
+      }),
+    [selectedOrders, orderById]
+  );
+
+  const eligibleBulkPickupIds = useMemo(
+    () =>
+      selectedOrders.filter((id) => {
+        const o = orderById.get(id);
+        if (!o) return false;
+        const st = String(o.orderStatus || "").toLowerCase();
+        return (st === "confirmed" || st === "processing") && o.hasAwb && !o.pickupScheduled;
+      }),
+    [selectedOrders, orderById]
+  );
+
+  // ADDED: reset bulk state on filter/page change (was missing in wholesale)
+  useEffect(() => {
+    setSelectedOrders([]);
+    setShowBulkMenu(false);
+    setBulkPickupPanelOpen(false);
+    setBulkInlineError(null);
+    setBulkFeedback(null);
+    setBulkInvoiceAwbModalOpen(false);
+    setBulkZipBusy(false);
+  }, [ui.page, ui.activeTabLabel, ui.search, ui.datePreset, ui.customDateFrom, ui.customDateTo]);
+
   /** Draft dates for Custom range — committed via Apply only */
   const [draftDateFrom, setDraftDateFrom] = useState("");
   const [draftDateTo, setDraftDateTo] = useState("");
@@ -194,6 +387,213 @@ const OrderTab = () => {
     document.body.removeChild(link);
   }, [orders]);
 
+  // ADDED: all bulk action handlers (were missing in wholesale)
+  const handleBulkCancel = useCallback(async () => {
+    setBulkInlineError(null);
+    setBulkFeedback(null);
+    if (!eligibleBulkPendingIds.length) {
+      setBulkInlineError("No eligible orders. Cancel applies to Pending orders only.");
+      return;
+    }
+    if (
+      !window.confirm(
+        `Cancel ${eligibleBulkPendingIds.length} pending order(s)? Stock will be restored for each.`
+      )
+    ) {
+      return;
+    }
+    try {
+      const data = await bulkCancel({ orderIds: eligibleBulkPendingIds }).unwrap();
+      setBulkFeedback({
+        kind: "cancel",
+        summary: data.summary,
+        results: data.results || [],
+        extraSkipped: Math.max(0, selectedOrders.length - eligibleBulkPendingIds.length),
+      });
+      setShowBulkMenu(false);
+    } catch (err) {
+      setBulkInlineError(mutationErrorToString(err));
+    }
+  }, [bulkCancel, eligibleBulkPendingIds, selectedOrders.length]);
+
+  const handleBulkConfirm = useCallback(async () => {
+    setBulkInlineError(null);
+    setBulkFeedback(null);
+    if (!eligibleBulkConfirmIds.length) {
+      setBulkInlineError(
+        "No eligible orders. Confirm applies to Pending orders with payment ready (COD or paid online)."
+      );
+      return;
+    }
+    try {
+      const data = await bulkConfirm({ orderIds: eligibleBulkConfirmIds }).unwrap();
+      setBulkFeedback({
+        kind: "confirm",
+        summary: data.summary,
+        results: data.results || [],
+        extraSkipped: Math.max(0, selectedOrders.length - eligibleBulkConfirmIds.length),
+      });
+      setShowBulkMenu(false);
+    } catch (err) {
+      setBulkInlineError(mutationErrorToString(err));
+    }
+  }, [bulkConfirm, eligibleBulkConfirmIds, selectedOrders.length]);
+
+  const handleBulkShipNow = useCallback(async () => {
+    setBulkInlineError(null);
+    setBulkFeedback(null);
+    if (!eligibleBulkShipIds.length) {
+      setBulkInlineError(
+        "No eligible orders in the selection. Bulk ship needs Confirmed orders without an AWB yet."
+      );
+      return;
+    }
+    try {
+      const data = await bulkShipNow({ orderIds: eligibleBulkShipIds }).unwrap();
+      setBulkFeedback({
+        kind: "ship",
+        summary: data.summary,
+        results: data.results || [],
+        extraSkipped: Math.max(0, selectedOrders.length - eligibleBulkShipIds.length),
+      });
+      setShowBulkMenu(false);
+    } catch (err) {
+      setBulkInlineError(mutationErrorToString(err));
+    }
+  }, [bulkShipNow, eligibleBulkShipIds, selectedOrders.length]);
+
+  const handleBulkSchedulePickupRun = useCallback(async () => {
+    setBulkInlineError(null);
+    setBulkFeedback(null);
+    const ymd = String(bulkPickupDate || "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
+      setBulkInlineError("Choose a valid pickup date (YYYY-MM-DD).");
+      return;
+    }
+    if (!eligibleBulkPickupIds.length) {
+      setBulkInlineError(
+        "No eligible orders. Pickup scheduling needs an AWB and no pickup date set yet (Confirmed or Processing)."
+      );
+      return;
+    }
+    try {
+      const data = await bulkSchedulePickup({
+        orderIds: eligibleBulkPickupIds,
+        pickupDate: ymd,
+      }).unwrap();
+      setBulkFeedback({
+        kind: "pickup",
+        summary: data.summary,
+        results: data.results || [],
+        extraSkipped: Math.max(0, selectedOrders.length - eligibleBulkPickupIds.length),
+      });
+      setShowBulkMenu(false);
+      setBulkPickupPanelOpen(false);
+    } catch (err) {
+      setBulkInlineError(mutationErrorToString(err));
+    }
+  }, [bulkPickupDate, bulkSchedulePickup, eligibleBulkPickupIds, selectedOrders.length]);
+
+  const openBulkPickupPanel = useCallback(() => {
+    setBulkInlineError(null);
+    setBulkPickupDate((d) => d || addLocalDaysYmd(1));
+    setBulkPickupPanelOpen(true);
+    setShowBulkMenu(false);
+  }, []);
+
+  // ADDED: bulk ZIP download handlers using wholesaleAxios (were missing in wholesale)
+  const runBulkTaxInvoicesZipDownload = useCallback(async () => {
+    if (!eligibleBulkInvoiceIds.length) {
+      setBulkInlineError(
+        "No eligible orders for bulk tax invoices. Cancelled and payment-failed rows are excluded."
+      );
+      return;
+    }
+    setBulkInlineError(null);
+    setBulkInvoiceAwbModalOpen(false);
+    setBulkZipBusy(true);
+    try {
+      const res = await wholesaleAxios.post(
+        "/orders/admin/items/bulk-documents/tax-invoices-zip",
+        { orderIds: eligibleBulkInvoiceIds, concurrency: 4 },
+        { responseType: "blob", timeout: 180000 }
+      );
+      const blob = res.data;
+      const ct = String(res.headers["content-type"] || "");
+      if (ct.includes("application/json")) {
+        const msg = await messageFromMaybeErrorBlob(blob);
+        throw new Error(msg);
+      }
+      if (!(blob instanceof Blob) || blob.size === 0) {
+        throw new Error("Unexpected empty response from server.");
+      }
+      downloadBlobFile(blob, `tax-invoices-bulk-${Date.now()}.zip`);
+      setShowBulkMenu(false);
+    } catch (e) {
+      const payload = e.response?.data;
+      if (payload instanceof Blob) {
+        setBulkInlineError(await messageFromMaybeErrorBlob(payload));
+      } else {
+        setBulkInlineError(e?.message || mutationErrorToString(e));
+      }
+    } finally {
+      setBulkZipBusy(false);
+    }
+  }, [eligibleBulkInvoiceIds]);
+
+  const handleBulkTaxInvoicesZipRequest = useCallback(() => {
+    setBulkInlineError(null);
+    if (!eligibleBulkInvoiceIds.length) {
+      setBulkInlineError(
+        "No eligible orders for bulk tax invoices. Cancelled and payment-failed rows are excluded."
+      );
+      return;
+    }
+    if (invoiceSelectionMissingAwb > 0) {
+      setBulkInvoiceAwbModalOpen(true);
+      return;
+    }
+    void runBulkTaxInvoicesZipDownload();
+  }, [eligibleBulkInvoiceIds, invoiceSelectionMissingAwb, runBulkTaxInvoicesZipDownload]);
+
+  const handleBulkShippingLabelsZip = useCallback(async () => {
+    if (!eligibleBulkLabelIds.length) {
+      setBulkInlineError(
+        "No eligible orders for label ZIP. Each row needs an AWB (use Ship first) and a shipment id. Cancelled / payment-failed rows are excluded."
+      );
+      return;
+    }
+    setBulkInlineError(null);
+    setBulkZipBusy(true);
+    try {
+      const res = await wholesaleAxios.post(
+        "/orders/admin/items/bulk-documents/shipping-labels-zip",
+        { orderIds: eligibleBulkLabelIds, concurrency: 4 },
+        { responseType: "blob", timeout: 180000 }
+      );
+      const blob = res.data;
+      const ct = String(res.headers["content-type"] || "");
+      if (ct.includes("application/json")) {
+        const msg = await messageFromMaybeErrorBlob(blob);
+        throw new Error(msg);
+      }
+      if (!(blob instanceof Blob) || blob.size === 0) {
+        throw new Error("Unexpected empty response from server.");
+      }
+      downloadBlobFile(blob, `shipping-labels-bulk-${Date.now()}.zip`);
+      setShowBulkMenu(false);
+    } catch (e) {
+      const payload = e.response?.data;
+      if (payload instanceof Blob) {
+        setBulkInlineError(await messageFromMaybeErrorBlob(payload));
+      } else {
+        setBulkInlineError(e?.message || mutationErrorToString(e));
+      }
+    } finally {
+      setBulkZipBusy(false);
+    }
+  }, [eligibleBulkLabelIds]);
+
   const toggleSelectAll = () => {
     const ids = orders.map((o) => o.orderId);
     if (selectedOrders.length === ids.length) setSelectedOrders([]);
@@ -206,12 +606,19 @@ const OrderTab = () => {
     );
   };
 
+  // UPDATED: now passes all required props to AdminOrderDetailView (was missing orderId + fulfillment props)
   if (selectedOrderId) {
     return (
       <AdminOrderDetailView
+        orderId={selectedOrderId}
         order={detailOrder}
+        fulfillmentPaymentGate={fulfillmentPaymentGate}
         loading={detailLoading}
         error={detailIsError ? detailError : null}
+        tracking={tracking}
+        trackingLoading={trackingLoading || trackingFetching}
+        trackingError={trackingIsError ? trackingError : null}
+        onRefreshTracking={() => refetchTracking()}
         onBack={() => setSelectedOrderId(null)}
       />
     );
@@ -378,29 +785,240 @@ const OrderTab = () => {
           </div>
         </div>
 
+        {/* UPDATED: full bulk action bar replacing the dummy placeholder */}
         {selectedOrders.length > 0 && (
-          <div className="flex items-center gap-4 bg-blue-50 p-3 border-b border-blue-100">
-            <span className="text-xs text-blue-700">{selectedOrders.length} selected</span>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowBulkMenu(!showBulkMenu)}
-                className="bg-white border border-blue-200 text-blue-700 text-[10px] font-black px-3 py-1 rounded uppercase flex items-center gap-2"
-              >
-                Bulk actions ▾
-              </button>
-              {showBulkMenu && (
-                <div className="absolute left-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1">
+          <div className="flex flex-col gap-2 bg-blue-50 p-3 border-b border-blue-100">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBulkInlineError(null);
+                    setShowBulkMenu(!showBulkMenu);
+                  }}
+                  disabled={bulkActionsBusy}
+                  className="bg-white border border-blue-200 text-blue-700 text-[10px] font-black px-3 py-2 rounded-lg uppercase flex items-center gap-2 disabled:opacity-50 shadow-sm"
+                >
+                  Bulk actions ▾
+                </button>
+                {showBulkMenu && (
+                  <div className="absolute left-0 top-full mt-1 min-w-[260px] bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1">
+                    {showBulkPendingActions ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleBulkConfirm}
+                          disabled={bulkActionsBusy || !eligibleBulkConfirmIds.length}
+                          title={
+                            !eligibleBulkConfirmIds.length
+                              ? "Select Pending orders where payment is ready (COD, or online paid / advance rules met)."
+                              : undefined
+                          }
+                          className="w-full text-left px-4 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 disabled:text-slate-400 disabled:cursor-not-allowed"
+                        >
+                          Confirm order(s)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleBulkCancel}
+                          disabled={bulkActionsBusy || !eligibleBulkPendingIds.length}
+                          title={
+                            !eligibleBulkPendingIds.length
+                              ? "Select Pending orders to cancel."
+                              : undefined
+                          }
+                          className="w-full text-left px-4 py-2 text-xs font-semibold text-red-800 hover:bg-red-50 disabled:text-slate-400 disabled:cursor-not-allowed"
+                        >
+                          Cancel order(s)
+                        </button>
+                      </>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={handleBulkShipNow}
+                      disabled={bulkActionsBusy || !eligibleBulkShipIds.length}
+                      title={
+                        !eligibleBulkShipIds.length
+                          ? "Needs order status Confirmed and no AWB yet."
+                          : undefined
+                      }
+                      className="w-full text-left px-4 py-2 text-xs text-slate-800 hover:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed border-t border-slate-100"
+                    >
+                      Ship now (Shiprocket)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={openBulkPickupPanel}
+                      disabled={bulkActionsBusy || !eligibleBulkPickupIds.length}
+                      title={
+                        !eligibleBulkPickupIds.length
+                          ? "Needs AWB assigned, pickup not set yet, and Confirmed or Processing."
+                          : undefined
+                      }
+                      className="w-full text-left px-4 py-2 text-xs text-slate-800 hover:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
+                    >
+                      Schedule pickup…
+                    </button>
+                    {showBulkTaxInvoicesZip && (
+                      <button
+                        type="button"
+                        onClick={handleBulkTaxInvoicesZipRequest}
+                        disabled={bulkActionsBusy || !eligibleBulkInvoiceIds.length}
+                        title={
+                          !eligibleBulkInvoiceIds.length
+                            ? "Needs Confirmed (or later) orders in the selection."
+                            : undefined
+                        }
+                        className="w-full text-left px-4 py-2 text-xs text-slate-800 hover:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed border-t border-slate-100"
+                      >
+                        Bulk tax invoices (ZIP)
+                      </button>
+                    )}
+                    {showBulkShippingLabelsZip && (
+                      <button
+                        type="button"
+                        onClick={handleBulkShippingLabelsZip}
+                        disabled={bulkActionsBusy || !eligibleBulkLabelIds.length}
+                        title={
+                          !eligibleBulkLabelIds.length
+                            ? "Needs AWB assigned (Ship now) plus a shipment id."
+                            : undefined
+                        }
+                        className="w-full text-left px-4 py-2 text-xs text-slate-800 hover:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed border-t border-slate-100"
+                      >
+                        Bulk shipping labels (ZIP)
+                      </button>
+                    )}
+                    {!eligibleBulkShipIds.length && !eligibleBulkPickupIds.length && (
+                      <p className="px-4 py-2 text-[11px] text-slate-500 border-t border-slate-100">
+                        Ship / pickup do not apply to these rows right now.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0 text-[11px] leading-snug text-slate-700">
+                <p>
+                  <span className="font-semibold text-slate-800">{selectedOrders.length}</span>{" "}
+                  {selectedOrders.length === 1 ? "order selected" : "orders selected"}. Tap{" "}
+                  <span className="font-semibold">Bulk actions</span>, then pick an item from the menu.
+                </p>
+                <p className="text-slate-600 mt-0.5">
+                  {showBulkPendingActions ? (
+                    <>
+                      Confirm (payment ready):{" "}
+                      <span className="font-semibold text-slate-700">{eligibleBulkConfirmIds.length}</span>
+                      {" · "}
+                      Cancel (pending):{" "}
+                      <span className="font-semibold text-slate-700">{eligibleBulkPendingIds.length}</span>
+                      {" · "}
+                    </>
+                  ) : null}
+                  Ready for ship: <span className="font-semibold text-slate-700">{eligibleBulkShipIds.length}</span>
+                  {" · "}
+                  Ready for pickup:{" "}
+                  <span className="font-semibold text-slate-700">{eligibleBulkPickupIds.length}</span>
+                  {showBulkTaxInvoicesZip && (
+                    <>
+                      {" · "}
+                      Tax invoice (ZIP):{" "}
+                      <span className="font-semibold text-slate-700">{eligibleBulkInvoiceIds.length}</span>
+                    </>
+                  )}
+                  {showBulkShippingLabelsZip && (
+                    <>
+                      {" · "}
+                      Shipping label (ZIP), needs AWB:{" "}
+                      <span className="font-semibold text-slate-700">{eligibleBulkLabelIds.length}</span>
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {bulkInlineError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800" role="alert">
+                {bulkInlineError}
+              </div>
+            )}
+
+            {bulkFeedback && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900 space-y-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span>
+                    {bulkFeedback.kind === "confirm"
+                      ? "Bulk confirm"
+                      : bulkFeedback.kind === "cancel"
+                        ? "Bulk cancel"
+                        : bulkFeedback.kind === "ship"
+                          ? "Bulk ship"
+                          : "Bulk pickup"}{" "}
+                    finished:{" "}
+                    <strong>{bulkFeedback.summary?.completed ?? 0}</strong> completed,{" "}
+                    <strong>{bulkFeedback.summary?.skipped ?? 0}</strong> skipped,{" "}
+                    <strong>{bulkFeedback.summary?.failed ?? 0}</strong> failed (of{" "}
+                    {bulkFeedback.summary?.total ?? 0}).
+                    {bulkFeedback.extraSkipped > 0
+                      ? ` ${bulkFeedback.extraSkipped} selected row(s) were not sent (ineligible).`
+                      : ""}
+                  </span>
                   <button
                     type="button"
-                    className="w-full text-left px-4 py-2 text-xs text-slate-400 cursor-not-allowed"
-                    disabled
+                    className="text-[10px] font-semibold text-emerald-800 underline"
+                    onClick={() => setBulkFeedback(null)}
                   >
-                    Mark as Ready (API soon)
+                    Dismiss
                   </button>
                 </div>
-              )}
-            </div>
+                {Array.isArray(bulkFeedback.results) &&
+                  bulkFeedback.results.some((r) => r && !r.success && !r.skipped) && (
+                    <details className="mt-1">
+                      <summary className="cursor-pointer text-[11px] font-semibold text-emerald-900">
+                        View failed rows
+                      </summary>
+                      <ul className="mt-2 max-h-40 overflow-y-auto space-y-1 text-[11px] text-slate-700 list-disc pl-4">
+                        {bulkFeedback.results
+                          .filter((r) => r && !r.success && !r.skipped)
+                          .map((r) => (
+                            <li key={r.orderId}>
+                              <span className="font-mono">{r.orderId}</span>: {r.message || r.code || "Error"}
+                            </li>
+                          ))}
+                      </ul>
+                    </details>
+                  )}
+              </div>
+            )}
+
+            {bulkPickupPanelOpen && (
+              <div className="flex flex-wrap items-end gap-3 rounded-lg border border-blue-200 bg-white/80 p-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-bold uppercase text-slate-500">Pickup date</label>
+                  <input
+                    type="date"
+                    min={toLocalYmd(new Date())}
+                    value={bulkPickupDate}
+                    onChange={(e) => setBulkPickupDate(e.target.value)}
+                    className="bg-white border border-slate-200 text-xs px-2 py-1.5 rounded-lg"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleBulkSchedulePickupRun}
+                  disabled={bulkActionsBusy || !eligibleBulkPickupIds.length || !bulkPickupDate}
+                  className="px-3 py-1.5 text-xs font-semibold text-white bg-slate-800 rounded-lg hover:bg-slate-900 disabled:opacity-50"
+                >
+                  Schedule pickup ({eligibleBulkPickupIds.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBulkPickupPanelOpen(false)}
+                  className="px-3 py-1.5 text-xs text-slate-600 hover:underline"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -499,6 +1117,47 @@ const OrderTab = () => {
           <p className="p-8 text-center text-sm text-slate-500">No orders in this range / filter.</p>
         )}
       </div>
+
+      {/* ADDED: AWB warning modal for bulk invoice ZIP (was missing in wholesale) */}
+      {bulkInvoiceAwbModalOpen && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="bulk-invoice-awb-title"
+        >
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-5 border border-slate-200">
+            <h2 id="bulk-invoice-awb-title" className="text-sm font-bold text-slate-900">
+              Some selected orders have no AWB yet
+            </h2>
+            <p className="mt-2 text-xs text-slate-600 leading-relaxed">
+              The invoice can still be generated; the AWB / courier block will stay empty until tracking exists. Choose{" "}
+              <strong>Yes</strong> to download the ZIP for all eligible selected orders anyway, or{" "}
+              <strong>No</strong> to cancel and run <strong>Ship now</strong> first where you need AWBs filled in.
+            </p>
+            <p className="mt-2 text-[11px] text-slate-500">
+              {invoiceSelectionMissingAwb} of {eligibleBulkInvoiceIds.length} invoice-eligible selected order(s) are
+              missing AWB.
+            </p>
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+                onClick={() => setBulkInvoiceAwbModalOpen(false)}
+              >
+                No, cancel
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1.5 text-xs rounded-lg bg-slate-800 text-white hover:bg-slate-900"
+                onClick={() => void runBulkTaxInvoicesZipDownload()}
+              >
+                Yes, download ZIP
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

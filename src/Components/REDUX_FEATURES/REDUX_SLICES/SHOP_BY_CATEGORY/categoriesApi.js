@@ -1,5 +1,5 @@
 import { createApi } from "@reduxjs/toolkit/query/react"; // ← /react is required for hooks
-import wholesaleAxios from "../../../../SERVICES/wholesaleAxios";
+import wholesaleAxios from "../../../../SERVICES/Wholesaleaxios";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Custom baseQuery using wholesaleAxios so every call gets:
