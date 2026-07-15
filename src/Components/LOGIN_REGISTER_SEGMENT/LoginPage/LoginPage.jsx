@@ -174,9 +174,9 @@ const LoginPage = ({ onLoginSuccess }) => {
       {/* Activate account hint */}
       <div className="text-center p-3 bg-[#478B8D]/15 border border-[#478B8D]/15 rounded-xl">
         <p className="text-xs text-[#478B8D] font-medium">
-          Already approved?{" "}
+          Approved? Complete details &amp; activate OTP{" "}
           <a href="/activate" className="font-black underline underline-offset-2">
-            Activate your account here
+            here
           </a>
         </p>
       </div>
