@@ -664,7 +664,7 @@ const UserOrders = () => {
 
   // ── Order list ───────────────────────────────────────────────────────────
   return (
-    <div className="space-y-8 animate-fadeIn font-['satoshi'] font-semibold">
+    <div className="space-y-8 animate-fadeIn font-semibold">
       <header>
         <h1 className="text-xl md:text-2xl lg:text-3xl font-black text-gray-900 tracking-tight">Purchase History</h1>
         <p className="text-gray-500 font-bold text-sm uppercase tracking-widest mt-1">

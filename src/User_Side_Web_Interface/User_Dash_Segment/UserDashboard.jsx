@@ -174,21 +174,7 @@ const UserDashboard = () => {
           {user?.name || "Guest User"}
         </h2>
 
-        <p
-          className="
-            text-[9px] sm:text-[10px]
-            text-gray-400
-            font-black
-            uppercase
-            tracking-[2px]
-            mt-1
-            truncate
-          "
-        >
-          {user?.role === "admin"
-            ? "Administrator"
-            : "Premium Member"}
-        </p>
+        
       </div>
     </div>
 

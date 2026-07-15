@@ -15,21 +15,9 @@ import {
 } from "../../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerSlice";
 import { useSubmitWholesalerRequestMutation } from "../../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerApi";
 import { logError } from "../../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerApi";
+import { useGetAllCategoriesQuery } from "../../REDUX_FEATURES/REDUX_SLICES/SHOP_BY_CATEGORY/categoriesApi";
 
-// ── Product categories matching your backend expectations ───────────────────
-const CATEGORIES = [
-  "Home & Kitchen",
-  "Smart Life Gadgets",
-  "Baby Items",
-  "Stationary",
-  "Cleaning & Housekeeping Supplies",
-  "Sports & Fitness",
-  "Tours & Travels",
-  "Fashion World",
-  "Gifts",
-  "Mix Items",
-  "Car Accessories",
-];
+
 
 const validate = (data) => {
   const errors = {};
@@ -128,6 +116,7 @@ const Step3_BusinessInfo = () => {
   const [submitRequest, { isLoading }] = useSubmitWholesalerRequestMutation();
   const [errors, setErrors]   = useState({});
   const [touched, setTouched] = useState({});
+  const { data: apiCategories = [] } = useGetAllCategoriesQuery();
 
   const handleChange = (field) => (value) => {
     dispatch(updateFormData({ [field]: value }));
@@ -274,8 +263,8 @@ const Step3_BusinessInfo = () => {
               }`}
           >
             <option value="">Select a category</option>
-            {CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>{cat}</option>
+            {apiCategories.map((cat) => (
+              <option key={cat._id || cat.name} value={cat.name}>{cat.name}</option>
             ))}
           </select>
         </div>

@@ -19,7 +19,7 @@ import { useEffect, useRef, useCallback } from 'react';
  *   const { ref } = useInViewFetch(() => dispatch(fetchSomething()), { disabled: alreadyLoaded });
  *   <div ref={ref} />
  */
-const useInViewFetch = (onVisible, { rootMargin = '300px', threshold = 0, disabled = false } = {}) => {
+const useInViewFetch = (onVisible, { rootMargin = '500px', threshold = 0, disabled = false } = {}) => {
   const ref     = useRef(null);
   const hasFired = useRef(false);
 

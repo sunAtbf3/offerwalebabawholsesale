@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 // Importing specific SVGs as components for the social links
 // import { ReactComponent as FacebookIcon } from "../../assets/facebook.svg";
 
@@ -7,6 +7,7 @@ import React from 'react';
 // import { ReactComponent as TelegramIcon } from "../../assets/telegram.svg";
 import logo from "../../assets/logo2.svg";
 import { Link } from 'react-router-dom';
+import { useGetAllCategoriesQuery } from '../REDUX_FEATURES/REDUX_SLICES/SHOP_BY_CATEGORY/categoriesApi';
 
 const FacebookIcon = (
   <svg
@@ -104,29 +105,8 @@ const TelegramIcon = (
   </svg>
 );
 
-// Streamlined B2B link data
-const footerLinks = [
-  {
-    title: "Quick links",
-    items: [
-      { label: "Home & Kitchen", path: "/category/home-and-kitchen" },
-      { label: "Smart Life Gadgets", path: "/category/smart-life-gadgets" },
-      { label: "Baby Items", path: "/category/baby-items" },
-      { label: "Stationary", path: "/category/stationary" },
-      { label: "Cleaning & Housekeeping Supplies", path: "/category/cleaning-and-housekeeping-supplies" },
-      { label: "Sports & Fitness", path: "/category/sports-and-fitness" },
-    ]
-  },
-  {
-    title: "Quick links",
-    items: [
-      { label: "Tours & Travels", path: "/category/tours-and-travels" },
-      { label: "Fashion World", path: "/category/fashion-world" },
-      { label: "Gifts", path: "/category/gifts" },
-      { label: "Mix Items", path: "/category/mix-items" },
-      { label: "Car Accessories", path: "/category/car-accessories" },
-    ]
-  },
+// Static footer sections (not category-driven)
+const staticFooterSections = [
   {
     title: "Important Links",
     items: [
@@ -185,6 +165,23 @@ const socialLinks = [
 const currentYear = new Date().getFullYear();
 
 const Footer = () => {
+  // ── Dynamic categories from backend API ──
+  const { data: apiCategories = [] } = useGetAllCategoriesQuery();
+
+  const footerLinks = useMemo(() => {
+    const catItems = apiCategories.map((cat) => ({
+      label: cat.name,
+      path: `/category/${cat.slug || cat.name?.toLowerCase().replace(/[&]/g, 'and').replace(/\s+/g, '-')}`,
+    }));
+    // Split categories into two columns
+    const mid = Math.ceil(catItems.length / 2);
+    return [
+      { title: "Quick links", items: catItems.slice(0, mid) },
+      { title: "Quick links", items: catItems.slice(mid) },
+      ...staticFooterSections,
+    ];
+  }, [apiCategories]);
+
   return (
     // Outer Container (The light background where the watermark sits)
     <footer className="relative bg-[#F8FAFC] py-8 sm:py-10 md:py-4 md:pb-52 overflow-hidden border-t border-slate-100 font-sans mt-16 sm:mt-20">

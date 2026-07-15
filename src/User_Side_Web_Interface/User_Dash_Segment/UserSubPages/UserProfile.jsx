@@ -169,8 +169,8 @@ const UserProfile = () => {
   // Main render
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-2xl font-['satoshi'] font-semibold">
-      <h1 className="text-xl lg:text-3xl md:text-2xl font-black text-gray-900 mb-2">Personal Settings</h1>
+    <div className="max-w-2xl">
+      <h1 className="text-xl lg:text-3xl md:text-2xl  text-gray-900 mb-2">Personal Settings</h1>
       <p className="text-gray-500 mb-10 text-md md:text-lg">
         Update your information to ensure a smooth checkout experience.
       </p>
@@ -199,9 +199,6 @@ const UserProfile = () => {
             <div>
               <h4 className="font-black text-gray-900">{user?.name ?? '—'}</h4>
               <p className="text-xs text-gray-400 font-bold mt-0.5">{user?.email ?? '—'}</p>
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-1">
-                {user?.role === 'admin' ? 'Admin' : 'Member'}
-              </p>
             </div>
           </div>
 

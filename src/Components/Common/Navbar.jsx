@@ -23,6 +23,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import SearchModal from './Search_Modal/SearchModal';
 import { fetchAddresses, selectDefaultAddress } from '../REDUX_FEATURES/REDUX_SLICES/Useraddressslice';
 import { setLoggingOut } from '../../SERVICES/Wholesaleaxios';
+import { useGetAllCategoriesQuery } from '../REDUX_FEATURES/REDUX_SLICES/SHOP_BY_CATEGORY/categoriesApi';
 
 /* ─────────────────────────────────────────────
    LOCATION DISPLAY  (logic unchanged)
@@ -225,19 +226,12 @@ useEffect(() => {
     if (!isAuthenticated) dispatch(openModal('login'));
   };
 
-  const categories = [
-    { label: 'Home & Kitchen', path: '/category/home-and-kitchen' },
-    { label: 'Smart Life Gadgets', path: '/category/smart-life-gadgets' },
-    { label: 'Baby Items', path: '/category/baby-items' },
-    { label: 'Stationary', path: '/category/stationary' },
-    { label: 'Cleaning & Housekeeping Supplies', path: '/category/cleaning-and-housekeeping-supplies' },
-    { label: 'Sports & Fitness', path: '/category/sports-and-fitness' },
-    { label: 'Tours & Travels', path: '/category/tours-and-travels' },
-    { label: 'Fashion World', path: '/category/fashion-world' },
-    { label: 'Gifts', path: '/category/gifts' },
-    { label: 'Mix-Items', path: '/category/mix-items' },
-    { label: 'Car Accessories', path: '/category/car-accessories' },
-  ];
+  // ── Dynamic categories from backend API (RTK Query) ──
+  const { data: apiCategories = [] } = useGetAllCategoriesQuery();
+  const categories = apiCategories.map((cat) => ({
+    label: cat.name,
+    path: `/category/${cat.slug || cat.name?.toLowerCase().replace(/[&]/g, 'and').replace(/\s+/g, '-')}`,
+  }));
   const isMobile = window.innerWidth < 768;
 
   return (
