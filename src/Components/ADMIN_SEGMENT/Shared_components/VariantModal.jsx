@@ -18,15 +18,14 @@ import React, { useState } from 'react';
 
 export const defaultVariant = {
   attributes:  [{ key: '', value: '' }],
-  price:       { base: '', sale: '' },
+  price:       { base: '', sale: '', wholesaleBase: '', wholesaleSale: '' },
   inventory:   { quantity: 0, lowStockThreshold: 5, trackInventory: true },
   images:      [],
   isActive:    true,
   ProductCode:     '',
   wholesale:   false,
-  wholesaleBase: '',
-  wholesaleSale: '',
   minimumOrderQuantity: 1,
+  channelVisibility: { ecomm: 'active', wholesale: 'draft' },
 };
 
 const VariantModal = ({
@@ -86,6 +85,14 @@ const VariantModal = ({
       images: prev.images.map(img => ({ ...img, isMain: (img.id || img.url) === imageId }))
     }));
 
+  const isWholesaleEligible = () => {
+    return (
+      variantForm.wholesale &&
+      variantForm.price?.wholesaleBase &&
+      parseFloat(variantForm.price.wholesaleBase) > 0
+    );
+  };
+
   const isWholesaleMoqUnmet = () => {
     if (!variantForm.wholesale) return false;
     if (variantForm.inventory?.trackInventory === false) return false;
@@ -127,7 +134,7 @@ const VariantModal = ({
 
     // Validate wholesale fields if wholesale is enabled
     if (variantForm.wholesale) {
-      if (!variantForm.wholesaleBase || parseFloat(variantForm.wholesaleBase) <= 0) {
+      if (!variantForm.price?.wholesaleBase || parseFloat(variantForm.price.wholesaleBase) <= 0) {
         alert('Wholesale base price is required and must be greater than 0');
         return;
       }
@@ -135,9 +142,9 @@ const VariantModal = ({
         alert('Minimum Order Quantity (MOQ) must be at least 1');
         return;
       }
-      const wholesaleBase = parseFloat(variantForm.wholesaleBase) || 0;
-      const wholesaleSale = (variantForm.wholesaleSale !== '' && variantForm.wholesaleSale != null)
-        ? parseFloat(variantForm.wholesaleSale)
+      const wholesaleBase = parseFloat(variantForm.price.wholesaleBase) || 0;
+      const wholesaleSale = (variantForm.price.wholesaleSale !== '' && variantForm.price.wholesaleSale != null)
+        ? parseFloat(variantForm.price.wholesaleSale)
         : null;
       if (wholesaleSale !== null && wholesaleSale >= wholesaleBase) {
         alert('Wholesale sale price must be less than wholesale base price');
@@ -152,11 +159,19 @@ const VariantModal = ({
       ...variantForm,
       ProductCode:    ProductCode,
       attributes: validAttributes,
-      price:      { base, sale },
-      wholesaleBase: variantForm.wholesale ? (parseFloat(variantForm.wholesaleBase) || 0) : undefined,
-      wholesaleSale: variantForm.wholesale ? (parseFloat(variantForm.wholesaleSale) || null) : undefined,
+      price: {
+        base,
+        sale,
+        wholesaleBase: variantForm.wholesale ? (parseFloat(variantForm.price.wholesaleBase) || 0) : undefined,
+        wholesaleSale: variantForm.wholesale
+          ? (variantForm.price.wholesaleSale ? parseFloat(variantForm.price.wholesaleSale) : null)
+          : undefined,
+      },
       minimumOrderQuantity: variantForm.wholesale ? (parseInt(variantForm.minimumOrderQuantity) || 1) : 1,
-      // isActive is already in variantForm and spread above — passed as-is to backend
+      channelVisibility: {
+        ecomm: variantForm.channelVisibility?.ecomm || 'active',
+        wholesale: isWholesaleEligible() ? 'active' : 'draft',
+      },
     });
   };
 
@@ -328,8 +343,11 @@ const VariantModal = ({
                     </label>
                     <input
                       type="number"
-                      value={variantForm.wholesaleBase || ''}
-                      onChange={(e) => setVariantForm(prev => ({ ...prev, wholesaleBase: e.target.value }))}
+                      value={variantForm.price?.wholesaleBase || ''}
+                      onChange={(e) => setVariantForm(prev => ({
+                        ...prev,
+                        price: { ...prev.price, wholesaleBase: e.target.value },
+                      }))}
                       className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-400"
                       placeholder="e.g., 75000" />
                   </div>
@@ -339,8 +357,11 @@ const VariantModal = ({
                     </label>
                     <input
                       type="number"
-                      value={variantForm.wholesaleSale || ''}
-                      onChange={(e) => setVariantForm(prev => ({ ...prev, wholesaleSale: e.target.value }))}
+                      value={variantForm.price?.wholesaleSale || ''}
+                      onChange={(e) => setVariantForm(prev => ({
+                        ...prev,
+                        price: { ...prev.price, wholesaleSale: e.target.value },
+                      }))}
                       className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-400"
                       placeholder="e.g., 72000" />
                   </div>
@@ -363,11 +384,11 @@ const VariantModal = ({
                     {variantForm.inventory?.quantity ?? 0})
                   </p>
                 )}
-                {variantForm.wholesaleBase && variantForm.wholesaleSale &&
-                  Number(variantForm.wholesaleSale) < Number(variantForm.wholesaleBase) && (
+                {variantForm.price?.wholesaleBase && variantForm.price?.wholesaleSale &&
+                  Number(variantForm.price.wholesaleSale) < Number(variantForm.price.wholesaleBase) && (
                   <div className="mt-2 flex items-center gap-2 text-xs text-purple-700 bg-purple-100 px-3 py-1.5 rounded-lg">
                     <span>🏷️</span>
-                    <span>{getDiscountPercentage(variantForm.wholesaleBase, variantForm.wholesaleSale)}% wholesale discount</span>
+                    <span>{getDiscountPercentage(variantForm.price.wholesaleBase, variantForm.price.wholesaleSale)}% wholesale discount</span>
                   </div>
                 )}
               </div>

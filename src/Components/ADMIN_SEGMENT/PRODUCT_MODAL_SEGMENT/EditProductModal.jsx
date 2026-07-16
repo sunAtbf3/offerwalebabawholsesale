@@ -41,15 +41,16 @@ const normaliseVariants = (variants = []) =>
         id:     img._id || img.publicId || img.url || `var-${vIdx}-img-${iIdx}`,
         isMain: iIdx === 0,
       })),
-    isActive: v.isActive !== false,
+    isActive:
+      v.channelVisibility?.ecomm != null
+        ? v.channelVisibility.ecomm === "active"
+        : v.isActive !== false,
     wholesale: v.wholesale || false,
-    wholesaleBase: v.price?.wholesaleBase || "",
-    wholesaleSale: v.price?.wholesaleSale || "",
     minimumOrderQuantity: v.minimumOrderQuantity || 1,
+    channelVisibility: v.channelVisibility || { ecomm: "active", wholesale: "draft" },
   }));
 
 const toFormData = (product) => {
-  const mainVariant = product.variants?.[0] || {};
   return {
     name:        product.name        || "",
     title:       product.title       || "",
@@ -76,10 +77,6 @@ const toFormData = (product) => {
     variants:   normaliseVariants(product.variants || []),
     isFeatured: product.isFeatured || false,
     status:     product.status     || "draft",
-    wholesale: mainVariant.wholesale || false,
-    wholesaleBase: mainVariant.price?.wholesaleBase || "",
-    wholesaleSale: mainVariant.price?.wholesaleSale || "",
-    minimumOrderQuantity: mainVariant.minimumOrderQuantity || 1,
   };
 };
 
@@ -139,9 +136,8 @@ const EditProductModal = ({ product, onClose, brands, setBrands }) => {
       images:   v.images || [],
       isActive: v.isActive !== false,
       wholesale: v.wholesale || false,
-      wholesaleBase: v.price?.wholesaleBase || "",
-      wholesaleSale: v.price?.wholesaleSale || "",
       minimumOrderQuantity: v.minimumOrderQuantity || 1,
+      channelVisibility: v.channelVisibility || { ecomm: "active", wholesale: "draft" },
     });
     setEditingVariantIndex(index);
     setVariantSaveError(null);
@@ -157,18 +153,28 @@ const EditProductModal = ({ product, onClose, brands, setBrands }) => {
 
   const handleVariantSave = async (variantToSave) => {
     setVariantSaveError(null);
-    
-    // Build price object with wholesale fields
+
+    // Match ecom: wholesaleBase INSIDE price + auto channelVisibility
     const pricePayload = {
       base: parseFloat(variantToSave.price.base) || 0,
-      sale: variantToSave.price.sale ? parseFloat(variantToSave.price.sale) : null
+      sale: variantToSave.price.sale ? parseFloat(variantToSave.price.sale) : null,
+      wholesaleBase: variantToSave.wholesale
+        ? (parseFloat(variantToSave.price?.wholesaleBase) || 0)
+        : undefined,
+      wholesaleSale: variantToSave.wholesale
+        ? (variantToSave.price?.wholesaleSale
+            ? parseFloat(variantToSave.price.wholesaleSale)
+            : null)
+        : undefined,
     };
-    
-    if (variantToSave.wholesale) {
-      pricePayload.wholesaleBase = parseFloat(variantToSave.wholesaleBase) || 0;
-      pricePayload.wholesaleSale = variantToSave.wholesaleSale ? parseFloat(variantToSave.wholesaleSale) : null;
-    }
-    
+
+    const wholesaleVisibility =
+      variantToSave.wholesale && pricePayload.wholesaleBase > 0 ? "active" : "draft";
+    const channelVisibilityPayload = {
+      ecomm: variantToSave.channelVisibility?.ecomm || "active",
+      wholesale: wholesaleVisibility,
+    };
+
     if (editingVariantIndex !== null) {
       // Use productCode (not barcode) to identify the variant
       const existingProductCode = formData.variants[editingVariantIndex].productCode;
@@ -183,6 +189,7 @@ const EditProductModal = ({ product, onClose, brands, setBrands }) => {
           isActive: variantToSave.isActive,
           wholesale: variantToSave.wholesale,
           minimumOrderQuantity: variantToSave.minimumOrderQuantity,
+          channelVisibility: channelVisibilityPayload,
         })).unwrap();
         if (result?.product?.variants)
           setFormData((prev) => ({ ...prev, variants: normaliseVariants(result.product.variants) }));
@@ -196,7 +203,8 @@ const EditProductModal = ({ product, onClose, brands, setBrands }) => {
           slug: product.slug, 
           variantData: {
             ...variantToSave,
-            price: pricePayload
+            price: pricePayload,
+            channelVisibility: channelVisibilityPayload,
           }
         })).unwrap();
         if (result?.product?.variants)
@@ -211,17 +219,27 @@ const EditProductModal = ({ product, onClose, brands, setBrands }) => {
   const toggleVariantActive = async (index) => {
     const variant = formData.variants[index];
     if (!variant) return;
-    const newActive = !variant.isActive;
+    const newActiveState = !variant.isActive;
+    const newEcommVisibility = newActiveState ? "active" : "draft";
     const prevVariants = formData.variants;
     setFormData((p) => ({
       ...p,
-      variants: p.variants.map((v, i) => i === index ? { ...v, isActive: newActive } : v)
+      variants: p.variants.map((v, i) =>
+        i === index
+          ? {
+              ...v,
+              isActive: newActiveState,
+              channelVisibility: { ...v.channelVisibility, ecomm: newEcommVisibility },
+            }
+          : v
+      ),
     }));
     try {
       const result = await dispatch(updateVariantByBarcode({
         slug: product.slug,
         barcode: variant.productCode,   // .barcode → .productCode
-        isActive: newActive
+        isActive: newActiveState,
+        channelVisibility: { ecomm: newEcommVisibility },
       })).unwrap();
       if (result?.product?.variants)
         setFormData((p) => ({ ...p, variants: normaliseVariants(result.product.variants) }));
@@ -285,13 +303,27 @@ const EditProductModal = ({ product, onClose, brands, setBrands }) => {
         return;
       }
       
-      // Build price object with wholesale fields
-      const pricePayload = { base, sale };
-      if (mainVariant.wholesale) {
-        pricePayload.wholesaleBase = parseFloat(mainVariant.wholesaleBase) || 0;
-        pricePayload.wholesaleSale = mainVariant.wholesaleSale ? parseFloat(mainVariant.wholesaleSale) : null;
-      }
-      
+      // Match ecom: wholesaleBase INSIDE price + auto channelVisibility
+      const pricePayload = {
+        base,
+        sale,
+        wholesaleBase: mainVariant.wholesale
+          ? (parseFloat(mainVariant.price?.wholesaleBase) || 0)
+          : undefined,
+        wholesaleSale: mainVariant.wholesale
+          ? (mainVariant.price?.wholesaleSale
+              ? parseFloat(mainVariant.price.wholesaleSale)
+              : null)
+          : undefined,
+      };
+
+      const wholesaleVisibility =
+        mainVariant.wholesale && pricePayload.wholesaleBase > 0 ? "active" : "draft";
+      const channelVisibilityPayload = {
+        ecomm: mainVariant.channelVisibility?.ecomm || "active",
+        wholesale: wholesaleVisibility,
+      };
+
       try {
         const result = await dispatch(updateVariantByBarcode({
           slug: product.slug, 
@@ -302,6 +334,8 @@ const EditProductModal = ({ product, onClose, brands, setBrands }) => {
           images: mainVariant.images,
           wholesale: mainVariant.wholesale,
           minimumOrderQuantity: mainVariant.minimumOrderQuantity,
+          channelVisibility: channelVisibilityPayload,
+          attributes: mainVariant.attributes,
         })).unwrap();
         if (result?.product?.variants)
           setFormData((prev) => ({ ...prev, variants: normaliseVariants(result.product.variants) }));

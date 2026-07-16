@@ -114,14 +114,18 @@ const ProductModal = ({ onClose, brands, setBrands }) => {
     setVariantForm({
       ProductCode:    v.ProductCode != null ? String(v.ProductCode) : "",
       attributes: v.attributes?.length > 0 ? v.attributes : [{ key: "", value: "" }],
-      price:      { base: v.price?.base ?? "", sale: v.price?.sale ?? "" },
+      price: {
+        base: v.price?.base ?? "",
+        sale: v.price?.sale ?? "",
+        wholesaleBase: v.price?.wholesaleBase ?? v.wholesaleBase ?? "",
+        wholesaleSale: v.price?.wholesaleSale ?? v.wholesaleSale ?? "",
+      },
       inventory:  { ...v.inventory },
       images:     v.images || [],
       isActive:   v.isActive !== false,
       wholesale:  v.wholesale || false,
-      wholesaleBase: v.wholesaleBase || "",
-      wholesaleSale: v.wholesaleSale || "",
       minimumOrderQuantity: v.minimumOrderQuantity || 1,
+      channelVisibility: v.channelVisibility || { ecomm: "active", wholesale: "draft" },
     });
     setEditingVariantIndex(index);
     setShowVariantModal(true);

@@ -97,7 +97,7 @@ const [adminLogout, { isLoading: loggingOut }] = useAdminLogoutMutation();
   }, [activeTab]);
 
   // ── Badges ────────────────────────────────────────────────────────────────
-  const productsBadge = useSelector((s) => s.adminGetProducts?.products?.length || 0);
+  const productsBadge = useSelector((s) => s.adminGetProducts.totalProducts || 0);
   const archivedBadge = useSelector((s) => s.adminArchived?.products?.length   || 0);
   const BADGE_MAP = { products: productsBadge, archived: archivedBadge };
 
@@ -180,9 +180,11 @@ const [adminLogout, { isLoading: loggingOut }] = useAdminLogoutMutation();
 
             {/* User Info Downward */}
             <div className="mt-2 text-center overflow-hidden w-full">
-              <h1 className="text-sm font- text-slate-800 truncate">
-                {adminUser?.name?.trim() || "Admin"}
-              </h1>
+              {adminUser?.name?.trim() ? (
+                <h1 className="text-sm font- text-slate-800 truncate">
+                  {adminUser.name.trim()}
+                </h1>
+              ) : null}
               <p className="text-[10px] font- text-blue-600 tracking-wider uppercase leading-none mt-1">
                 {ROLE_LABELS[activeRole] || activeRole}
               </p>

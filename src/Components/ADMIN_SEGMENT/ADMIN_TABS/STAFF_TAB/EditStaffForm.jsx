@@ -31,9 +31,12 @@ const EditStaffForm = ({ staff, onClose }) => {
   const { loading: staffLoading, error: staffError, successMessage: staffSuccess } =
     useSelector((state) => state.staff);
   const {
-    loading: pwLoading, error: pwError, successMessage: pwSuccess,
-    otpSent, resetSuccess,
-  } = useSelector((state) => state.staffPassword);
+    loading: pwLoading = false,
+    error: pwError = null,
+    successMessage: pwSuccess = null,
+    otpSent = false,
+    resetSuccess = false,
+  } = useSelector((state) => state.staffPassword) || {};
 
   // ── edit form state ──
   const [form, setForm] = useState({

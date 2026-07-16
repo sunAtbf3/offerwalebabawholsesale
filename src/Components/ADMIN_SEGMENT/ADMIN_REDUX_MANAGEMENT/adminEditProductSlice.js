@@ -56,6 +56,18 @@ const buildInventoryObj = (inv) => ({
   trackInventory:    inv?.trackInventory !== false,
 });
 
+// Match ecom: wholesale eligibility from price.wholesaleBase
+export const isVariantWholesaleEligible = (variant) => {
+  if (!variant) return false;
+  const wholesaleFlag = variant.wholesale === true;
+  const wholesaleBase = variant.price?.wholesaleBase ? parseFloat(variant.price.wholesaleBase) : 0;
+  return wholesaleFlag && wholesaleBase > 0;
+};
+
+export const getWholesaleVisibility = (variant) => {
+  return isVariantWholesaleEligible(variant) ? "active" : "draft";
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // updateProduct — PUT /:slug  (NO productCode → product fields only)
 // Updates: name, title, description, category, brand, status,
@@ -73,7 +85,7 @@ export const updateProduct = createAsyncThunk(
       if (pd.description)              fd.append("description", pd.description);
       if (pd.category)                 fd.append("category",    pd.category);
       if (pd.brand)                    fd.append("brand",       pd.brand);
-      if (pd.status)                   fd.append("status",      pd.status);
+      // Match ecom: do NOT send legacy `status` here — channels use channelStatus / visibility
       if (pd.isFeatured !== undefined) fd.append("isFeatured",  String(pd.isFeatured));
 
       // Root level fields — taxRate in form maps to gstRate for backend
@@ -135,7 +147,18 @@ export const updateProduct = createAsyncThunk(
 export const updateVariantByBarcode = createAsyncThunk(
   "adminVariants/updateByBarcode",
   async (
-    { slug, barcode, price, inventory, attributes, isActive, images, wholesale, minimumOrderQuantity },
+    {
+      slug,
+      barcode,
+      price,
+      inventory,
+      attributes,
+      isActive,
+      images,
+      wholesale,
+      minimumOrderQuantity,
+      channelVisibility,
+    },
     { rejectWithValue }
   ) => {
     try {
@@ -185,6 +208,11 @@ export const updateVariantByBarcode = createAsyncThunk(
       // Minimum Order Quantity
       if (minimumOrderQuantity !== undefined) {
         fd.append("minimumOrderQuantity", String(minimumOrderQuantity));
+      }
+
+      // Match ecom: channelVisibility for per-storefront variant listing
+      if (channelVisibility !== undefined) {
+        fd.append("channelVisibility", JSON.stringify(channelVisibility));
       }
 
       // ── IMAGES: two-channel approach ─────────────────────────────────────
@@ -274,6 +302,10 @@ export const addVariantToProduct = createAsyncThunk(
       fd.append("wholesale", variantData.wholesale ? "true" : "false");
       if (variantData.minimumOrderQuantity) {
         fd.append("minimumOrderQuantity", String(variantData.minimumOrderQuantity));
+      }
+
+      if (variantData.channelVisibility) {
+        fd.append("channelVisibility", JSON.stringify(variantData.channelVisibility));
       }
 
       if (variantData.images?.length) {

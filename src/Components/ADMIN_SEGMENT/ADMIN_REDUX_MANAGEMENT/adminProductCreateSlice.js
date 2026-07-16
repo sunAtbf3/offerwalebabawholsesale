@@ -164,18 +164,15 @@ export const createProduct = createAsyncThunk(
       for (let i = 0; i < (productData.variants || []).length; i++) {
         const v = productData.variants[i];
         let vPrice;
+        const variantPriceData = {
+          base: v.price?.base,
+          sale: v.price?.sale,
+        };
+        if (v.wholesale) {
+          variantPriceData.wholesaleBase = v.price?.wholesaleBase ?? v.wholesaleBase;
+          variantPriceData.wholesaleSale = v.price?.wholesaleSale ?? v.wholesaleSale;
+        }
         try {
-          // Prepare variant price object with wholesale fields if enabled
-          const variantPriceData = {
-            base: v.price?.base,
-            sale: v.price?.sale
-          };
-          
-          if (v.wholesale) {
-            variantPriceData.wholesaleBase = v.wholesaleBase;
-            variantPriceData.wholesaleSale = v.wholesaleSale;
-          }
-          
           vPrice = buildPriceObj(variantPriceData, `Variant ${i + 1} base price`);
         } catch (priceErr) {
           return rejectWithValue(priceErr.message);
@@ -189,6 +186,10 @@ export const createProduct = createAsyncThunk(
         }
         normalizedVariantCodes.push(normalizedVariantProductCode);
 
+        const wholesaleEligible =
+          Boolean(v.wholesale) &&
+          Number(variantPriceData.wholesaleBase) > 0;
+
         extraVariants.push({
           productCode: normalizedVariantProductCode,
           attributes: (v.attributes || []).filter((a) => a.key && a.value),
@@ -196,7 +197,11 @@ export const createProduct = createAsyncThunk(
           inventory:  buildInventoryObj(v.inventory),
           isActive:   v.isActive !== false,
           wholesale:  v.wholesale || false,
-          minimumOrderQuantity: v.wholesale ? (parseInt(v.minimumOrderQuantity) || 1) : 1
+          minimumOrderQuantity: v.wholesale ? (parseInt(v.minimumOrderQuantity) || 1) : 1,
+          channelVisibility: v.channelVisibility || {
+            ecomm: v.isActive !== false ? "active" : "draft",
+            wholesale: wholesaleEligible ? "active" : "draft",
+          },
         });
       }
 

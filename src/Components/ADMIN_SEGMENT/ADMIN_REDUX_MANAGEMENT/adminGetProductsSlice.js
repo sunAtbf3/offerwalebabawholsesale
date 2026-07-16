@@ -66,6 +66,39 @@ export const fetchActiveProductsCount = createAsyncThunk(
   }
 );
 
+// Global featured count across the catalog (not just the current page)
+export const fetchFeaturedProductsCount = createAsyncThunk(
+  "adminGetProducts/fetchFeaturedProductsCount",
+  async (_, { rejectWithValue }) => {
+    try {
+      let page = 1;
+      let featuredCount = 0;
+      let totalPages = 1;
+      const limit = 100;
+
+      do {
+        const response = await wholesaleAxios.get("/admin/products/all", {
+          params: { page, limit },
+        });
+        if (!response.data?.success) {
+          return rejectWithValue(
+            response.data?.message || "Failed to fetch featured products count"
+          );
+        }
+        featuredCount += (response.data.products || []).filter(
+          (p) => p.isFeatured && p.status !== "archived"
+        ).length;
+        totalPages = response.data.totalPages || 1;
+        page += 1;
+      } while (page <= totalPages);
+
+      return { featuredCount };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
+
 const adminGetProductsSlice = createSlice({
   name: "adminGetProducts",
   initialState: {
@@ -77,9 +110,10 @@ const adminGetProductsSlice = createSlice({
     loading: false,
     error: null,
 
-      realActiveCount: 0,     // Real active products count from backend
-  realLowStockCount: 0,   // Real low stock count from backend
-    
+    realActiveCount: 0,     // Real active products count from backend
+    realFeaturedCount: 0,   // Real featured products count from backend
+    realLowStockCount: 0,   // Real low stock count from backend
+
     // Low stock products state
     lowStockProducts: {
       products: [],
@@ -113,14 +147,25 @@ const adminGetProductsSlice = createSlice({
 },
     optimisticUpdateProduct: (state, { payload }) => {
       const idx = state.products.findIndex((p) => p._id === payload._id);
-      if (idx !== -1) state.products[idx] = { ...state.products[idx], ...payload };
-      
+      if (idx !== -1) {
+        if (
+          payload.isFeatured !== undefined &&
+          state.products[idx].isFeatured !== payload.isFeatured
+        ) {
+          state.realFeaturedCount = Math.max(
+            0,
+            state.realFeaturedCount + (payload.isFeatured ? 1 : -1)
+          );
+        }
+        state.products[idx] = { ...state.products[idx], ...payload };
+      }
+
       // Also update in low stock products if present
       const lowStockIdx = state.lowStockProducts.products.findIndex((p) => p._id === payload._id);
       if (lowStockIdx !== -1) {
-        state.lowStockProducts.products[lowStockIdx] = { 
-          ...state.lowStockProducts.products[lowStockIdx], 
-          ...payload 
+        state.lowStockProducts.products[lowStockIdx] = {
+          ...state.lowStockProducts.products[lowStockIdx],
+          ...payload,
         };
       }
     },
@@ -189,25 +234,34 @@ const adminGetProductsSlice = createSlice({
         state.lowStockProducts.products = [];
       })
 
-                .addCase(fetchActiveProductsCount.fulfilled, (state, { payload }) => {
-            state.realActiveCount = payload.totalActive || payload.activeCount;
-          })
-          .addCase(fetchActiveProductsCount.rejected, (state) => {
-            state.realActiveCount = 0;
-          })
+      .addCase(fetchActiveProductsCount.fulfilled, (state, { payload }) => {
+        state.realActiveCount = payload.totalActive || payload.activeCount;
+      })
+      .addCase(fetchActiveProductsCount.rejected, (state) => {
+        state.realActiveCount = 0;
+      })
+
+      .addCase(fetchFeaturedProductsCount.fulfilled, (state, { payload }) => {
+        state.realFeaturedCount = payload.featuredCount || 0;
+      })
+      .addCase(fetchFeaturedProductsCount.rejected, (state) => {
+        state.realFeaturedCount = 0;
+      })
 
       // Cross-slice: when toggle/status API succeeds, update product in list immediately
       .addCase(toggleFeaturedProduct.fulfilled, (state, { payload }) => {
         if (!payload?.product) return;
         const idx = state.products.findIndex((p) => p._id === payload.product._id);
         if (idx !== -1) state.products[idx] = { ...state.products[idx], ...payload.product };
-        
+
         // Also update in low stock products if present
-        const lowStockIdx = state.lowStockProducts.products.findIndex((p) => p._id === payload.product._id);
+        const lowStockIdx = state.lowStockProducts.products.findIndex(
+          (p) => p._id === payload.product._id
+        );
         if (lowStockIdx !== -1) {
-          state.lowStockProducts.products[lowStockIdx] = { 
-            ...state.lowStockProducts.products[lowStockIdx], 
-            ...payload.product 
+          state.lowStockProducts.products[lowStockIdx] = {
+            ...state.lowStockProducts.products[lowStockIdx],
+            ...payload.product,
           };
         }
       })

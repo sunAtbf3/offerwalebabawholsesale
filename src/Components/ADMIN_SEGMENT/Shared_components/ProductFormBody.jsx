@@ -146,6 +146,23 @@ const ProductFormBody = ({
     });
   };
 
+  const updateMainVariantChannelVisibility = (field, value) => {
+    setFormData((p) => {
+      const v = [...(p.variants || [])];
+      if (!v[0]) return p;
+      const currentVisibility = v[0].channelVisibility || { ecomm: "active", wholesale: "draft" };
+      const nextVariant = {
+        ...v[0],
+        channelVisibility: { ...currentVisibility, [field]: value },
+      };
+      if (field === "ecomm") {
+        nextVariant.isActive = value === "active";
+      }
+      v[0] = nextVariant;
+      return { ...p, variants: v };
+    });
+  };
+
   const updateMainVariantInventory = (field, value) => {
     setFormData((p) => {
       const v = [...(p.variants || [])];
@@ -177,6 +194,9 @@ const ProductFormBody = ({
     const moq = Number(variant?.minimumOrderQuantity ?? 1);
     return Number.isFinite(quantity) && Number.isFinite(moq) && moq > quantity;
   };
+
+  const isWholesaleEligible = (variant) =>
+    variant?.wholesale === true && Number(variant?.price?.wholesaleBase) > 0;
 
   const isCreateWholesaleMoqUnmet = () => {
     if (!formData.wholesale) return false;
@@ -262,96 +282,256 @@ const ProductFormBody = ({
           </div>
         </div>
 
-        {/* ── Main Variant Card (variants[0]) — EDIT MODE ONLY ────────────── */}
-        {isEditMode && primaryVariant && (
-          <div className="bg-white rounded-xl border-2 border-indigo-300 overflow-hidden">
-            <div className="p-4 border-b border-indigo-200 bg-indigo-50 flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-gray-900">Main Variant</h3>
-                  <span className="px-2 py-0.5 bg-indigo-200 text-indigo-800 text-xs font-bold rounded-full">variants[0]</span>
-                  {primaryVariant.isActive
-                    ? <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Active</span>
-                    : <span className="px-2 py-0.5 bg-gray-200 text-gray-500 text-xs rounded-full">Inactive</span>}
-                </div>
-                {/* ✅ FIX: use productCode (lowercase) not ProductCode */}
-                <p className="text-xs text-indigo-500 mt-0.5 font-mono">
-                  📦 ProductCode: {primaryVariant.productCode}
-                  {primaryVariant.sku && <span className="ml-3 text-gray-400">SKU: {primaryVariant.sku}</span>}
-                </p>
-              </div>
-              {/* Active toggle */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">{primaryVariant.isActive ? "Active" : "Inactive"}</span>
+        {/* Marketing & Visibility — match ecom (left column, NO legacy Status dropdown) */}
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="p-4 border-b border-gray-100 bg-gray-50">
+            <h3 className="font-semibold text-gray-900">Marketing & Visibility</h3>
+          </div>
+          <div className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">Featured Product</span>
+              <button
+                type="button"
+                onClick={() => setFormData((p) => ({ ...p, isFeatured: !p.isFeatured }))}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  formData.isFeatured ? "bg-yellow-500" : "bg-gray-300"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    formData.isFeatured ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">Sold Info</span>
                 <button
                   type="button"
-                  onClick={() => updateMainVariantField("isActive", !primaryVariant.isActive)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${primaryVariant.isActive ? "bg-indigo-500" : "bg-gray-300"}`}>
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${primaryVariant.isActive ? "translate-x-6" : "translate-x-1"}`} />
+                  onClick={() =>
+                    setFormData((p) => ({
+                      ...p,
+                      soldInfo: { ...p.soldInfo, enabled: !p.soldInfo.enabled },
+                    }))
+                  }
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    formData.soldInfo?.enabled ? "bg-blue-500" : "bg-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      formData.soldInfo?.enabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
                 </button>
               </div>
+              {formData.soldInfo?.enabled && (
+                <input
+                  type="number"
+                  value={formData.soldInfo?.count ?? 0}
+                  onChange={(e) =>
+                    setFormData((p) => ({
+                      ...p,
+                      soldInfo: { ...p.soldInfo, count: parseInt(e.target.value) || 0 },
+                    }))
+                  }
+                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg"
+                  placeholder="Number sold"
+                />
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">FOMO</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormData((p) => ({
+                      ...p,
+                      fomo: { ...p.fomo, enabled: !p.fomo.enabled },
+                    }))
+                  }
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    formData.fomo?.enabled ? "bg-purple-500" : "bg-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      formData.fomo?.enabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+              {formData.fomo?.enabled && (
+                <div className="space-y-2">
+                  <select
+                    value={formData.fomo.type}
+                    onChange={(e) =>
+                      setFormData((p) => ({ ...p, fomo: { ...p.fomo, type: e.target.value } }))
+                    }
+                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg"
+                  >
+                    <option value="viewing_now">Viewing Now</option>
+                    <option value="product_left">Product Left</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                  {formData.fomo.type === "viewing_now" && (
+                    <input
+                      type="number"
+                      value={formData.fomo.viewingNow ?? 0}
+                      onChange={(e) =>
+                        setFormData((p) => ({
+                          ...p,
+                          fomo: { ...p.fomo, viewingNow: parseInt(e.target.value) || 0 },
+                        }))
+                      }
+                      className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg"
+                      placeholder="Viewing now count"
+                    />
+                  )}
+                  {formData.fomo.type === "product_left" && (
+                    <input
+                      type="number"
+                      value={formData.fomo.productLeft ?? 0}
+                      onChange={(e) =>
+                        setFormData((p) => ({
+                          ...p,
+                          fomo: { ...p.fomo, productLeft: parseInt(e.target.value) || 0 },
+                        }))
+                      }
+                      className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg"
+                      placeholder="Items left"
+                    />
+                  )}
+                  {formData.fomo.type === "custom" && (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={formData.fomo.customMessage ?? ""}
+                        readOnly
+                        className="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg"
+                        placeholder="Custom message"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => onOpenCustomMessage(formData.fomo.customMessage || "")}
+                        className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Main Variant Card (variants[0]) — EDIT MODE ONLY — match ecom ── */}
+        {isEditMode && primaryVariant && (
+          <div className="bg-white rounded-xl border-2 border-indigo-300 overflow-hidden">
+            <div className="p-4 border-b border-indigo-200 bg-indigo-50">
+              <h3 className="font-semibold text-gray-900">Main Variant</h3>
+              <p className="text-xs text-indigo-500 mt-0.5 font-mono">
+                📦 ProductCode: {primaryVariant.productCode}
+              </p>
             </div>
 
             <div className="p-4 space-y-4">
-
-              {/* ProductCode — read-only, ✅ FIX: .productCode not .ProductCode */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">ProductCode</label>
-                <div className="flex items-center gap-3 px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-lg">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 5v14M10 5v14M13 5v4M13 11v8M16 5v14" />
-                  </svg>
-                  <span className="font-mono text-gray-800 text-sm flex-1">{primaryVariant.productCode}</span>
-                  <span className="text-xs text-gray-400 bg-gray-200 px-2 py-0.5 rounded">locked</span>
+              {/* Ecom Visibility Toggle — same as ecom */}
+              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                <div>
+                  <label className="text-sm font-semibold text-gray-700">Ecom Visibility</label>
+                  <p className="text-xs text-gray-500">Show on ecommerce storefront</p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newValue =
+                      primaryVariant.channelVisibility?.ecomm === "active" ? "draft" : "active";
+                    updateMainVariantChannelVisibility("ecomm", newValue);
+                  }}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    primaryVariant.channelVisibility?.ecomm === "active" ? "bg-green-500" : "bg-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      primaryVariant.channelVisibility?.ecomm === "active" ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Wholesale Visibility Badge — same as ecom */}
+              <div
+                className={`flex items-center justify-between p-3 rounded-lg border ${
+                  isWholesaleEligible(primaryVariant)
+                    ? "bg-purple-50 border-purple-200"
+                    : "bg-gray-50 border-gray-200"
+                }`}
+              >
+                <div>
+                  <label className="text-sm font-semibold text-gray-700">Wholesale Visibility</label>
+                  <p className="text-xs text-gray-500">Auto-calculated from wholesale price</p>
+                </div>
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    isWholesaleEligible(primaryVariant)
+                      ? "bg-purple-100 text-purple-700"
+                      : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {isWholesaleEligible(primaryVariant) ? "Active" : "Ineligible"}
+                </span>
               </div>
 
               {/* Price inputs */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Price (₹) <span className="text-red-400">*</span>
-                </label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Price (₹)</label>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Base Price</label>
+                    <label className="text-xs text-gray-500 block mb-1">Base Price</label>
                     <input
                       type="number"
                       value={primaryVariant.price?.base ?? ""}
                       onChange={(e) => updateMainVariantPrice("base", e.target.value)}
-                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-indigo-400"
-                      placeholder="29999" />
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg"
+                    />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Sale Price</label>
+                    <label className="text-xs text-gray-500 block mb-1">Sale Price</label>
                     <input
                       type="number"
                       value={primaryVariant.price?.sale ?? ""}
                       onChange={(e) => updateMainVariantPrice("sale", e.target.value)}
-                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-indigo-400"
-                      placeholder="19999" />
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg"
+                    />
                   </div>
                 </div>
-                {primaryVariant.price?.base && primaryVariant.price?.sale &&
-                  Number(primaryVariant.price.sale) > 0 &&
-                  Number(primaryVariant.price.sale) < Number(primaryVariant.price.base) && (
-                    <div className="mt-2 flex items-center gap-2 p-2 bg-green-50 rounded-lg text-xs text-green-700 border border-green-200">
-                      💰 {getDiscountPercentage(primaryVariant.price.base, primaryVariant.price.sale)}% discount applied
-                    </div>
-                  )}
               </div>
 
-              {/* Wholesale Toggle for Main Variant */}
+              {/* Wholesale Toggle */}
               <div className="border-t border-gray-200 pt-4">
                 <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <label className="text-sm font-semibold text-gray-700">Wholesale Pricing</label>
-                    <p className="text-xs text-gray-500 mt-0.5">Enable bulk pricing for wholesalers</p>
-                  </div>
+                  <label className="text-sm font-semibold text-gray-700">Wholesale Pricing</label>
                   <button
                     type="button"
                     onClick={() => updateMainVariantField("wholesale", !primaryVariant.wholesale)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${primaryVariant.wholesale ? "bg-purple-500" : "bg-gray-300"}`}>
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${primaryVariant.wholesale ? "translate-x-6" : "translate-x-1"}`} />
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      primaryVariant.wholesale ? "bg-purple-500" : "bg-gray-300"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        primaryVariant.wholesale ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
                   </button>
                 </div>
                 {primaryVariant.wholesale && (
@@ -359,14 +539,14 @@ const ProductFormBody = ({
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Wholesale Base Price (₹) <span className="text-red-400">*</span>
+                          Wholesale Base Price (₹)
                         </label>
                         <input
                           type="number"
                           value={primaryVariant.price?.wholesaleBase ?? ""}
                           onChange={(e) => updateMainVariantPrice("wholesaleBase", e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-400"
-                          placeholder="e.g., 25000" />
+                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg"
+                        />
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -376,72 +556,89 @@ const ProductFormBody = ({
                           type="number"
                           value={primaryVariant.price?.wholesaleSale ?? ""}
                           onChange={(e) => updateMainVariantPrice("wholesaleSale", e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-400"
-                          placeholder="e.g., 23000" />
+                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg"
+                        />
                       </div>
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Minimum Order Quantity (MOQ) <span className="text-red-400">*</span>
+                        Minimum Order Quantity (MOQ)
                       </label>
                       <input
                         type="number"
                         min="1"
                         value={primaryVariant.minimumOrderQuantity ?? 1}
-                        onChange={(e) => updateMainVariantField("minimumOrderQuantity", parseInt(e.target.value) || 1)}
-                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-400"
-                        placeholder="Minimum quantity for wholesale price" />
+                        onChange={(e) =>
+                          updateMainVariantField("minimumOrderQuantity", parseInt(e.target.value) || 1)
+                        }
+                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg"
+                      />
                     </div>
                     {isWholesaleMoqUnmet(primaryVariant) && (
                       <p className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg px-2 py-1">
-                        Wholesale warning: MOQ ({primaryVariant.minimumOrderQuantity ?? 1}) is greater than stock (
-                        {primaryVariant.inventory?.quantity ?? 0})
+                        Wholesale warning: MOQ ({primaryVariant.minimumOrderQuantity ?? 1}) is greater than
+                        stock ({primaryVariant.inventory?.quantity ?? 0})
                       </p>
                     )}
                   </div>
                 )}
               </div>
 
-              {/* Inventory inputs */}
+              {/* Inventory */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-semibold text-gray-700">Inventory</label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500">Track inventory</span>
-                    <button
-                      type="button"
-                      onClick={() => updateMainVariantInventory("trackInventory", !primaryVariant.inventory?.trackInventory)}
-                      className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${primaryVariant.inventory?.trackInventory !== false ? "bg-indigo-500" : "bg-gray-300"}`}>
-                      <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${primaryVariant.inventory?.trackInventory !== false ? "translate-x-5" : "translate-x-0.5"}`} />
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateMainVariantInventory(
+                        "trackInventory",
+                        !primaryVariant.inventory?.trackInventory
+                      )
+                    }
+                    className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
+                      primaryVariant.inventory?.trackInventory !== false ? "bg-indigo-500" : "bg-gray-300"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                        primaryVariant.inventory?.trackInventory !== false
+                          ? "translate-x-5"
+                          : "translate-x-0.5"
+                      }`}
+                    />
+                  </button>
                 </div>
                 {primaryVariant.inventory?.trackInventory !== false && (
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Quantity</label>
-                      <input
-                        type="number"
-                        value={primaryVariant.inventory?.quantity ?? 0}
-                        onChange={(e) => updateMainVariantInventory("quantity", parseInt(e.target.value) || 0)}
-                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-400"
-                        placeholder="0" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Low Stock Alert</label>
-                      <input
-                        type="number"
-                        value={primaryVariant.inventory?.lowStockThreshold ?? 5}
-                        onChange={(e) => updateMainVariantInventory("lowStockThreshold", parseInt(e.target.value) || 5)}
-                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-400"
-                        placeholder="5" />
-                    </div>
+                    <input
+                      type="number"
+                      value={primaryVariant.inventory?.quantity ?? 0}
+                      onChange={(e) =>
+                        updateMainVariantInventory("quantity", parseInt(e.target.value) || 0)
+                      }
+                      className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg"
+                      placeholder="Quantity"
+                    />
+                    <input
+                      type="number"
+                      value={primaryVariant.inventory?.lowStockThreshold ?? 5}
+                      onChange={(e) =>
+                        updateMainVariantInventory(
+                          "lowStockThreshold",
+                          parseInt(e.target.value) || 5
+                        )
+                      }
+                      className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg"
+                      placeholder="Low stock alert"
+                    />
                   </div>
                 )}
               </div>
 
               <p className="text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg p-2">
-                💡 Images for main variant are managed in the <strong>Product Gallery</strong> panel →. All changes here are saved when you click <strong>Save Changes</strong>.
+                💡 Images for main variant are managed in the <strong>Product Gallery</strong> panel →.
+                All changes here are saved when you click <strong>Save Changes</strong>.
               </p>
             </div>
           </div>
@@ -932,90 +1129,6 @@ const ProductFormBody = ({
                 <p className="text-xs text-gray-400 text-center">Drag to reorder · ★ = thumbnail</p>
               </div>
             )}
-          </div>
-        </div>
-
-        {/* ── Marketing & Visibility ────────────────────────────────────────── */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 bg-gray-50">
-            <h3 className="font-semibold text-gray-900">Marketing & Visibility</h3>
-          </div>
-          <div className="p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Featured Product</span>
-              <button type="button"
-                onClick={() => setFormData((p) => ({ ...p, isFeatured: !p.isFeatured }))}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.isFeatured ? "bg-yellow-500" : "bg-gray-300"}`}>
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.isFeatured ? "translate-x-6" : "translate-x-1"}`} />
-              </button>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-              <select name="status" value={formData.status} onChange={handleInputChange}
-                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg">
-                <option value="draft">Draft</option>
-                <option value="active">Active</option>
-                <option value="archived">Archived</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">Sold Info</span>
-                <button type="button"
-                  onClick={() => setFormData((p) => ({ ...p, soldInfo: { ...p.soldInfo, enabled: !p.soldInfo.enabled } }))}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.soldInfo?.enabled ? "bg-blue-500" : "bg-gray-300"}`}>
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.soldInfo?.enabled ? "translate-x-6" : "translate-x-1"}`} />
-                </button>
-              </div>
-              {formData.soldInfo?.enabled && (
-                <input type="number" value={formData.soldInfo?.count ?? 0}
-                  onChange={(e) => setFormData((p) => ({ ...p, soldInfo: { ...p.soldInfo, count: parseInt(e.target.value) || 0 } }))}
-                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg" placeholder="Number sold" />
-              )}
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">FOMO</span>
-                <button type="button"
-                  onClick={() => setFormData((p) => ({ ...p, fomo: { ...p.fomo, enabled: !p.fomo.enabled } }))}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.fomo?.enabled ? "bg-purple-500" : "bg-gray-300"}`}>
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.fomo?.enabled ? "translate-x-6" : "translate-x-1"}`} />
-                </button>
-              </div>
-              {formData.fomo?.enabled && (
-                <div className="space-y-2">
-                  <select value={formData.fomo.type}
-                    onChange={(e) => setFormData((p) => ({ ...p, fomo: { ...p.fomo, type: e.target.value } }))}
-                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg">
-                    <option value="viewing_now">Viewing Now</option>
-                    <option value="product_left">Product Left</option>
-                    <option value="custom">Custom</option>
-                  </select>
-                  {formData.fomo.type === "viewing_now" && (
-                    <input type="number" value={formData.fomo.viewingNow ?? 0}
-                      onChange={(e) => setFormData((p) => ({ ...p, fomo: { ...p.fomo, viewingNow: parseInt(e.target.value) || 0 } }))}
-                      className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg" placeholder="Viewing now count" />
-                  )}
-                  {formData.fomo.type === "product_left" && (
-                    <input type="number" value={formData.fomo.productLeft ?? 0}
-                      onChange={(e) => setFormData((p) => ({ ...p, fomo: { ...p.fomo, productLeft: parseInt(e.target.value) || 0 } }))}
-                      className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg" placeholder="Items left" />
-                  )}
-                  {formData.fomo.type === "custom" && (
-                    <div className="flex gap-2">
-                      <input type="text" value={formData.fomo.customMessage ?? ""} readOnly
-                        className="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg" placeholder="Custom message" />
-                      <button type="button" onClick={() => onOpenCustomMessage(formData.fomo.customMessage || "")}
-                        className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
           </div>
         </div>
 

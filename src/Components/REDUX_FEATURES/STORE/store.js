@@ -34,6 +34,7 @@ import { seoAnalyticsApi, seoUiReducer } from "../../ADMIN_SEGMENT/ADMIN_REDUX_M
 import adminOrdersUiReducer from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/order_management/adminOrdersSlice";
 import { adminOrdersApi } from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/order_management/adminOrdersApi";
 import staffReducer from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/staffSlice";
+import staffPasswordReducer from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/staffPasswordSlice";
 import { wholesalerApi as adminWholesalerApi } from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/wholesalerApi/wholesalerApi";
 import userWishlistReducer from "../REDUX_SLICES/UserWIshlist/userWishlistSLice";
 import userAddressReducer from "../REDUX_SLICES/Useraddressslice";
@@ -71,6 +72,7 @@ export const store = configureStore({
     adminBulkUpload: adminBulkUploadReducer,
     categories: categoriesReducer,
     staff: staffReducer,
+    staffPassword: staffPasswordReducer,
     seoUi: seoUiReducer,
     adminOrdersUi: adminOrdersUiReducer,
         [couponApi.reducerPath]: couponApi.reducer,

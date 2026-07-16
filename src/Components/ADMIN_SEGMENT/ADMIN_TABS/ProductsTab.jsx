@@ -21,6 +21,7 @@ import {
   optimisticUpdateProduct,
   fetchLowStockProducts,
   fetchActiveProductsCount,
+  fetchFeaturedProductsCount,
   setCurrentPage,
   optimisticBulkTagUpdate,         // ✅ ADDED
 } from "../ADMIN_REDUX_MANAGEMENT/adminGetProductsSlice";
@@ -294,6 +295,7 @@ const ProductsTab = ({ onSwitchTab }) => {
     currentPage,
     totalPages,
     realActiveCount,
+    realFeaturedCount,
     realLowStockCount,
     loading: productsLoading,
     error: productsError,
@@ -353,6 +355,7 @@ const ProductsTab = ({ onSwitchTab }) => {
     dispatch(fetchCategories());
     dispatch(fetchLowStockProducts({ page: 1, limit: 1 }));
     dispatch(fetchActiveProductsCount());
+    dispatch(fetchFeaturedProductsCount());
   }, [dispatch]);
 
   useEffect(() => {
@@ -540,37 +543,54 @@ const ProductsTab = ({ onSwitchTab }) => {
     });
   };
 
-  const handleBulkStatusUpdate = async (status) => {
+  // Match ecom: channel-aware bulk status (ecomm / wholesale / legacy)
+  const handleBulkStatusUpdate = async (status, channel = null) => {
     if (selectedSlugs.size === 0) return;
 
-    const label = status === "archived" ? "archive" : `set to ${status}`;
-    if (!window.confirm(`${label.charAt(0).toUpperCase() + label.slice(1)} ${selectedSlugs.size} product(s)? This cannot be easily undone.`))
-      return;
+    const channelName = channel === "ecomm" ? "Ecom" : channel === "wholesale" ? "Wholesale" : "";
+    const actionLabel = channelName ? `Set as ${channelName} → ${status}` : `Set as ${status}`;
+
+    if (!window.confirm(`${actionLabel} for ${selectedSlugs.size} product(s)?`)) return;
 
     setBulkLoading(true);
     try {
-      const res = await wholesaleAxios.patch("/admin/products/bulk-status", {
-        status,
-        slugs: Array.from(selectedSlugs),
-      });
+      let payload;
+      if (channel === "ecomm") {
+        payload = { channelStatus: { ecomm: status }, slugs: Array.from(selectedSlugs) };
+      } else if (channel === "wholesale") {
+        payload = { channelStatus: { wholesale: status }, slugs: Array.from(selectedSlugs) };
+      } else {
+        payload = { status, slugs: Array.from(selectedSlugs) };
+      }
+
+      const res = await wholesaleAxios.patch("/admin/products/bulk-status", payload);
 
       if (res.data.success) {
-        const { modified, notFoundCount } = res.data;
-        toast.success(
-          `${modified} product(s) updated to "${status}"` +
-            (notFoundCount > 0 ? ` • ${notFoundCount} not found` : "")
-        );
+        const updated = res.data.updatedCount ?? res.data.modified ?? 0;
+        const skipped = res.data.skippedCount || 0;
+        const skippedReason = res.data.skippedProducts?.[0]?.reason;
+
+        if (updated > 0) {
+          toast.success(
+            `${updated} product(s) updated` + (skipped > 0 ? ` • ${skipped} skipped` : "")
+          );
+        } else if (skipped > 0) {
+          toast.error(skippedReason || res.data.message || "No products were updated");
+        } else {
+          toast.success(res.data.message || "Done");
+        }
+
         setSelectedSlugs(new Set());
         refreshProducts();
         if (status === "archived") dispatch(fetchArchivedProducts());
         dispatch(fetchActiveProductsCount());
+        dispatch(fetchFeaturedProductsCount());
       } else {
-        toast.error(res.data.message || "Bulk update failed2");
+        toast.error(res.data.message || "Bulk update failed");
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Bulk update failed1");
-      console.log("error", err);
-      
+      console.error("Bulk update error:", err);
+      toast.error(err.response?.data?.message || "Bulk update failed");
     } finally {
       setBulkLoading(false);
     }
@@ -599,7 +619,7 @@ const ProductsTab = ({ onSwitchTab }) => {
   };
 
   const activeProducts   = realActiveCount;
-  const featuredProducts = normalizedProducts.filter((p) => p.isFeatured).length;
+  const featuredProducts = realFeaturedCount;
   const lowStockCount    = realLowStockCount;
 
   const getDateFilterRange = useCallback(() => {
