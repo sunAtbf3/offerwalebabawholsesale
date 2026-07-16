@@ -22,7 +22,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
-import { ShieldAlert, Lock, User } from "lucide-react";
+import { ShieldAlert, Lock, User, Eye, EyeOff } from "lucide-react";
 import { useAdminLoginMutation } from "../ADMIN_REDUX_MANAGEMENT/adminAuthApi";
 import {
   selectAdminStatus,
@@ -100,6 +100,7 @@ const AdminLogin = () => {
   // Form state
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   // Lockout state
   const [lockSecondsLeft, setLockSecondsLeft] = useState(0);
@@ -288,17 +289,26 @@ const AdminLogin = () => {
               className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"
             />
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
               disabled={isLocked}
               required
-              className={`w-full box-border bg-white/5 border border-white/10 rounded-xl py-4 px-4 pl-11 text-white text-sm outline-none transition-colors focus:border-[#f7a221] ${
+              className={`w-full box-border bg-white/5 border border-white/10 rounded-xl py-4 pl-11 pr-12 text-white text-sm outline-none transition-colors focus:border-[#f7a221] ${
                 isLocked ? "opacity-40" : ""
               }`}
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              disabled={isLocked}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/60 transition-colors focus:outline-none disabled:opacity-40"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
           </div>
 
           {/* Submit */}
