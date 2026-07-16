@@ -16,6 +16,7 @@ import {
   selectWishlistLoading,
   selectWishlistError,
   selectWishlistCount,
+  getGuestWishlistSlug,
 } from '../../REDUX_FEATURES/REDUX_SLICES/UserWIshlist/userWishlistSLice';
 
 import {
@@ -48,35 +49,40 @@ const logError = (context, error, info = {}) => {
 // WishlistItem
 // Handles both logged-in (populated productId object) and guest (slug string) shapes
 // ─────────────────────────────────────────────────────────────────────────────
-const WishlistItem = ({ item, isLoggedIn, onRemove, onMoveToCart, onClose, isRemoving, isMoving,path }) => {
+const WishlistItem = ({ item, isLoggedIn, onRemove, onMoveToCart, onClose, isRemoving, isMoving, path }) => {
 
-  // ── Data extraction — same pattern as CartSidebar ─────────────────────────
-  // Logged-in: item.productId is a populated object from DB
-  // Guest: item is just a slug string — handled at parent level, not here
- const isPopulated = typeof item.product === 'object' && item.product !== null;
-const matchedVariant = isPopulated
-  ? (item.product.variants?.find(
-      (v) => String(v._id) === String(item.variantId)
-    ) ?? item.product.variants?.[0] ?? null)
-  : null;
-const name  = isPopulated ? (item.product.title || item.product.name) : (item.name || item.productSlug || 'Product');
-const image = matchedVariant?.images?.[0]?.url || item.product?.variants?.[0]?.images?.[0]?.url || item.image || null;
-const brand = item.product?.brand || null;
-const slug  = item.product?.slug  || item.productSlug || null;
+  const isPopulated = typeof item.product === 'object' && item.product !== null;
+  const matchedVariant = isPopulated
+    ? (item.product.variants?.find(
+        (v) => String(v._id) === String(item.variantId)
+      ) ?? item.product.variants?.[0] ?? null)
+    : null;
 
-  // Stock check — from matched variant inventory
+  const slug = item.product?.slug || item.productSlug || null;
+  const name = isPopulated
+    ? (item.product.title || item.product.name)
+    : (item.productName || item.name || slug?.replace(/-/g, ' ') || 'Product');
+  const image =
+    matchedVariant?.images?.[0]?.url ||
+    item.product?.variants?.[0]?.images?.[0]?.url ||
+    item.image ||
+    null;
+  const brand = item.product?.brand || item.brand || null;
+
   const maxStock = matchedVariant?.inventory?.trackInventory
     ? (matchedVariant?.inventory?.quantity ?? 0)
-    : Infinity;
-  const inStock  = maxStock > 0;
+    : (item.inStock === false ? 0 : Infinity);
+  const inStock = maxStock > 0;
 
-
-  // Add this line after the slug line
-const price =
-  matchedVariant?.price?.sale ??
-  matchedVariant?.price?.base ??
-  matchedVariant?.finalPrice ??
-  null;
+  const price =
+    matchedVariant?.price?.wholesaleSale ??
+    matchedVariant?.price?.wholesaleBase ??
+    matchedVariant?.price?.sale ??
+    matchedVariant?.price?.base ??
+    matchedVariant?.finalPrice ??
+    item.wholesalePrice ??
+    item.price ??
+    null;
 
   const variantAttrs = item.variantAttributesSnapshot ?? matchedVariant?.attributes ?? [];
 
@@ -145,6 +151,12 @@ const price =
               ))}
             </div>
           )}
+
+          {!isLoggedIn && item.variantLabel && (
+            <p className="text-[9px] text-gray-400 uppercase font-medium tracking-wider mt-1">
+              {item.variantLabel}
+            </p>
+          )}
         </div>
 
         {/* ── Action Buttons ── */}
@@ -184,30 +196,6 @@ const price =
     </div>
   );
 };
-
-// ─────────────────────────────────────────────────────────────────────────────
-// GuestItem — minimal display for guest (only has slug, no product data)
-// ─────────────────────────────────────────────────────────────────────────────
-const GuestItem = ({ slug, onRemove }) => (
-  <div className="flex gap-4 py-4 items-center">
-    <div className="h-16 w-16 flex-shrink-0 rounded-xl bg-gray-100 flex items-center justify-center">
-      <ShoppingBag size={20} className="text-gray-300" />
-    </div>
-    <div className="flex-1 min-w-0">
-      <p className="text-xs font-bold text-gray-700 uppercase tracking-tight truncate">
-        {slug?.replace(/-/g, ' ') || 'Saved Product'}
-      </p>
-      <p className="text-[10px] text-gray-400 mt-0.5">Sign in to see details</p>
-    </div>
-    <button
-      onClick={() => onRemove(slug)}
-      className="text-gray-300 hover:text-red-500 transition-colors p-1.5 flex-shrink-0"
-      aria-label="Remove from wishlist"
-    >
-      <Trash2 size={15} />
-    </button>
-  </div>
-);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WishlistSidebar — Main Component
@@ -266,9 +254,9 @@ const isLoggedIn = useSelector(selectIsAuthenticated);
 
   // ── Remove handler ────────────────────────────────────────────────────────
   const handleRemove = async (item) => {
-  const slug = isLoggedIn
-  ? (item.product?.slug || item.productSlug)
-  : item;
+    const slug = isLoggedIn
+      ? (item.product?.slug || item.productSlug)
+      : getGuestWishlistSlug(item);
 
     if (!slug) {
       logError('handleRemove', new Error('Missing slug'), { item });
@@ -300,16 +288,17 @@ const isLoggedIn = useSelector(selectIsAuthenticated);
 
   // ── Move single item to cart ───────────────────────────────────────────────
   const handleMoveToCart = async (item) => {
-   const slug      = item.product?.slug || item.productSlug;
-const variant   = item.product?.variants?.find(
-  (v) => String(v._id) === String(item.variantId)
-) ?? item.product?.variants?.[0];
-    const variantId = variant?._id?.toString() || item.variantId;
+    const slug = item.product?.slug || item.productSlug;
+    const variant = item.product?.variants?.find(
+      (v) => String(v._id) === String(item.variantId)
+    ) ?? item.product?.variants?.[0];
+    const variantId = variant?._id?.toString() || item.variantId || '';
     const moq =
-  variant?.minimumOrderQuantity ??
-  variant?.price?.minimumOrderQuantity ??
-  item.product?.moq ??
-  1;
+      variant?.minimumOrderQuantity ??
+      variant?.price?.minimumOrderQuantity ??
+      item.product?.moq ??
+      item.moq ??
+      1;
 
     if (!slug) {
       logError('handleMoveToCart', new Error('Missing slug'), { item });
@@ -319,21 +308,27 @@ const variant   = item.product?.variants?.find(
     setItemState(slug, 'moving', true);
     try {
       if (isLoggedIn) {
-        // Add to cart
         await dispatch(addToCart({
           productSlug: slug,
           variantId,
           quantity: moq,
         })).unwrap();
-        // Remove from wishlist after successful cart add
         await dispatch(removeFromWishlist({ productSlug: slug })).unwrap();
         toast.success('Moved to cart 🛒');
         console.log(`✅ [WishlistSidebar] moved to cart slug="${slug}"`);
       } else {
         dispatch(addGuestCartItem({
-          productSlug: slug,
-          variantId:   variantId || '',
-          quantity:    moq,
+          productId:          item.productId,
+          productSlug:        slug,
+          variantId,
+          quantity:           moq,
+          moq,
+          wholesalePrice:     item.wholesalePrice ?? item.price ?? null,
+          wholesaleBasePrice: item.wholesaleBasePrice ?? null,
+          productName:        item.productName || item.name || null,
+          image:              item.image ?? null,
+          variantLabel:       item.variantLabel ?? null,
+          discountPercentage: item.discountPercentage ?? 0,
         }));
         dispatch(removeGuestItem(slug));
         toast.success('Moved to cart 🛒');
@@ -482,14 +477,25 @@ const variant   = item.product?.variants?.find(
                 );
               })}
 
-              {/* Guest items — only slugs available */}
-              {!isLoggedIn && guestItems.map((slug) => (
-                <GuestItem
-                  key={slug}
-                  slug={slug}
-                  onRemove={handleRemove}
-                />
-              ))}
+              {/* Guest items — stored metadata from add-time */}
+              {!isLoggedIn && guestItems.map((rawItem) => {
+                const item = typeof rawItem === 'string' ? { productSlug: rawItem } : rawItem;
+                const slug = getGuestWishlistSlug(item);
+                const state = itemLoading[slug] || {};
+                return (
+                  <WishlistItem
+                    key={slug}
+                    item={item}
+                    isLoggedIn={isLoggedIn}
+                    onRemove={handleRemove}
+                    onMoveToCart={handleMoveToCart}
+                    isRemoving={!!state.removing}
+                    isMoving={!!state.moving}
+                    path={slug ? `/product/${slug}` : '#'}
+                    onClose={onClose}
+                  />
+                );
+              })}
 
               {/* Guest sign-in nudge */}
               {!isLoggedIn && (

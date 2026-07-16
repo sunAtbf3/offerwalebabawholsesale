@@ -123,7 +123,19 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
           dispatch(removeGuestItem(product.slug));
           toast.success("Removed", { icon: "💔" });
         } else {
-          dispatch(addGuestItem(product.slug));
+          dispatch(addGuestItem({
+            productSlug:        product.slug,
+            productId:          product._id,
+            variantId:          variant?._id?.toString() || "",
+            productName:        title,
+            image:              variant.images?.[0]?.url ?? null,
+            brand:              product?.brand ?? null,
+            wholesalePrice:     variant.price?.wholesaleSale ?? variant.price?.wholesaleBase ?? variant.price?.sale ?? null,
+            wholesaleBasePrice: variant.price?.wholesaleBase ?? variant.price?.base ?? null,
+            variantLabel:       variant.attributes?.map((a) => `${a.key}: ${a.value}`).join(", ") || null,
+            moq:                moq || 1,
+            discountPercentage: discountPct ?? 0,
+          }));
           toast.success("Saved to wishlist", { icon: "❤️" });
         }
       }

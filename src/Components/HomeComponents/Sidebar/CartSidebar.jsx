@@ -101,7 +101,7 @@ const getWholesaleVariant = (product, variantId) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // GuestCartItem — uses wholesalePrice snapshot stored at add-time
 // ─────────────────────────────────────────────────────────────────────────────
-const GuestCartItem = ({ item, onRemove, onUpdateQty, isUpdating, isRemoving, productPath }) => {
+const GuestCartItem = ({ item, onRemove, onUpdateQty, isUpdating, isRemoving, productPath, onClose }) => {
   const productSlug = item.productSlug || item._productSlug;
   
   const qty         = item.quantity || 1;
@@ -120,7 +120,7 @@ const GuestCartItem = ({ item, onRemove, onUpdateQty, isUpdating, isRemoving, pr
   const path = productPath;
   return (
     <div className="flex gap-3 py-3 group">
-      <Link to={path} className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border border-gray-100 bg-amber-50 flex items-center justify-center">
+      <Link to={path} onClick={onClose} className="h-20 w-20 cursor-pointer flex-shrink-0 overflow-hidden rounded-xl border border-gray-100 bg-amber-50 flex items-center justify-center">
         {image ? (
           <img
             src={image}
@@ -137,7 +137,9 @@ const GuestCartItem = ({ item, onRemove, onUpdateQty, isUpdating, isRemoving, pr
         <div>
           <div className="flex justify-between items-start gap-2">
             <h3 className="text-xs font-bold text-gray-900 line-clamp-2 capitalize flex-1 leading-snug">
-              {displayName}
+              <Link to={path} onClick={onClose} className="hover:text-[#35858E] transition-colors">
+                {displayName}
+              </Link>
             </h3>
             {itemTotal != null && (
               <p className="text-sm font-extrabold text-gray-900 whitespace-nowrap flex-shrink-0">
@@ -871,7 +873,7 @@ const handleUpdateQty = useCallback(async (item, newQty) => {
               {currentItems.map((item, index) => {
                 const loadingState = getItemLoading(item);
                 const itemKey      = item._id || `${item.product?.slug || item._productSlug || item.productSlug}-${item.variantId}-${index}`;
-                const productSlug  = item.product?.slug || item._productSlug;
+                const productSlug  = item.product?.slug || item._productSlug || item.productSlug;
                 const path         = productSlug ? `/product/${productSlug}` : "#";
 
                 if (!isLoggedIn) {
@@ -883,8 +885,8 @@ const handleUpdateQty = useCallback(async (item, newQty) => {
                       onRemove={handleRemove}
                       isUpdating={loadingState.updating}
                       isRemoving={loadingState.removing}
-                                          productPath={path}
-
+                      productPath={path}
+                      onClose={onClose}
                     />
                   );
                 }

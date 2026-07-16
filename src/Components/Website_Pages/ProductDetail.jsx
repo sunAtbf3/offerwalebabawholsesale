@@ -1507,6 +1507,7 @@ import {
 
 import { toast } from "react-toastify";
 import { selectIsAuthenticated } from "../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice";
+import { openModal } from "../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerSlice";
 // BEFORE: axiosInstance not imported in wholesale
 // AFTER: add these
 
@@ -2195,18 +2196,6 @@ const submitProductReview = async (e) => {
       activeVariants.some((v) => v.attributes?.some((a) => a.key === key && a.value === value)),
     [activeVariants]
   );
-  const handleOrderNow = () => {
-
-  // ❌ Not logged in
-  if (!isAuthenticated) {
-    dispatch(openAuthModal());
-    return;
-  }
-
-  // ✅ Logged in
-  navigate("/checkout");
-  // Sync desktop track whenever activeThumb changes (thumbnail click, dot click, etc.)
-};
 
   const selectedVariant = useMemo(() => {
     if (!activeVariants.length) return null;
@@ -2366,6 +2355,60 @@ useEffect(() => {
 }, [moq]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
+  const buildGuestCartPayload = (quantity) => ({
+    productId:          product._id,
+    productSlug:        product.slug,
+    variantId:          variant?._id?.toString() || "",
+    quantity,
+    moq:                moq || 1,
+    wholesalePrice:     selectedVariant?.price?.wholesaleSale ?? selectedVariant?.price?.wholesaleBase ?? selectedVariant?.price?.sale ?? wholesalePrice ?? null,
+    wholesaleBasePrice: selectedVariant?.price?.wholesaleBase ?? selectedVariant?.price?.base ?? mrp ?? null,
+    productName:        title,
+    image:              selectedVariant?.images?.[0]?.url ?? product?.image ?? null,
+    variantLabel:       selectedVariant?.attributes?.map((a) => `${a.key}: ${a.value}`).join(", ") || null,
+    discountPercentage: discPct ?? 0,
+  });
+
+  const buildGuestWishlistPayload = () => ({
+    productSlug:        product.slug,
+    productId:          product._id,
+    variantId:          variant?._id?.toString() || "",
+    productName:        title,
+    image:              selectedVariant?.images?.[0]?.url ?? product?.image ?? null,
+    brand:              brand ?? null,
+    wholesalePrice:     selectedVariant?.price?.wholesaleSale ?? selectedVariant?.price?.wholesaleBase ?? selectedVariant?.price?.sale ?? wholesalePrice ?? null,
+    wholesaleBasePrice: selectedVariant?.price?.wholesaleBase ?? selectedVariant?.price?.base ?? mrp ?? null,
+    variantLabel:       selectedVariant?.attributes?.map((a) => `${a.key}: ${a.value}`).join(", ") || null,
+    moq:                moq || 1,
+    discountPercentage: discPct ?? 0,
+  });
+
+  const handleOrderNow = async () => {
+    if (!inStock || !product?.slug) return;
+
+    if (!isAuthenticated) {
+      dispatch(openModal("login"));
+      return;
+    }
+
+    setL("orderNow", true);
+    try {
+      if (!isInCart) {
+        await dispatch(addToCart({
+          productSlug: product.slug,
+          productId:   product._id,
+          variantId:   variant?._id?.toString() || "",
+          quantity:    moq || 1,
+        })).unwrap();
+      }
+      navigate("/checkout");
+    } catch (err) {
+      toast.error(err?.message || "Failed to proceed");
+    } finally {
+      setL("orderNow", false);
+    }
+  };
+
   const handleWishlist = async (e) => {
     e.stopPropagation();
     if (!product?.slug || localLoading.wishlist) return;
@@ -2387,7 +2430,7 @@ useEffect(() => {
           dispatch(removeGuestItem(product.slug));
           toast.success("Removed", { icon: "💔" });
         } else {
-          dispatch(addGuestItem(product.slug));
+          dispatch(addGuestItem(buildGuestWishlistPayload()));
           toast.success("Saved to wishlist", { icon: "❤️" });
         }
       }
@@ -2432,12 +2475,7 @@ useEffect(() => {
           quantity:    moq || 1,
         })).unwrap();
       } else {
-        dispatch(addGuestCartItem({
-          productId:   product._id,
-          productSlug: product.slug,
-          variantId:   variant?._id?.toString() || "",
-          quantity:    moq || 1,
-        }));
+        dispatch(addGuestCartItem(buildGuestCartPayload(moq || 1)));
       }
       toast.success("Added to cart");
     } catch (err) {
@@ -3440,41 +3478,19 @@ onClick={() => {
                   </p>
                 )}
 
-                <Link
-                  to="/checkout"
-                   disabled={!inStock || localLoading.add || localLoading.orderNow}
-                   onClick={async () => {
-                                if (isInCart) { navigate("/checkout"); return; }
-                                setL("orderNow", true);
-                                try {
-                                  if (isLoggedIn) {
-                                    await dispatch(addToCart({
-                                      productSlug: product.slug,
-                                      variantId: variant?._id?.toString(),
-                                      quantity: 1,
-                                    })).unwrap();
-                                  } else {
-                                    dispatch(addGuestCartItem({
-                                      productId: product._id,
-                                      productSlug: product.slug,
-                                      variantId: variant?._id?.toString() || "",
-                                      quantity: 1,
-                                    }));
-                                  }
-                                  navigate("/checkout");
-                                } catch (err) {
-                                  toast.error(err?.message || "Failed to proceed");
-                                } finally {
-                                  setL("orderNow", false);
-                                }
-                              }}
-                  className="w-full bg-[#478B8D] hover:bg-[#478B8D]/50 text-zinc-50 py-3 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2  transition-colors active:scale-[0.98]"
-                >
-                 {localLoading.orderNow
-                                ? <><Loader2 size={16} className="animate-spin" /> Processing...</>
-                                : "Order Now"
-                              }
-                </Link>
+                {inStock && (
+                  <button
+                    type="button"
+                    onClick={handleOrderNow}
+                    disabled={localLoading.orderNow}
+                    className="w-full bg-[#478B8D] hover:bg-[#478B8D]/50 text-zinc-50 py-3 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.98] disabled:opacity-50"
+                  >
+                    {localLoading.orderNow
+                      ? <><Loader2 size={16} className="animate-spin" /> Processing...</>
+                      : "Order Now"
+                    }
+                  </button>
+                )}
 
                 {/* Wishlist + Share */}
                 <div className="flex items-center gap-2 pt-1">

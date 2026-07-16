@@ -12,19 +12,33 @@ const logError = (context, error, info = {}) => {
 };
 
 // ── localStorage helpers (guest wishlist) ─────────────────────────────────────
-const GUEST_KEY = "guestWishlist"; // array of slugs
+const GUEST_KEY = "guestWishlist"; // array of slug strings or guest item objects
+
+/** Extract slug from legacy string entry or guest object */
+export const getGuestWishlistSlug = (item) =>
+  typeof item === "string" ? item : item?.productSlug ?? null;
+
+/** Normalize legacy slug-only entries into objects */
+const normalizeGuestWishlistItems = (raw = []) =>
+  raw.map((item) =>
+    typeof item === "string" ? { productSlug: item } : item
+  );
 
 export const getGuestWishlist = () => {
   try {
-    return JSON.parse(localStorage.getItem(GUEST_KEY) || "[]");
+    const raw = JSON.parse(localStorage.getItem(GUEST_KEY) || "[]");
+    return normalizeGuestWishlistItems(Array.isArray(raw) ? raw : []);
   } catch {
     return [];
   }
 };
 
-export const saveGuestWishlist = (slugs) => {
+export const getGuestWishlistSlugs = () =>
+  getGuestWishlist().map(getGuestWishlistSlug).filter(Boolean);
+
+export const saveGuestWishlist = (items) => {
   try {
-    localStorage.setItem(GUEST_KEY, JSON.stringify(slugs));
+    localStorage.setItem(GUEST_KEY, JSON.stringify(items));
   } catch (e) {
     console.error("🔴 [userWishlistSlice] Failed to save guest wishlist", e);
   }
@@ -177,7 +191,7 @@ export const moveToCart = createAsyncThunk(
 // ── Initial State ─────────────────────────────────────────────────────────────
 const initialState = {
   items: [],          // wishlist products array from DB
-  guestItems: [],     // slugs array for non-logged-in users
+  guestItems: [],     // guest item objects for non-logged-in users
   totalItems: 0,
   loading: {
     fetch: false,
@@ -207,25 +221,39 @@ const userWishlistSlice = createSlice({
   name: "userWishlist",
   initialState,
   reducers: {
-    // Guest: add slug to local state + localStorage
+    // Guest: add item object (or legacy slug string) to local state + localStorage
     addGuestItem: (state, action) => {
-      const slug = action.payload;
-      if (!state.guestItems.includes(slug)) {
-        state.guestItems.push(slug);
+      const payload = action.payload;
+      const slug = getGuestWishlistSlug(payload);
+      if (!slug) return;
+
+      const entry =
+        typeof payload === "string"
+          ? { productSlug: payload }
+          : { ...payload, productSlug: slug };
+
+      const exists = state.guestItems.some(
+        (item) => getGuestWishlistSlug(item) === slug
+      );
+      if (!exists) {
+        state.guestItems.push(entry);
         saveGuestWishlist(state.guestItems);
         console.log(`💛 [addGuestItem] slug="${slug}" added to guest wishlist`);
       }
     },
-    // Guest: remove slug from local state + localStorage
+    // Guest: remove by slug string or guest item object
     removeGuestItem: (state, action) => {
-      const slug = action.payload;
-      state.guestItems = state.guestItems.filter((s) => s !== slug);
+      const slug = getGuestWishlistSlug(action.payload);
+      if (!slug) return;
+      state.guestItems = state.guestItems.filter(
+        (item) => getGuestWishlistSlug(item) !== slug
+      );
       saveGuestWishlist(state.guestItems);
       console.log(`💛 [removeGuestItem] slug="${slug}" removed from guest wishlist`);
     },
     // Load guest wishlist from localStorage into state on app init
     loadGuestWishlist: (state) => {
-      state.guestItems = getGuestWishlist();
+      state.guestItems = normalizeGuestWishlistItems(getGuestWishlist());
       console.log(`💛 [loadGuestWishlist] Loaded ${state.guestItems.length} guest items`);
     },
     // After merge — clear guest items from state + localStorage
@@ -365,7 +393,9 @@ export const selectIsWishlisted = (slug) => (state) => {
       (item) => item?.product?.slug === slug || item?.product?.slug === slug
     );
   }
-  return state.userWishlist?.guestItems.includes(slug);
+  return state.userWishlist?.guestItems.some(
+    (item) => getGuestWishlistSlug(item) === slug
+  );
 };
 // userWishlistSlice.js mein add karo
 export const selectDisplayWishlistCount = (state) => {

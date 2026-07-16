@@ -5,7 +5,7 @@ import {
   mergeWishlist,
   loadGuestWishlist,
   clearGuestItems,
-  getGuestWishlist,
+  getGuestWishlistSlugs,
 } from "../REDUX_FEATURES/REDUX_SLICES/UserWIshlist/userWishlistSLice";
 import { selectIsAuthenticated } from "../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice";
 
@@ -35,7 +35,7 @@ const useWishlistInit = () => {
         console.log("💛 [useWishlistInit] User logged in — initializing wishlist...");
 
         // Step 1 — check if guest had any items
-        const guestSlugs = getGuestWishlist();
+        const guestSlugs = getGuestWishlistSlugs();
 
         // Step 2 — merge guest items into DB if any exist
         if (guestSlugs.length > 0) {

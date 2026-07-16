@@ -405,7 +405,7 @@ const OrderDetail = ({ orderId, onBack, onCancel, isCancelling, cancelError }) =
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-black text-gray-900 truncate">{name}</p>
+                  <p className="text-sm font-black text-gray-900">{name}</p>
                   <p className="text-xs text-gray-400 font-medium mt-0.5">
                     Qty: {item.quantity} × {fmt(price)}
                   </p>
@@ -485,7 +485,7 @@ const OrderDetail = ({ orderId, onBack, onCancel, isCancelling, cancelError }) =
       </div>
 
       {/* Cancel */}
-      {canCancel && (
+      {/* {canCancel && (
         <div className="bg-white rounded-[32px] p-6">
           {cancelError && (
             <p className="text-xs text-red-500 font-bold mb-3">{cancelError.message}</p>
@@ -528,7 +528,7 @@ const OrderDetail = ({ orderId, onBack, onCancel, isCancelling, cancelError }) =
             </button>
           )}
         </div>
-      )}
+      )} */}
 
       {showRazorpay && razorpayBundle && order && (
         <RazorpayCheckout

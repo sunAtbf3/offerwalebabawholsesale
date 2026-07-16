@@ -33,6 +33,7 @@ const LocationDisplay = ({ userAddress }) => {
   const [isAnimating, setIsAnimating] = useState(false);
   const navigate = useNavigate();
   const isLoggedIn = useSelector(selectIsAuthenticated);
+  const dispatch = useDispatch();
 
   const handleAddress = () => {
     if (isLoggedIn) navigate('/account/useraddress');
