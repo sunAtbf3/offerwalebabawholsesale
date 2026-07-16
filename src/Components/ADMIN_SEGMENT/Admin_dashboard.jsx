@@ -181,7 +181,7 @@ const [adminLogout, { isLoading: loggingOut }] = useAdminLogoutMutation();
             {/* User Info Downward */}
             <div className="mt-2 text-center overflow-hidden w-full">
               <h1 className="text-sm font- text-slate-800 truncate">
-                Admin
+                {adminUser?.name?.trim() || "Admin"}
               </h1>
               <p className="text-[10px] font- text-blue-600 tracking-wider uppercase leading-none mt-1">
                 {ROLE_LABELS[activeRole] || activeRole}

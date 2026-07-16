@@ -12,10 +12,15 @@ import {
 // Existing thunk for fetching all products - NOW RETURNS FULL RESPONSE
 export const fetchProducts = createAsyncThunk(
   "adminGetProducts/fetchProducts",
-  async ({ page = 1, limit = 15 } = {}, { rejectWithValue }) => {
+  async ({ page = 1, limit = 15, search = "" } = {}, { rejectWithValue }) => {
     try {
+      const trimmedSearch = typeof search === "string" ? search.trim() : "";
       const response = await wholesaleAxios.get("/admin/products/all", {
-        params: { page, limit },
+        params: {
+          page,
+          limit,
+          ...(trimmedSearch ? { search: trimmedSearch } : {}),
+        },
       });
       if (response.data.success) return response.data; // ✅ FIXED: return full response, not just products
       return rejectWithValue(response.data.message || "Failed to fetch products");

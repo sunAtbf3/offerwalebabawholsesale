@@ -415,8 +415,9 @@ const CategoryModal = ({ onSelect, onClose }) => {
     setFormName(cat.name || "");
     setFormDesc(cat.description || "");
     setFormImageFile(null);
-    existingImageUrlRef.current = getExistingImageUrl(cat);
-    // formImageSrc will be set to the server URL via the useEffect above
+    const existingUrl = getExistingImageUrl(cat);
+    existingImageUrlRef.current = existingUrl;
+    setFormImageSrc(existingUrl);
     if (imageInputRef.current) imageInputRef.current.value = "";
     setTimeout(() => {
       formTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });

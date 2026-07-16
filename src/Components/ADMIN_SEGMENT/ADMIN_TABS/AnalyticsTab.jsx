@@ -1,6 +1,7 @@
 // src/components/ADMIN_SEGMENT/ADMIN_TABS/AnalyticsTab.jsx
-import React, { useState, useMemo } from 'react';
-import { useSelector } from 'react-redux';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchProducts, fetchActiveProductsCount } from '../ADMIN_REDUX_MANAGEMENT/adminGetProductsSlice';
 import {
   LineChart,
   Line,
@@ -19,13 +20,26 @@ import {
 import { format, subDays } from 'date-fns';
 import { Download, TrendingUp, IndianRupee, Package, AlertTriangle } from 'lucide-react';
 
+const truncateChartLabel = (text, max = 22) => {
+  const label = String(text || '').trim();
+  if (label.length <= max) return label;
+  return `${label.slice(0, max - 1)}…`;
+};
+
 const AnalyticsTab = () => {
+  const dispatch = useDispatch();
   const [dateRange, setDateRange] = useState('week');
   const [startDate, setStartDate] = useState(subDays(new Date(), 7));
   const [endDate, setEndDate] = useState(new Date());
 
-  // Get real product data from Redux
-  const { products } = useSelector((state) => state.adminGetProducts);
+  const { products, totalProducts: adminTotalProductCount, realActiveCount } = useSelector(
+    (state) => state.adminGetProducts
+  );
+
+  useEffect(() => {
+    dispatch(fetchProducts({ page: 1, limit: 15 }));
+    dispatch(fetchActiveProductsCount());
+  }, [dispatch]);
 
   const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
@@ -66,12 +80,14 @@ const AnalyticsTab = () => {
 
         return {
           id: product._id,
-          name: product.name,
+          name: product.title || product.name,
+          shortName: truncateChartLabel(product.title || product.name),
           value: totalValue,
           units: totalUnits,
           slug: product.slug
         };
       })
+      .filter((item) => item.value > 0)
       .sort((a, b) => b.value - a.value)
       .slice(0, 10);
   }, [products]);
@@ -191,8 +207,11 @@ const AnalyticsTab = () => {
     alert(`Exporting as ${format}...`);
   };
 
-  const totalProducts = products.length;
-  const activeProducts = products.filter(p => p.status === 'active').length;
+  const totalProductCount =
+    adminTotalProductCount > 0 ? adminTotalProductCount : products.length;
+  const activeProductCountFromList = products.filter((p) => p.status === 'active').length;
+  const activeProductDisplay =
+    realActiveCount > 0 ? realActiveCount : activeProductCountFromList;
   const totalVariants = inventoryMetrics.totalVariants;
 
   return (
@@ -244,13 +263,13 @@ const AnalyticsTab = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500 mb-1">Total Products</p>
-              <p className="text-2xl font-bold text-gray-900">{totalProducts}</p>
+              <p className="text-2xl font-bold text-gray-900">{totalProductCount}</p>
             </div>
             <div className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center">
               <Package className="w-5 h-5 text-purple-600" />
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-2">{activeProducts} active · {totalVariants} variants</p>
+          <p className="text-xs text-gray-500 mt-2">{activeProductDisplay} active · {totalVariants} variants</p>
         </div>
 
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
@@ -303,27 +322,34 @@ const AnalyticsTab = () => {
         {/* Top Products by Value Bar Chart */}
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Top 10 Products by Stock Value</h3>
-          <div className="h-80 w-full">
+          <div
+            className="w-full"
+            style={{ height: Math.max(360, topProductsByValue.length * 44) }}
+          >
             {topProductsByValue.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart 
-                  data={topProductsByValue} 
+                <BarChart
+                  data={topProductsByValue}
                   layout="vertical"
-                  margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+                  margin={{ top: 8, right: 24, left: 8, bottom: 8 }}
+                  barCategoryGap="20%"
                 >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis 
-                    dataKey="name" 
-                    type="category" 
-                    width={90}
-                    tick={{ fontSize: 12 }}
+                  <XAxis type="number" tickFormatter={(v) => `₹${Number(v).toLocaleString('en-IN')}`} />
+                  <YAxis
+                    dataKey="shortName"
+                    type="category"
+                    width={200}
+                    interval={0}
+                    tick={{ fontSize: 11 }}
+                    tickMargin={8}
+                    tickLine={false}
                   />
-                  <Tooltip 
-                    formatter={(value) => [`₹${value.toLocaleString()}`, 'Stock Value']}
+                  <Tooltip
+                    formatter={(value) => [`₹${Number(value).toLocaleString('en-IN')}`, 'Stock Value']}
+                    labelFormatter={(_, payload) => payload?.[0]?.payload?.name || ''}
                   />
-                  <Legend />
-                  <Bar dataKey="value" fill="#4F46E5" name="Stock Value (₹)" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="value" fill="#4F46E5" name="Stock Value (₹)" radius={[0, 4, 4, 0]} barSize={18} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
