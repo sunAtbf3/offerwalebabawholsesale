@@ -90,7 +90,11 @@ const WishlistItem = ({ item, isLoggedIn, onRemove, onMoveToCart, onClose, isRem
     <div className="flex gap-4 group py-4">
 
       {/* ── Image ── */}
-      <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-[20px] border border-gray-100 bg-gray-50 relative">
+      <Link
+        to={path}
+        onClick={onClose}
+        className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-[20px] border border-gray-100 bg-gray-50 relative block"
+      >
         {image ? (
           <img
             src={image}
@@ -116,7 +120,7 @@ const WishlistItem = ({ item, isLoggedIn, onRemove, onMoveToCart, onClose, isRem
             </span>
           </div>
         )}
-      </div>
+      </Link>
 
       {/* ── Details ── */}
       <div className="flex flex-1 flex-col justify-between py-1 min-w-0">

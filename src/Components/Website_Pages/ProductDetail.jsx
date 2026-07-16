@@ -2609,7 +2609,7 @@ useEffect(() => {
    specs: (
   <div className="p-5">
     {/* Specifications Table */}
-    {product?.specs?.length > 0 ? (
+    {/* {product?.specs?.length > 0 ? (
       <table className="w-full text-xs mb-5">
         <tbody>
           {product.specs.map((spec, i) => (
@@ -2622,7 +2622,7 @@ useEffect(() => {
       </table>
     ) : (
       <p className="text-sm text-gray-400 mb-5">No specifications available.</p>
-    )}
+    )} */}
 
     {/* Highlights — description se aaya */}
     {product?.attributes?.length > 0 && (

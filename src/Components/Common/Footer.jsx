@@ -545,7 +545,7 @@ const Footer = () => {
                       font-medium
                       leading-6
                     ">
-                      Tuesday – Sunday · 1 PM – 11 PM
+                      Tuesday – Sunday · 1 PM – 10 PM
                     </p>
                   </div>
                 </div>
