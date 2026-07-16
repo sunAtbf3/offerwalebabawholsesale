@@ -2623,6 +2623,7 @@ useEffect(() => {
     ) : (
       <p className="text-sm text-gray-400 mb-5">No specifications available.</p>
     )} */}
+    
 
     {/* Highlights — description se aaya */}
     {product?.attributes?.length > 0 && (
