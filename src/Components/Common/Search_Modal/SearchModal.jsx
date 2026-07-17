@@ -8,9 +8,17 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 
 // ─── Wholesale-only helper functions ─────────────────────────────────────────
 
+const isWholesaleListedVariant = (v) => {
+  if (!v) return false;
+  const ws = v.channelVisibility?.wholesale;
+  if (ws != null) return ws === "active";
+  // Legacy fallback when channelVisibility is missing
+  return v.wholesale === true && v.isActive !== false;
+};
+
 const getWholesaleVariants = (product) => {
   if (!product.variants || product.variants.length === 0) return [];
-  return product.variants.filter(v => v.wholesale === true && v.isActive === true);
+  return product.variants.filter(isWholesaleListedVariant);
 };
 
 const getProductImage = (product) => {

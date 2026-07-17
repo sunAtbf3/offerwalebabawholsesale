@@ -14,8 +14,9 @@ export const fetchCategories = createAsyncThunk(
   "categories/fetchAll",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await wholesaleAxios.get("/categories/categories");
-      return res.data.categories || res.data.data || res.data || [];
+      const res = await wholesaleAxios.get("/categories/admin/categories");
+      const cats = res.data.categories;
+      return Array.isArray(cats) ? cats : [];
     } catch (err) {
       return rejectWithValue(
         err.response?.data?.message || "Failed to fetch categories"

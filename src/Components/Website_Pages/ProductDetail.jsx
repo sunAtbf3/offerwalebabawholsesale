@@ -1513,6 +1513,11 @@ import { openModal } from "../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerSl
 
 import axiosInstance from "../../SERVICES/Wholesaleaxios"; // adjust path to match your wholesale app's folder structure
 import { getProductRatingDisplay, getFallbackDistribution } from "../../utils/productRatingDisplay"; // same
+import {
+  resolveVariantTitle,
+  resolveVariantDescription,
+  resolveVariantShipping,
+} from "../../utils/variantCatalogForm";
 import StarRatingInput from "../Common/StarRatingInput"; // adjust path
 
 // ✅ WholesaleProductCard import — RelatedCard replaced
@@ -2119,11 +2124,14 @@ useEffect(() => {
     };
   };
 
-  // ── Variant logic ─────────────────────────────────────────────────────────
-  const activeVariants = useMemo(
-    () => (product?.variants ?? []).filter((v) => v.isActive === true),
-    [product]
+  // ── Variant logic (ecom parity) ───────────────────────────────────────────
+  // API already returns storefront-listed variants; do not re-filter by legacy isActive.
+  const listedVariants = useMemo(
+    () => (product?.variants ?? []).filter(Boolean),
+    [product?.variants]
   );
+  // Alias kept so existing references below still compile during edit; prefer listedVariants.
+  const activeVariants = listedVariants;
   console.log("productvariant", product?.variants);
 
   const topCoupons = useMemo(() => {
@@ -2135,19 +2143,19 @@ useEffect(() => {
 
   const attrKeys = useMemo(() => {
     const s = new Set();
-    activeVariants.forEach((v) => v.attributes?.forEach((a) => s.add(a.key)));
+    listedVariants.forEach((v) => v.attributes?.forEach((a) => s.add(a.key)));
     return [...s];
-  }, [activeVariants]);
+  }, [listedVariants]);
 
   const getAllValues = useCallback(
     (key) => {
-      const s = new Set();      
-      activeVariants.forEach((v) =>
+      const s = new Set();
+      listedVariants.forEach((v) =>
         v.attributes?.filter((a) => a.key === key).forEach((a) => s.add(a.value))
       );
       return [...s];
     },
-    [activeVariants]
+    [listedVariants]
   );
   // BEFORE: no review submit handler in wholesale
 // AFTER: add this
@@ -2193,42 +2201,173 @@ const submitProductReview = async (e) => {
 
   const isAvailable = useCallback(
     (key, value) =>
-      activeVariants.some((v) => v.attributes?.some((a) => a.key === key && a.value === value)),
-    [activeVariants]
+      listedVariants.some((v) => v.attributes?.some((a) => a.key === key && a.value === value)),
+    [listedVariants]
   );
 
+  const useFlatVariantPicker = true;
+
+  const variantKey = (v) => {
+    if (!v) return "";
+    if (v._id != null) return `id:${String(v._id)}`;
+    if (v.productCode != null && v.productCode !== "") return `code:${String(v.productCode)}`;
+    return "";
+  };
+
+  const isSameVariant = (a, b) => {
+    const ka = variantKey(a);
+    const kb = variantKey(b);
+    return Boolean(ka && kb && ka === kb);
+  };
+
+  const variantSelectOptions = useMemo(() => {
+    if (!listedVariants.length) return [];
+
+    const attrsToMap = (attrs) =>
+      Object.fromEntries(
+        (attrs || [])
+          .filter((a) => a?.key)
+          .map((a) => [a.key, a.value])
+      );
+
+    // Single-key shortcut ONLY if EVERY variant has that key.
+    // Primary 0990-1 has attributes:[] → must NOT collapse to only "var2".
+    const singleKey = attrKeys.length === 1 ? attrKeys[0] : null;
+    const allHaveSingleKey =
+      Boolean(singleKey) &&
+      listedVariants.every((v) =>
+        (v.attributes || []).some((a) => a.key === singleKey)
+      );
+
+    if (allHaveSingleKey) {
+      return getAllValues(singleKey).map((val) => {
+        const variant =
+          listedVariants.find((v) =>
+            v.attributes?.some((a) => a.key === singleKey && a.value === val)
+          ) || null;
+        return {
+          id: `${singleKey}:${val}`,
+          label: val,
+          attrs: { [singleKey]: val },
+          variant,
+        };
+      });
+    }
+
+    // One chip per variant
+    return listedVariants.map((v, i) => {
+      const variantAttrs = Array.isArray(v.attributes) ? v.attributes : [];
+      const primaryAttr = variantAttrs.find(
+        (a) => a?.key && a?.value != null && String(a.value).trim() !== ""
+      );
+      const productPrimary = (product?.attributes || []).find(
+        (a) => a?.key && a?.value != null && String(a.value).trim() !== ""
+      );
+      const label =
+        primaryAttr?.value ||
+        (variantAttrs.length === 0 ? productPrimary?.value : null) ||
+        String(v.productCode || `Variant ${i + 1}`);
+
+      const attrs =
+        variantAttrs.length > 0
+          ? attrsToMap(variantAttrs)
+          : attrsToMap(product?.attributes);
+
+      return {
+        id: variantKey(v) || `idx-${i}`,
+        label,
+        attrs,
+        variant: v,
+      };
+    });
+  }, [listedVariants, attrKeys, getAllValues, product]);
+
   const selectedVariant = useMemo(() => {
-    if (!activeVariants.length) return null;
-    if (!Object.keys(selectedAttrs).length) return activeVariants[0];
-    let best = activeVariants[0], bestScore = -1;
-    activeVariants.forEach((v) => {
-      const score = Object.entries(selectedAttrs).filter(([k, val]) =>
+    if (!listedVariants.length) return null;
+
+    const activeEntries = Object.entries(selectedAttrs).filter(
+      ([, val]) => val != null && val !== ""
+    );
+    if (!activeEntries.length) return listedVariants[0];
+
+    const exact = listedVariants.find((v) => {
+      const attrs = (v.attributes || []).filter((a) => a?.key);
+      if (!attrs.length) return false;
+      return activeEntries.every(([k, val]) =>
+        attrs.some((a) => a.key === k && a.value === val)
+      );
+    });
+    if (exact) return exact;
+
+    // Primary has empty attributes[] — product-level attrs belong to primary
+    const primary = listedVariants[0];
+    const primaryEmpty = !(primary.attributes || []).some((a) => a?.key);
+    if (primaryEmpty && product?.attributes?.length) {
+      const productMatch = activeEntries.every(([k, val]) =>
+        product.attributes.some((a) => a.key === k && a.value === val)
+      );
+      if (productMatch) return primary;
+    }
+
+    let best = listedVariants[0];
+    let bestScore = -1;
+    listedVariants.forEach((v) => {
+      const score = activeEntries.filter(([k, val]) =>
         v.attributes?.some((a) => a.key === k && a.value === val)
       ).length;
-      if (score > bestScore) { bestScore = score; best = v; }
+      if (score > bestScore) {
+        bestScore = score;
+        best = v;
+      }
     });
     return best;
-  }, [activeVariants, selectedAttrs]);
-  
-  console.log("Product", typeof selectedVariant?.productCode);
-const productCode = selectedVariant?.productCode || "";
-useEffect(() => {
-  if (!activeVariants.length) return;
+  }, [listedVariants, selectedAttrs, product]);
 
-  setSelectedAttrs((prev) => {
-    if (Object.keys(prev).length) return prev;
+  const productCode = selectedVariant?.productCode || listedVariants[0]?.productCode || "";
 
+  // Always seed primary variant attributes on product / variant list load (ecom)
+  useEffect(() => {
+    if (!listedVariants.length) return;
+    const primary = listedVariants[0];
     const init = {};
-
-    activeVariants[0].attributes?.forEach((a) => {
-      init[a.key] = a.value;
+    const sourceAttrs =
+      primary.attributes?.length > 0
+        ? primary.attributes
+        : product?.attributes || [];
+    sourceAttrs.forEach((a) => {
+      if (a?.key) init[a.key] = a.value;
     });
+    setSelectedAttrs(init);
+    setActiveThumb(0);
+  }, [product?._id, product?.slug, listedVariants]);
 
-    return init;
-  });
-}, [activeVariants]);
+  useEffect(() => {
+    setActiveThumb(0);
+  }, [selectedVariant?._id, selectedVariant?.productCode]);
 
-  // useEffect(() => { setActiveThumb(0); }, [selectedVariant?._id]);
+  const handleAttrSelect = (key, value) => {
+    if (selectedAttrs[key] === value) return;
+    const matched = listedVariants.find((v) =>
+      v.attributes?.some((a) => a.key === key && a.value === value)
+    );
+    if (matched) {
+      const next = {};
+      matched.attributes?.forEach((a) => {
+        if (a?.key) next[a.key] = a.value;
+      });
+      setSelectedAttrs(next);
+    } else {
+      setSelectedAttrs((prev) => ({ ...prev, [key]: value }));
+    }
+    setActiveThumb(0);
+  };
+
+  const handleVariantOptionSelect = (option) => {
+    if (!option?.variant) return;
+    if (isSameVariant(selectedVariant, option.variant)) return;
+    setSelectedAttrs(option.attrs || {});
+    setActiveThumb(0);
+  };
 
   // ── Outside click → reset variant ────────────────────────────────────────
   // useEffect(() => {
@@ -2326,7 +2465,26 @@ const activeImg = actualActiveImg;
   const casePack      = product?.casePack ?? 1;
   const leadTime      = product?.leadTime ?? "3–5 days";
   const returnPolicy  = product?.returnPolicy ?? "7 days";
-  const title         = product?.title || product?.name || "Product";
+  const title = resolveVariantTitle(selectedVariant, product);
+  const desc = resolveVariantDescription(selectedVariant, product);
+  const displayShipping = useMemo(
+    () => resolveVariantShipping(selectedVariant, product),
+    [selectedVariant, product]
+  );
+  const displayAttributes = useMemo(() => {
+    const variantAttrs = Array.isArray(selectedVariant?.attributes)
+      ? selectedVariant.attributes
+      : [];
+    if (variantAttrs.length > 0) return variantAttrs;
+    return Array.isArray(product?.attributes) ? product.attributes : [];
+  }, [selectedVariant, product]);
+
+  const volumetricWeightFromDisplay = useMemo(() => {
+    const d = displayShipping?.dimensions;
+    if (!d?.length || !d?.width || !d?.height) return null;
+    return ((Number(d.length) * Number(d.width) * Number(d.height)) / 5000).toFixed(2);
+  }, [displayShipping]);
+
   // const rating        = product?.rating?.value ?? product?.rating ?? 4.5;
  // AFTER:
 const rating = getProductRating(product) ?? 4.5;
@@ -2593,7 +2751,12 @@ useEffect(() => {
   const tabContent = {
     desc: (
       <div className="p-5 text-sm text-gray-600 leading-relaxed space-y-4">
-        <p>{product?.description}</p>
+        {(desc?.trim() || title) && (
+          <>
+            <p className="font-bold text-gray-800">{title}</p>
+            {desc?.trim() && <p>{desc}</p>}
+          </>
+        )}
         {product?.bulletPoints?.length > 0 && (
           <ul className="space-y-2">
             {product.bulletPoints.map((bp, i) => (
@@ -2602,53 +2765,39 @@ useEffect(() => {
               </li>
             ))}
           </ul>
-        
         )}
       </div>
     ),
    specs: (
   <div className="p-5">
-    {/* Specifications Table */}
-    {/* {product?.specs?.length > 0 ? (
-      <table className="w-full text-xs mb-5">
-        <tbody>
-          {product.specs.map((spec, i) => (
-            <tr key={i} className={i % 2 === 0 ? "bg-amber-50" : "bg-white"}>
-              <td className="py-2.5 px-3 font-bold text-gray-800 w-[35%]">{spec.label}</td>
-              <td className="py-2.5 px-3 text-gray-600">{spec.value}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    ) : (
-      <p className="text-sm text-gray-400 mb-5">No specifications available.</p>
-    )} */}
-    
-
-    {/* Highlights — description se aaya */}
-    {product?.attributes?.length > 0 && (
+    {/* Highlights — selected variant attributes (ecom parity) */}
+    {displayAttributes.some((a) => a?.key && a?.value) && (
       <div className="mb-5">
         <p className="font-bold text-gray-800 text-xs uppercase tracking-wider mb-2">Highlights</p>
         <ul className="list-disc pl-5 space-y-1 text-xs text-gray-600">
-          {product.attributes.map((attr, i) => (
-            <li key={i}><span className="font-medium">{attr.key}:</span> {attr.value}</li>
-          ))}
+          {displayAttributes
+            .filter((a) => a?.key && a?.value)
+            .map((attr, i) => (
+              <li key={`${attr.key}-${i}`}>
+                <span className="font-medium">{attr.key}:</span> {attr.value}
+              </li>
+            ))}
         </ul>
       </div>
     )}
 
-    {/* Dimensions — description se aaya */}
-    {product?.shipping && (
+    {/* Dimensions — selected variant shipping with product fallback */}
+    {displayShipping && (
       <div>
         <p className="font-bold text-gray-800 text-xs uppercase tracking-wider mb-2">Dimensions & Weight</p>
         <table className="w-full text-xs">
           <tbody>
             {[
-              { label: "Weight", value: product.shipping.weight ? `${product.shipping.weight} kg` : null },
-              { label: "Length", value: product.shipping.dimensions?.length ? `${product.shipping.dimensions.length} cm` : null },
-              { label: "Width",  value: product.shipping.dimensions?.width  ? `${product.shipping.dimensions.width} cm`  : null },
-              { label: "Height", value: product.shipping.dimensions?.height ? `${product.shipping.dimensions.height} cm` : null },
-              { label: "Volumetric Weight", value: volumetricWeight ? `${volumetricWeight} kg` : null },
+              { label: "Weight", value: displayShipping.weight ? `${displayShipping.weight} kg` : null },
+              { label: "Length", value: displayShipping.dimensions?.length ? `${displayShipping.dimensions.length} cm` : null },
+              { label: "Width",  value: displayShipping.dimensions?.width  ? `${displayShipping.dimensions.width} cm`  : null },
+              { label: "Height", value: displayShipping.dimensions?.height ? `${displayShipping.dimensions.height} cm` : null },
+              { label: "Volumetric Weight", value: volumetricWeightFromDisplay ? `${volumetricWeightFromDisplay} kg` : null },
             ]
               .filter((row) => row.value)
               .map((row, i) => (
@@ -3180,7 +3329,7 @@ onClick={() => {
           {/* RIGHT COLUMN — Sticky */}
           <div className="flex flex-col gap-4 order-1 lg:order-2 lg:sticky lg:top-[74px]">
 
-            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden" ref={variantRef}
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden"
 
 >
 
@@ -3192,7 +3341,78 @@ onClick={() => {
                   </div>
                 )}
                 <h1 className="text-lg sm:text-xl font-extrabold text-gray-900 leading-snug mb-2">{title}</h1>
-                                <div className="text-[10px] font-bold text-yellow-600 uppercase tracking-wider mb-1">{productCode}</div>
+                {productCode && (
+                  <div className="text-[15px] text-gray-700 font-mono mb-2">{productCode}</div>
+                )}
+                {(useFlatVariantPicker ? variantSelectOptions.length > 0 : attrKeys.length > 0) && (
+                  <div className="mb-3" ref={variantRef}>
+                    <div className="h-px bg-gray-100 mb-3" />
+                    {useFlatVariantPicker ? (
+                      <div className="flex flex-wrap gap-2">
+                        {variantSelectOptions.map((opt) => {
+                          const activeByVariant = isSameVariant(selectedVariant, opt.variant);
+                          const activeByAttr =
+                            attrKeys.length === 1 &&
+                            selectedAttrs[attrKeys[0]] != null &&
+                            selectedAttrs[attrKeys[0]] === opt.label;
+                          const active = activeByVariant || activeByAttr;
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => handleVariantOptionSelect(opt)}
+                              className={`px-4 py-2 text-xs sm:text-sm rounded-xl cursor-pointer border-2 font-semibold transition-all duration-150 min-w-[4rem] ${
+                                active
+                                  ? "border-gray-900 bg-gray-900 text-white shadow-sm"
+                                  : "border-gray-200 text-gray-700 hover:border-gray-900 hover:text-gray-900 bg-white"
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {attrKeys.map((key) => (
+                          <div key={key}>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">
+                              {key}
+                              {selectedAttrs[key] ? (
+                                <span className="ml-2 normal-case font-semibold text-gray-700 tracking-normal">
+                                  : {selectedAttrs[key]}
+                                </span>
+                              ) : null}
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {getAllValues(key).map((val) => {
+                                const avail = isAvailable(key, val);
+                                const active = selectedAttrs[key] === val;
+                                return (
+                                  <button
+                                    key={val}
+                                    type="button"
+                                    onClick={() => avail && handleAttrSelect(key, val)}
+                                    disabled={!avail}
+                                    className={`px-3 py-1.5 text-xs rounded-xl border-2 font-medium transition-all duration-150 ${
+                                      active
+                                        ? "border-gray-900 bg-gray-900 text-white"
+                                        : avail
+                                          ? "border-gray-200 text-gray-700 hover:border-gray-900 bg-white"
+                                          : "border-gray-100 text-gray-300 cursor-not-allowed line-through bg-gray-50"
+                                    }`}
+                                  >
+                                    {val}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                                      {/* ✅ Mobile Image — sirf mobile pe, desktop pe hidden */}
         <div className="lg:hidden -mx-4 mb-3">
           <MobileImageSwiper
@@ -3391,40 +3611,6 @@ onClick={() => {
                       >+</button>
                     </div>
                   </>
-                )}
-
-                {/* Variant attrs — ref lagaya hai yahan */}
-                {attrKeys.length > 0 && (
-                  <div className="space-y-3 w-fit pt-1">
-                    {attrKeys.map((key) => (
-                      <div className="" key={key}>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">
-                          {key}
-                          {selectedAttrs[key] && (
-                            <span className="ml-2 normal-case font-semibold text-gray-700 tracking-normal">: {selectedAttrs[key]}</span>
-                          )}
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {getAllValues(key).map((val) => {
-                            const avail  = isAvailable(key, val);
-                            const active = selectedAttrs[key] === val;
-                            return (
-                              <button
-                                key={val}
-                                onClick={() => { if (!avail) return;
-  setSelectedAttrs((p) => ({
-    ...p,
-    [key]: p[key] === val ? undefined : val,
-  }));}}
-                                disabled={!avail}
-                                className={`px-3 py-1.5 text-xs rounded-xl border-2 font-medium transition-all duration-150 ${active ? "border-gray-900 bg-gray-900 text-white" : avail ? "border-gray-200 text-gray-700 hover:border-gray-900 bg-white" : "border-gray-100 text-gray-300 cursor-not-allowed line-through bg-gray-50"}`}
-                              >{val}</button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
                 )}
 
                 {/* ADD TO CART / QTY CONTROLS */}

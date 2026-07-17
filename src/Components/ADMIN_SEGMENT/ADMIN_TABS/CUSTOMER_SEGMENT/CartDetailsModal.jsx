@@ -3,6 +3,7 @@ import {
   useGetCartByIdQuery,
   useGetUserByIdQuery,
 } from '../../ADMIN_REDUX_MANAGEMENT/userAnalyticsApi';
+import { DateTimeCell } from './adminDateTime';
 
 const formatCurrency = (amount) =>
   new Intl.NumberFormat('en-IN', {
@@ -48,8 +49,10 @@ const CartItemRow = ({ item }) => {
         {variantLabel && (
           <p className="text-xs text-gray-500 mt-1">{variantLabel}</p>
         )}
-        {item.sku && (
-          <p className="text-xs text-gray-400 mt-0.5">SKU: {item.sku}</p>
+        {(item.productCode ?? item.sku) && (
+          <p className="text-xs text-gray-400 mt-0.5">
+            Product code: {item.productCode ?? item.sku}
+          </p>
         )}
         <div className="flex flex-wrap items-center gap-3 mt-2 text-sm">
           <span className="text-gray-600">Qty: <strong>{item.quantity}</strong></span>
@@ -61,9 +64,10 @@ const CartItemRow = ({ item }) => {
       <div className="text-right flex-shrink-0">
         <p className="font-bold text-purple-600">{formatCurrency(item.lineTotal)}</p>
         {item.addedAt && (
-          <p className="text-xs text-gray-400 mt-1">
-            Added {new Date(item.addedAt).toLocaleDateString()}
-          </p>
+          <div className="mt-1">
+            <p className="text-xs text-gray-400">Added</p>
+            <DateTimeCell iso={item.addedAt} className="text-xs" />
+          </div>
         )}
       </div>
     </div>
@@ -207,8 +211,9 @@ const CartDetailsModal = ({ isOpen, onClose, cartId = null, userId = null }) => 
               <div className="text-sm text-gray-500">
                 <span>{cart.itemCount ?? items.length} item{(cart.itemCount ?? items.length) !== 1 ? 's' : ''}</span>
                 {cart.updatedAt && (
-                  <span className="ml-3">
-                    · Last updated {new Date(cart.updatedAt).toLocaleDateString()}
+                  <span className="ml-3 inline-flex items-center gap-1">
+                    · Last updated
+                    <DateTimeCell iso={cart.updatedAt} />
                   </span>
                 )}
               </div>

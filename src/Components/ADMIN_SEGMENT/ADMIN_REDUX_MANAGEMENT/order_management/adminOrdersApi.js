@@ -195,6 +195,49 @@ export const adminOrdersApi = createApi({
       ],
     }),
 
+    getAdminReturnChat: builder.query({
+      query: (orderId) => ({
+        url: `/orders/admin/returns/requests/${encodeURIComponent(String(orderId))}/chat`,
+        method: 'GET',
+      }),
+      providesTags: (result, error, orderId) => [
+        { type: 'AdminOrderTracking', id: `RETURN_CHAT_${orderId}` },
+      ],
+      async onQueryStarted(orderId, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(
+            adminOrdersApi.util.updateQueryData(
+              'getAdminReturnRequestDetail',
+              orderId,
+              (draft) => {
+                if (draft?.order?.returnInfo) {
+                  draft.order.returnInfo.adminLastRead = data.adminLastRead;
+                  draft.order.returnInfo.userLastRead = data.userLastRead;
+                  draft.order.returnInfo.chat = data.chat;
+                }
+              }
+            )
+          );
+        } catch {
+          // Polling errors are surfaced by RTK Query and retried on the next interval.
+        }
+      },
+    }),
+
+    sendAdminReturnChatMessage: builder.mutation({
+      query: ({ orderId, message }) => ({
+        url: `/orders/admin/returns/requests/${encodeURIComponent(String(orderId))}/chat`,
+        method: 'POST',
+        data: { message },
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: 'AdminOrderTracking', id: `RETURN_CHAT_${arg.orderId}` },
+        { type: 'AdminOrderTracking', id: `RETURN_${arg.orderId}` },
+        { type: 'AdminOrdersList', id: arg.orderId },
+      ],
+    }),
+
     // ADDED: Create / ensure Shiprocket shipment (was missing in wholesale)
     adminFulfillmentEnsureShipment: builder.mutation({
       query: (orderId) => ({
@@ -369,6 +412,8 @@ export const {
   useDecideAdminReturnRequestMutation,
   useInitiateAdminReturnRefundMutation,
   useAdminReturnReversePickupRetryMutation,
+  useGetAdminReturnChatQuery,
+  useSendAdminReturnChatMessageMutation,
   useAdminFulfillmentEnsureShipmentMutation,
   useAdminFulfillmentAssignShipMutation,
   useAdminFulfillmentSchedulePickupMutation,

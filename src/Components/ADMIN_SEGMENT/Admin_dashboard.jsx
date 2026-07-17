@@ -178,14 +178,14 @@ const [adminLogout, { isLoading: loggingOut }] = useAdminLogoutMutation();
               <img src={LOGO} alt="logo" className="max-h-full object-contain" />
             </div>
 
-            {/* User Info Downward */}
+            {/* User Info Downward — name + role (same as ecom) */}
             <div className="mt-2 text-center overflow-hidden w-full">
               {adminUser?.name?.trim() ? (
-                <h1 className="text-sm font- text-slate-800 truncate">
+                <h1 className="text-sm font-semibold text-slate-800 truncate">
                   {adminUser.name.trim()}
                 </h1>
               ) : null}
-              <p className="text-[10px] font- text-blue-600 tracking-wider uppercase leading-none mt-1">
+              <p className="text-[10px] font-semibold text-blue-600 tracking-wider uppercase leading-none mt-1">
                 {ROLE_LABELS[activeRole] || activeRole}
               </p>
             </div>
@@ -221,14 +221,7 @@ const [adminLogout, { isLoading: loggingOut }] = useAdminLogoutMutation();
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {/* Badge */}
-                      {BADGE_MAP[tab.id] != null && BADGE_MAP[tab.id] > 0 && (
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                          isActive ? "bg-blue-200 text-blue-700" : "bg-gray-200 text-gray-600"
-                        }`}>
-                          {BADGE_MAP[tab.id]}
-                        </span>
-                      )}
+                   
 
                       {/* Chevron — only for tabs with sub-items */}
                       {hasSubItems && (

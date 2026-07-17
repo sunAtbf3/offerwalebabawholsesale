@@ -3,13 +3,14 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 export const searchApi = createApi({
   reducerPath: 'searchApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL || 'https://offerwalebaba.onrender.com/api',
-    // baseUrl: import.meta.env.VITE_API_URL || "http://localhost:8081/api",
+    baseUrl: import.meta.env.VITE_BACKEND_BASE_URL,
     prepareHeaders: (headers, { getState }) => {
       const token = getState()?.auth?.token;
       if (token) {
         headers.set('authorization', `Bearer ${token}`);
       }
+      // Required: search uses storefront catalog filters (same as Wholesaleaxios)
+      headers.set('x-storefront', 'wholesale');
       headers.set('Accept', 'application/json');
       return headers;
     },

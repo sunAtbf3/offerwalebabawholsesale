@@ -113,6 +113,7 @@ const CategorySection = ({ slug, title }) => {
   }, []);
 
   const { ref: sentinelRef } = useInViewFetch(triggerFetch, {
+    rootMargin: '1500px',
     disabled: shouldFetch,
   });
 
@@ -145,9 +146,9 @@ const CategorySection = ({ slug, title }) => {
   const initialLoad = isFetching && products.length === 0;
   const loadingMore = isFetching && products.length > 0;
 
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
+  // useEffect(() => {
+  //   window.scrollTo({ top: 0, behavior: 'smooth' });
+  // }, []);
 
   const handleRetry = () => {
     setPage(1);

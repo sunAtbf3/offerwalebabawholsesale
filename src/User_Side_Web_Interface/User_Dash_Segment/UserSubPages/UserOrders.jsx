@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
+import { createPortal } from "react-dom";
 import {
   fetchUserOrders,
   fetchOrderById,
@@ -9,6 +10,9 @@ import {
   clearOrderErrors,
   clearActiveOrder,
   initiatePendingOrderPayment,
+  createReturnRequest,
+  sendReturnChatMessage,
+  fetchReturnChat,
   selectOrders,
   selectActiveOrder,
   selectTracking,
@@ -29,8 +33,16 @@ import {
   Package, Truck, CheckCircle, ChevronRight, RefreshCw,
   XCircle, Clock, AlertCircle, ArrowLeft, MapPin,
   Loader2, ShoppingBag, CreditCard,
+  MessageSquare, Send, X,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import {
+  isCancellationRefundOrder,
+  isProductReturnOrder,
+  cancellationRefundHeadline,
+  cancellationRefundDetail,
+  productReturnStatusLabel,
+} from "../../../utils/orderRefundDisplay";
 
 const fmt = (n) =>
   new Intl.NumberFormat("en-IN", {
@@ -110,6 +122,11 @@ const STATUS_CONFIG = {
     color: "bg-green-100 text-green-700",
     icon: <CheckCircle size={11} />,
   },
+  return_requested: {
+    label: "Return Requested",
+    color: "bg-orange-100 text-orange-700",
+    icon: <RefreshCw size={11} className="animate-spin" />,
+  },
   cancelled: {
     label: "Cancelled",
     color: "bg-red-100 text-red-600",
@@ -185,14 +202,52 @@ const OrderDetail = ({ orderId, onBack, onCancel, isCancelling, cancelError }) =
   const error = useSelector(selectOrderError);
   const initiatePaymentLoading = useSelector((s) => s.orders.loading.initiatePayment);
   const initiatePaymentError = useSelector((s) => s.orders.error.initiatePayment);
+  const returnRequestLoading = useSelector((s) => s.orders.loading.returnRequest);
+  const returnRequestError = useSelector((s) => s.orders.error.returnRequest);
   const paymentVerification = useSelector(selectPaymentVerification);
   const navigate = useNavigate();
 
   const [showTracking, setShowTracking] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showReturnForm, setShowReturnForm] = useState(false);
   const [showRazorpay, setShowRazorpay] = useState(false);
   const [razorpayBundle, setRazorpayBundle] = useState(null);
   const [razorpayClientError, setRazorpayClientError] = useState(null);
+  const [returnReasonType, setReturnReasonType] = useState("damaged");
+  const [returnReasonMessage, setReturnReasonMessage] = useState("");
+  const [returnProofVideo, setReturnProofVideo] = useState(null);
+  const [returnProofImages, setReturnProofImages] = useState([]);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessage, setChatMessage] = useState("");
+  const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    let interval;
+    if (isChatOpen && orderId) {
+      dispatch(fetchReturnChat(orderId));
+      interval = setInterval(() => dispatch(fetchReturnChat(orderId)), 4000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isChatOpen, orderId, dispatch]);
+
+  useEffect(() => {
+    if (isChatOpen) chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [order?.returnInfo?.chat, isChatOpen]);
+
+  const handleSendChatMessage = async (event) => {
+    event.preventDefault();
+    if (!chatMessage.trim()) return;
+    try {
+      await dispatch(
+        sendReturnChatMessage({ orderId, message: chatMessage })
+      ).unwrap();
+      setChatMessage("");
+    } catch (sendError) {
+      toast.error(sendError?.message || "Failed to send message");
+    }
+  };
 
   useEffect(() => {
     dispatch(fetchOrderById(orderId));
@@ -298,6 +353,44 @@ const OrderDetail = ({ orderId, onBack, onCancel, isCancelling, cancelError }) =
   }
 
   const canCancel = ["pending", "confirmed"].includes(order.orderStatus);
+  const returnStatus = String(order.returnInfo?.status || "").toLowerCase();
+  const returnWindowDays = order.returnInfo?.windowDays ?? 2;
+  const deliveredAt = order.shipmentInfo?.deliveredAt
+    ? new Date(order.shipmentInfo.deliveredAt)
+    : null;
+  const deliveredAtValid = Boolean(
+    deliveredAt && !Number.isNaN(deliveredAt.getTime())
+  );
+  const returnDeadlineAt = deliveredAtValid
+    ? new Date(deliveredAt.getTime() + returnWindowDays * 24 * 60 * 60 * 1000)
+    : null;
+  const returnWindowExpired = Boolean(
+    returnDeadlineAt && Date.now() > returnDeadlineAt.getTime()
+  );
+  const isCancelRefund = isCancellationRefundOrder(order);
+  const isProductReturn = isProductReturnOrder(order);
+  const paymentStatusLower = String(order.paymentStatus || "").toLowerCase();
+  const refundedTotalInr = Array.isArray(order.refundHistory)
+    ? order.refundHistory.reduce(
+        (total, refund) => total + (Number(refund.amountInr) || 0),
+        0
+      )
+    : Number(order.returnInfo?.refundAmount) || 0;
+  const canRaiseReturn =
+    !isCancelRefund &&
+    String(order.orderStatus || "").toLowerCase() === "delivered" &&
+    deliveredAtValid &&
+    !returnWindowExpired &&
+    !returnStatus;
+  const showProductReturnCard = isProductReturn || canRaiseReturn;
+  const unreadCount = isChatOpen
+    ? 0
+    : order.returnInfo?.chat?.filter(
+        (message) =>
+          message.sender === "admin" &&
+          (!order.returnInfo.userLastRead ||
+            new Date(message.createdAt) > new Date(order.returnInfo.userLastRead))
+      ).length || 0;
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -337,6 +430,21 @@ const OrderDetail = ({ orderId, onBack, onCancel, isCancelling, cancelError }) =
             </div>
           ))}
         </div>
+
+        {(paymentStatusLower === "refunded" ||
+          paymentStatusLower === "partially_refunded" ||
+          refundedTotalInr > 0.005) && (
+          <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/80 px-4 py-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-800">
+              Refund
+            </p>
+            <p className="mt-1 text-sm font-semibold text-emerald-950">
+              {paymentStatusLower === "refunded"
+                ? `Refund of ${fmt(refundedTotalInr || order.totalAmount)} has been processed for this order.`
+                : `A refund of ${fmt(refundedTotalInr)} has been processed.`}
+            </p>
+          </div>
+        )}
 
         {String(order?.paymentInfo?.method || "").toLowerCase() === "online" &&
           order.orderStatus === "pending" &&
@@ -484,6 +592,207 @@ const OrderDetail = ({ orderId, onBack, onCancel, isCancelling, cancelError }) =
         )}
       </div>
 
+      {/* Return request */}
+      {showProductReturnCard && (
+        <div className="bg-white rounded-[32px] p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-xs font-black uppercase tracking-widest text-gray-900">
+              Return Request
+            </h3>
+            {returnStatus && isProductReturn && (
+              <span className="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full bg-gray-100 text-gray-700">
+                {productReturnStatusLabel(returnStatus)}
+              </span>
+            )}
+          </div>
+
+          {canRaiseReturn ? (
+            <div className="mt-4 space-y-4">
+              <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                Returns are available only for damaged or wrong item deliveries.
+                Please provide one unboxing video and at least one image.
+              </p>
+              {!showReturnForm ? (
+                <button
+                  type="button"
+                  onClick={() => setShowReturnForm(true)}
+                  className="w-full sm:w-auto bg-black text-white text-xs font-black uppercase tracking-widest px-5 py-3 rounded-2xl hover:bg-[#F7A221] hover:text-black transition-all"
+                >
+                  Raise Return Request
+                </button>
+              ) : (
+                <div className="space-y-3 pt-2">
+                  <select
+                    value={returnReasonType}
+                    onChange={(event) => setReturnReasonType(event.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm"
+                  >
+                    <option value="damaged">Damaged product</option>
+                    <option value="wrong_item">Wrong item received</option>
+                  </select>
+                  <textarea
+                    value={returnReasonMessage}
+                    onChange={(event) => setReturnReasonMessage(event.target.value)}
+                    rows={4}
+                    maxLength={500}
+                    placeholder="Describe what is damaged/wrong..."
+                    className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm resize-none"
+                  />
+                  <div>
+                    <p className="text-[11px] font-bold text-gray-500 uppercase mb-1">
+                      Submit Unboxing Video
+                    </p>
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={(event) =>
+                        setReturnProofVideo(event.target.files?.[0] || null)
+                      }
+                      className="text-xs w-full"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-gray-500 uppercase mb-1">
+                      Proof Images (1-3)
+                    </p>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(event) =>
+                        setReturnProofImages(
+                          Array.from(event.target.files || []).slice(0, 3)
+                        )
+                      }
+                      className="text-xs w-full"
+                    />
+                  </div>
+                  {returnRequestError?.message && (
+                    <p className="text-xs font-bold text-red-600">
+                      {returnRequestError.message}
+                    </p>
+                  )}
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowReturnForm(false)}
+                      disabled={returnRequestLoading}
+                      className="w-full sm:w-auto px-4 py-3 text-xs font-black uppercase tracking-widest border border-gray-200 rounded-xl"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={returnRequestLoading}
+                      onClick={async () => {
+                        if (!returnReasonMessage.trim()) {
+                          toast.error("Please describe the issue.", { theme: "dark" });
+                          return;
+                        }
+                        if (!returnProofVideo) {
+                          toast.error("Please upload an unboxing video.", { theme: "dark" });
+                          return;
+                        }
+                        if (!returnProofImages.length) {
+                          toast.error("Please upload at least one proof image.", { theme: "dark" });
+                          return;
+                        }
+                        try {
+                          await dispatch(
+                            createReturnRequest({
+                              orderId: order.orderId,
+                              reasonType: returnReasonType,
+                              reasonMessage: returnReasonMessage,
+                              proofVideo: returnProofVideo,
+                              proofImages: returnProofImages,
+                            })
+                          ).unwrap();
+                          await dispatch(fetchOrderById(order.orderId)).unwrap();
+                          dispatch(fetchUserOrders());
+                          setShowReturnForm(false);
+                          setReturnReasonMessage("");
+                          setReturnProofVideo(null);
+                          setReturnProofImages([]);
+                          toast.success("Return request submitted.", { theme: "dark" });
+                        } catch {
+                          // Redux error is rendered above.
+                        }
+                      }}
+                      className="w-full sm:w-auto px-4 py-3 text-xs font-black uppercase tracking-widest rounded-xl bg-black text-white disabled:opacity-50"
+                    >
+                      {returnRequestLoading ? "Submitting..." : "Submit Request"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="mt-3 space-y-2">
+              <p className="text-xs text-gray-500 font-medium">
+                {returnStatus && isProductReturn
+                  ? `Return status: ${productReturnStatusLabel(returnStatus)}`
+                  : returnWindowExpired
+                    ? "Return window expired. You can no longer raise a return request."
+                    : `Return request is available within ${returnWindowDays} days of delivery.`}
+              </p>
+              {order.returnInfo?.decisionReason && (
+                <div className={`border rounded-xl p-3 text-xs font-medium ${
+                  returnStatus === "rejected"
+                    ? "bg-red-50 border-red-100 text-red-700"
+                    : "bg-emerald-50 border-emerald-100 text-emerald-700"
+                }`}>
+                  <span className="font-bold block uppercase tracking-wider text-[10px] mb-1">
+                    {returnStatus === "rejected"
+                      ? "Reason for Rejection:"
+                      : "Decision Note:"}
+                  </span>
+                  {order.returnInfo.decisionReason}
+                </div>
+              )}
+              {order.returnInfo?.requestedAt && (
+                <div className="relative inline-block mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsChatOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-xs font-black uppercase tracking-wider rounded-xl bg-white hover:bg-slate-50 text-slate-700"
+                  >
+                    <MessageSquare size={14} />
+                    Chat with Support
+                  </button>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 inline-flex rounded-full h-4 w-4 bg-red-500 text-[9px] font-bold text-white items-center justify-center">
+                      {unreadCount}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Cancellation refund */}
+      {isCancelRefund && (
+        <div className="bg-white rounded-[32px] p-6 border border-red-100">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-xs font-black uppercase tracking-widest text-gray-900">
+              Cancellation refund
+            </h3>
+            <span className="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-100">
+              {cancellationRefundHeadline(order)}
+            </span>
+          </div>
+          <p className="mt-3 text-xs text-gray-600 font-medium leading-relaxed">
+            {cancellationRefundDetail(order)}
+          </p>
+          {order.returnInfo?.refundId && (
+            <p className="mt-2 text-[10px] text-gray-400 font-mono break-all">
+              Ref ID: {order.returnInfo.refundId}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Cancel */}
       {/* {canCancel && (
         <div className="bg-white rounded-[32px] p-6">
@@ -563,6 +872,128 @@ const OrderDetail = ({ orderId, onBack, onCancel, isCancelling, cancelError }) =
             dispatch(resetPaymentVerification());
           }}
         />
+      )}
+
+      {isChatOpen && createPortal(
+        <>
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[9998]"
+            onClick={() => setIsChatOpen(false)}
+          />
+          <div className="fixed inset-y-0 right-0 z-[9999] w-full sm:w-[450px] bg-white shadow-2xl flex flex-col">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">
+                  Support Chat
+                </h3>
+                <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                  Order: {order.orderId}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsChatOpen(false)}
+                className="p-1.5 rounded-full hover:bg-slate-200 text-slate-500"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50">
+              {order.returnInfo?.requestedAt && (() => {
+                const requestedAt = new Date(order.returnInfo.requestedAt);
+                const windowDays = order.returnInfo?.windowDays ?? 2;
+                const remainingMs =
+                  requestedAt.getTime() + windowDays * 24 * 60 * 60 * 1000 - Date.now();
+                return remainingMs <= 0 ? (
+                  <div className="bg-red-50 border border-red-100 rounded-lg p-2.5 text-center text-[11px] text-red-700 font-medium">
+                    This support chat session is closed (expired after {windowDays} days).
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 border border-amber-100 rounded-lg p-2.5 text-center text-[11px] text-amber-800 font-medium">
+                    Support chat is active. Window closes in{" "}
+                    {Math.ceil(remainingMs / (1000 * 60 * 60))} hours.
+                  </div>
+                );
+              })()}
+
+              {!order.returnInfo?.chat?.length ? (
+                <div className="h-full flex flex-col items-center justify-center text-slate-400 py-10">
+                  <MessageSquare size={32} className="stroke-1 mb-2" />
+                  <p className="text-xs font-medium">
+                    No messages yet. Send a message to start the conversation.
+                  </p>
+                </div>
+              ) : (
+                order.returnInfo.chat.map((message, index) => {
+                  const isUser = message.sender === "user";
+                  return (
+                    <div
+                      key={`${message.createdAt}-${index}`}
+                      className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}
+                    >
+                      <div className={`max-w-[80%] rounded-[20px] px-3.5 py-2 text-xs leading-relaxed ${
+                        isUser
+                          ? "bg-black text-white rounded-br-none"
+                          : "bg-white text-slate-800 border border-slate-100 rounded-bl-none"
+                      }`}>
+                        {message.message}
+                      </div>
+                      <span className="text-[9px] text-slate-400 mt-1 px-1">
+                        {message.createdAt
+                          ? new Date(message.createdAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : ""}
+                      </span>
+                    </div>
+                  );
+                })
+              )}
+              <div ref={chatEndRef} />
+            </div>
+
+            {(() => {
+              const requestedAt = order.returnInfo?.requestedAt
+                ? new Date(order.returnInfo.requestedAt)
+                : null;
+              const windowDays = order.returnInfo?.windowDays ?? 2;
+              const expired = requestedAt
+                ? Date.now() > requestedAt.getTime() + windowDays * 24 * 60 * 60 * 1000
+                : true;
+              if (expired) {
+                return (
+                  <div className="p-4 border-t border-slate-100 bg-slate-100 text-center text-xs font-semibold text-slate-500">
+                    Chat disabled (support window expired)
+                  </div>
+                );
+              }
+              return (
+                <form
+                  onSubmit={handleSendChatMessage}
+                  className="p-3 border-t border-slate-100 flex gap-2 items-center bg-white"
+                >
+                  <input
+                    type="text"
+                    value={chatMessage}
+                    onChange={(event) => setChatMessage(event.target.value)}
+                    placeholder="Type a message..."
+                    className="flex-1 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:outline-hidden focus:border-slate-400"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!chatMessage.trim() || loading.chat}
+                    className="p-2.5 rounded-xl bg-black text-white disabled:opacity-50"
+                  >
+                    <Send size={14} />
+                  </button>
+                </form>
+              );
+            })()}
+          </div>
+        </>,
+        document.body
       )}
     </div>
   );
