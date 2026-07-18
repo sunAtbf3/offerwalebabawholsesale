@@ -33,7 +33,7 @@ import {
   Package, Truck, CheckCircle, ChevronRight, RefreshCw,
   XCircle, Clock, AlertCircle, ArrowLeft, MapPin,
   Loader2, ShoppingBag, CreditCard,
-  MessageSquare, Send, X,
+  MessageSquare, Send, X, Star,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -43,6 +43,8 @@ import {
   cancellationRefundDetail,
   productReturnStatusLabel,
 } from "../../../utils/orderRefundDisplay";
+import axiosInstance from "../../../SERVICES/Wholesaleaxios";
+import OrderItemReviewModal from "./OrderItemReviewModal";
 
 const fmt = (n) =>
   new Intl.NumberFormat("en-IN", {
@@ -150,43 +152,91 @@ const StatusBadge = ({ status }) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tracking Timeline
+// Tracking timelines (Layer A = order steps) — ecom parity
 // ─────────────────────────────────────────────────────────────────────────────
-const TrackingTimeline = ({ timeline = [] }) => (
-  <div className="space-y-0">
-    {timeline.map((step, i) => (
-      <div key={i} className="flex gap-3">
-        {/* Dot + line */}
-        <div className="flex flex-col items-center">
-          <div
-            className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center mt-1 ${
-              step.completed
-                ? "bg-black border-black"
-                : "bg-white border-gray-200"
-            }`}
-          >
-            {step.completed && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
-          </div>
-          {i < timeline.length - 1 && (
-            <div className={`w-0.5 flex-1 min-h-[20px] my-1 ${step.completed ? "bg-black" : "bg-gray-200"}`} />
-          )}
-        </div>
+const TrackingTimeline = ({ timeline = [], showLocation = false, useDateTime = false }) => {
+  if (!timeline.length) return null;
 
-        {/* Content */}
-        <div className="pb-4">
-          <p className={`text-xs font-black ${step.completed ? "text-gray-900" : "text-gray-400"}`}>
-            {step.status}
-          </p>
-          {step.timestamp && (
-            <p className="text-[10px] text-gray-400 font-medium mt-0.5">
-              {fmtDate(step.timestamp)}
+  return (
+    <div className="space-y-0">
+      {timeline.map((step, i) => (
+        <div key={`${step.status}-${i}-${step.timestamp || ""}`} className="flex gap-3">
+          <div className="flex flex-col items-center">
+            <div
+              className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center mt-1 ${
+                step.completed ? "bg-black border-black" : "bg-white border-gray-200"
+              }`}
+            >
+              {step.completed && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+            </div>
+            {i < timeline.length - 1 && (
+              <div
+                className={`w-0.5 flex-1 min-h-[20px] my-1 ${
+                  step.completed ? "bg-black" : "bg-gray-200"
+                }`}
+              />
+            )}
+          </div>
+
+          <div className="pb-4 min-w-0">
+            <p
+              className={`text-xs font-black leading-snug ${
+                step.completed ? "text-gray-900" : "text-gray-400"
+              }`}
+            >
+              {step.status}
             </p>
-          )}
+            {showLocation && step.location && (
+              <p className="text-[10px] text-gray-500 font-medium mt-0.5">{step.location}</p>
+            )}
+            {step.timestamp && (
+              <p className="text-[10px] text-gray-400 font-medium mt-0.5">
+                {useDateTime ? fmtDateTime(step.timestamp) : fmtDate(step.timestamp)}
+              </p>
+            )}
+          </div>
         </div>
-      </div>
-    ))}
-  </div>
-);
+      ))}
+    </div>
+  );
+};
+
+const UserOrderTrackingPanel = ({ tracking }) => {
+  const simpleTimeline =
+    Array.isArray(tracking?.simpleTimeline) && tracking.simpleTimeline.length > 0
+      ? tracking.simpleTimeline
+      : Array.isArray(tracking?.timeline)
+        ? tracking.timeline
+        : [];
+
+  const summaryHeadline = tracking?.statusSummary?.headline;
+
+  return (
+    <div className="space-y-4">
+      {summaryHeadline && (
+        <p className="text-sm font-bold text-gray-900 leading-snug">{summaryHeadline}</p>
+      )}
+
+      {tracking?.estimatedDelivery && (
+        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+          Est. delivery:{" "}
+          <span className="text-gray-600 normal-case tracking-normal font-semibold">
+            {fmtDate(tracking.estimatedDelivery)}
+          </span>
+        </p>
+      )}
+
+      {simpleTimeline.length > 0 ? (
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">
+            Order progress
+          </p>
+          <TrackingTimeline timeline={simpleTimeline} />
+        </div>
+      ) : null}
+    </div>
+  );
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Order Detail Drawer
@@ -220,6 +270,10 @@ const OrderDetail = ({ orderId, onBack, onCancel, isCancelling, cancelError }) =
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessage, setChatMessage] = useState("");
   const chatEndRef = useRef(null);
+  /** productId → { canReview, alreadyReviewed, productSlug } from review eligibility API */
+  const [orderReviewItems, setOrderReviewItems] = useState({});
+  const [orderReviewEligible, setOrderReviewEligible] = useState(false);
+  const [reviewModal, setReviewModal] = useState(null);
 
   useEffect(() => {
     let interval;
@@ -257,8 +311,66 @@ const OrderDetail = ({ orderId, onBack, onCancel, isCancelling, cancelError }) =
       setRazorpayBundle(null);
       setShowRazorpay(false);
       setRazorpayClientError(null);
+      setOrderReviewItems({});
+      setOrderReviewEligible(false);
+      setReviewModal(null);
     };
   }, [orderId, dispatch]);
+
+  useEffect(() => {
+    if (!order?.orderId || String(order.orderId) !== String(orderId)) return;
+    const status = String(order.orderStatus || "").toLowerCase();
+    if (status !== "delivered" && status !== "return_requested") {
+      setOrderReviewItems({});
+      setOrderReviewEligible(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const loadReviewItems = async () => {
+      try {
+        const res = await axiosInstance.get(
+          `/product-reviews/order/${order.orderId}/items`
+        );
+        if (cancelled) return;
+        setOrderReviewEligible(Boolean(res.data?.eligible));
+        const map = {};
+        for (const row of Array.isArray(res.data?.items) ? res.data.items : []) {
+          if (!row?.productId) continue;
+          map[String(row.productId)] = row;
+        }
+        setOrderReviewItems(map);
+      } catch {
+        if (!cancelled) {
+          setOrderReviewItems({});
+          setOrderReviewEligible(false);
+        }
+      }
+    };
+    loadReviewItems();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [order?.orderId, order?.orderStatus, orderId]);
+
+  const refreshOrderReviewItems = useCallback(async () => {
+    if (!order?.orderId) return;
+    try {
+      const res = await axiosInstance.get(
+        `/product-reviews/order/${order.orderId}/items`
+      );
+      setOrderReviewEligible(Boolean(res.data?.eligible));
+      const map = {};
+      for (const row of Array.isArray(res.data?.items) ? res.data.items : []) {
+        if (!row?.productId) continue;
+        map[String(row.productId)] = row;
+      }
+      setOrderReviewItems(map);
+    } catch {
+      /* keep previous map */
+    }
+  }, [order?.orderId]);
 
   const handleTrack = () => {
     if (!tracking) dispatch(trackOrder(orderId));
@@ -369,6 +481,7 @@ const OrderDetail = ({ orderId, onBack, onCancel, isCancelling, cancelError }) =
   );
   const isCancelRefund = isCancellationRefundOrder(order);
   const isProductReturn = isProductReturnOrder(order);
+  const orderStatusLower = String(order.orderStatus || "").toLowerCase();
   const paymentStatusLower = String(order.paymentStatus || "").toLowerCase();
   const refundedTotalInr = Array.isArray(order.refundHistory)
     ? order.refundHistory.reduce(
@@ -376,9 +489,15 @@ const OrderDetail = ({ orderId, onBack, onCancel, isCancelling, cancelError }) =
         0
       )
     : Number(order.returnInfo?.refundAmount) || 0;
+  const activeItems = Array.isArray(order.items) ? order.items : [];
+  const showItemsAsCancelled =
+    orderStatusLower === "cancelled" &&
+    (Boolean(order.paymentInfo?.itemsUnavailableCancel) ||
+      order.paymentInfo?.cancellationReason === "admin_amended_empty" ||
+      activeItems.some((it) => it.unavailable || it.lineStatus === "cancelled_unavailable"));
   const canRaiseReturn =
     !isCancelRefund &&
-    String(order.orderStatus || "").toLowerCase() === "delivered" &&
+    orderStatusLower === "delivered" &&
     deliveredAtValid &&
     !returnWindowExpired &&
     !returnStatus;
@@ -413,6 +532,29 @@ const OrderDetail = ({ orderId, onBack, onCancel, isCancelling, cancelError }) =
           </div>
           <StatusBadge status={order.orderStatus} />
         </div>
+
+        {Array.isArray(order.customerFacingNotes) && order.customerFacingNotes.length > 0 && (
+          <div className="mb-5 space-y-2">
+            {order.customerFacingNotes.map((note, idx) => (
+              <div
+                key={note._id || idx}
+                className="rounded-2xl border border-indigo-100 bg-indigo-50/70 px-4 py-3"
+              >
+                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-800">
+                  Order update
+                </p>
+                <p className="mt-1 text-sm text-slate-800 leading-relaxed">
+                  {note.message}
+                </p>
+                {note.createdAt && (
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    {fmtDate(note.createdAt)}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Totals */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-gray-100">
@@ -497,28 +639,109 @@ const OrderDetail = ({ orderId, onBack, onCancel, isCancelling, cancelError }) =
         </h3>
         <div className="space-y-4">
           {order.items?.map((item, i) => {
-            const image = item.productId?.images?.[0]?.url || null;
+            const image = item.productId?.images?.[0]?.url || item.thumbnailUrl || null;
             const name = item.productId?.name || item.productId?.title || "Product";
             const price = item.priceSnapshot?.sale ?? item.priceSnapshot?.base;
+            const isUnavailable =
+              showItemsAsCancelled ||
+              item.unavailable ||
+              item.lineStatus === "cancelled_unavailable";
+            const productIdStr = item.productId?._id
+              ? String(item.productId._id)
+              : item.productId
+                ? String(item.productId)
+                : null;
+            const reviewMeta = productIdStr ? orderReviewItems[productIdStr] : null;
+            const showWriteReview =
+              !isUnavailable &&
+              orderReviewEligible &&
+              Boolean(reviewMeta?.canReview) &&
+              Boolean(productIdStr);
+            const showReviewed =
+              !isUnavailable &&
+              Boolean(reviewMeta?.alreadyReviewed) &&
+              Boolean(productIdStr);
 
             return (
-              <div key={i} className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-gray-100 rounded-2xl overflow-hidden flex-shrink-0">
-                  {image ? (
-                    <img src={image} alt={name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Package size={18} className="text-gray-300" />
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-black text-gray-900">{name}</p>
-                  <p className="text-xs text-gray-400 font-medium mt-0.5">
-                    Qty: {item.quantity} × {fmt(price)}
+              <div
+                key={i}
+                className={`flex flex-col gap-2 ${isUnavailable ? "opacity-80" : ""}`}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-gray-100 rounded-2xl overflow-hidden flex-shrink-0">
+                    {image ? (
+                      <img
+                        src={image}
+                        alt={name}
+                        className={`w-full h-full object-cover ${isUnavailable ? "grayscale" : ""}`}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Package size={18} className="text-gray-300" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className={`text-sm font-black ${
+                        isUnavailable ? "text-gray-500 line-through" : "text-gray-900"
+                      }`}
+                    >
+                      {name}
+                    </p>
+                    {isUnavailable && (
+                      <p className="text-[10px] font-black uppercase tracking-widest text-red-500 mt-0.5">
+                        Unavailable
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-400 font-medium mt-0.5">
+                      Qty: {item.quantity} × {fmt(price)}
+                    </p>
+                  </div>
+                  <p
+                    className={`text-sm font-black ${
+                      isUnavailable ? "text-gray-400 line-through" : "text-gray-900"
+                    }`}
+                  >
+                    {fmt(item.lineTotal ?? price * item.quantity)}
                   </p>
                 </div>
-                <p className="text-sm font-black text-gray-900">{fmt(price * item.quantity)}</p>
+
+                {showWriteReview && (
+                  <div className="flex items-center gap-3 pl-0 sm:pl-[4.5rem]">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setReviewModal({
+                          productId: productIdStr,
+                          productName: name,
+                          productImage: image,
+                          variantId: item.variantId ? String(item.variantId) : null,
+                        })
+                      }
+                      className="group inline-flex items-center gap-2 h-9 pl-2.5 pr-3.5 rounded-full bg-zinc-900 text-white text-[11px] font-semibold tracking-wide shadow-sm hover:bg-[#F7A221] hover:text-zinc-900 transition-colors cursor-pointer"
+                    >
+                      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white/10 group-hover:bg-black/10">
+                        <Star
+                          size={12}
+                          className="fill-[#F7A221] text-[#F7A221] group-hover:fill-zinc-900 group-hover:text-zinc-900"
+                        />
+                      </span>
+                      Write a review
+                    </button>
+                    <span className="hidden sm:inline text-[11px] text-gray-400 font-medium">
+                      Help others with your experience
+                    </span>
+                  </div>
+                )}
+                {showReviewed && (
+                  <div className="flex items-center gap-2 pl-0 sm:pl-[4.5rem]">
+                    <span className="inline-flex items-center gap-2 h-9 px-3.5 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 text-[11px] font-semibold tracking-wide">
+                      <CheckCircle size={14} className="text-emerald-600 shrink-0" />
+                      Review submitted
+                    </span>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -587,7 +810,7 @@ const OrderDetail = ({ orderId, onBack, onCancel, isCancelling, cancelError }) =
                 )}
               </p>
             )}
-            <TrackingTimeline timeline={tracking.timeline || []} />
+            <UserOrderTrackingPanel tracking={tracking} />
           </div>
         )}
       </div>
@@ -995,6 +1218,17 @@ const OrderDetail = ({ orderId, onBack, onCancel, isCancelling, cancelError }) =
         </>,
         document.body
       )}
+
+      <OrderItemReviewModal
+        open={Boolean(reviewModal)}
+        onClose={() => setReviewModal(null)}
+        orderId={order?.orderId}
+        productId={reviewModal?.productId}
+        productName={reviewModal?.productName}
+        productImage={reviewModal?.productImage}
+        variantId={reviewModal?.variantId}
+        onSuccess={refreshOrderReviewItems}
+      />
     </div>
   );
 };

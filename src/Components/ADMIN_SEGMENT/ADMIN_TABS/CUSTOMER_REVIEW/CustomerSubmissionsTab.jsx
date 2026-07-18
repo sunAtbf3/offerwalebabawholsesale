@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import axiosInstance from "../../../../SERVICES/Wholesaleaxios";
+import axiosInstance, { AUTH_CONTEXT_ADMIN } from "../../../../SERVICES/Wholesaleaxios";
 import { toast } from "react-toastify";
 
 const formatDate = (d) => {
@@ -30,7 +30,10 @@ const CustomerSubmissionsTab = () => {
       if (filterProductId.trim()) params.productId = filterProductId.trim();
       if (filterActive === "true" || filterActive === "false") params.isActive = filterActive;
 
-      const res = await axiosInstance.get("/admin/product-reviews", { params });
+      const res = await axiosInstance.get("/admin/product-reviews", {
+        params,
+        authContext: AUTH_CONTEXT_ADMIN,
+      });
       if (!res.data?.success) {
         throw new Error(res.data?.message || "Failed to load reviews");
       }
@@ -52,9 +55,11 @@ const CustomerSubmissionsTab = () => {
   const toggleActive = async (row, nextActive) => {
     setBusyId(row._id);
     try {
-      await axiosInstance.patch(`/admin/product-reviews/${row._id}/status`, {
-        isActive: nextActive,
-      });
+      await axiosInstance.patch(
+        `/admin/product-reviews/${row._id}/status`,
+        { isActive: nextActive },
+        { authContext: AUTH_CONTEXT_ADMIN }
+      );
       toast.success(nextActive ? "Review published" : "Review hidden");
       await load();
     } catch (err) {
@@ -109,13 +114,14 @@ const CustomerSubmissionsTab = () => {
             <div className="py-16 text-center text-slate-500 text-sm">No customer reviews found.</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[720px]">
+              <table className="w-full text-left border-collapse min-w-[860px]">
                 <thead className="bg-[#F8FAFC] border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                   <tr>
                     <th className="px-4 py-3">Product</th>
                     <th className="px-4 py-3">Customer</th>
                     <th className="px-4 py-3 text-center">Rating</th>
                     <th className="px-4 py-3">Comment</th>
+                    <th className="px-4 py-3">Photos</th>
                     <th className="px-4 py-3">Date</th>
                     <th className="px-4 py-3 text-center">Status</th>
                     <th className="px-4 py-3 text-right">Actions</th>
@@ -150,15 +156,54 @@ const CustomerSubmissionsTab = () => {
                           {r.customer?.name || "—"}
                         </div>
                         <div className="text-slate-500 text-xs">{r.customer?.phone || ""}</div>
+                        {r.verifiedPurchase ? (
+                          <div className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                            Verified · {r.orderId || "order"}
+                          </div>
+                        ) : null}
                       </td>
                       <td className="px-4 py-3 text-center text-sm font-medium">{r.rating} ★</td>
-                      <td className="px-4 py-3 text-[13px] text-slate-600 max-w-xs truncate">
-                        {r.comment || "—"}
+                      <td className="px-4 py-3 text-[13px] text-slate-600 max-w-md align-top">
+                        {r.comment?.trim() ? (
+                          <p className="whitespace-pre-wrap break-words leading-relaxed">
+                            {r.comment}
+                          </p>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
                       </td>
-                      <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">
+                      <td className="px-4 py-3 align-top">
+                        {Array.isArray(r.images) && r.images.length > 0 ? (
+                          <div className="flex flex-wrap gap-1 max-w-[140px]">
+                            {r.images.slice(0, 3).map((img) => (
+                              <a
+                                key={img.publicId || img.url}
+                                href={img.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block"
+                              >
+                                <img
+                                  src={img.url}
+                                  alt=""
+                                  className="w-10 h-10 rounded border border-slate-100 object-cover"
+                                />
+                              </a>
+                            ))}
+                            {r.images.length > 3 ? (
+                              <span className="text-[10px] text-slate-500 self-center">
+                                +{r.images.length - 3}
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap align-top">
                         {formatDate(r.createdAt)}
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3 text-center align-top">
                         <span
                           className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase border ${
                             r.isActive

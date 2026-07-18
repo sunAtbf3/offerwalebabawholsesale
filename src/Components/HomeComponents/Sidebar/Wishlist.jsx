@@ -25,6 +25,7 @@ import {
 } from '../../REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice';
 import { selectDisplayWishlistCount } from '../../REDUX_FEATURES/REDUX_SLICES/UserWIshlist/userWishlistSLice';
 import { selectIsAuthenticated } from '../../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
+import { lockBodyScroll, unlockBodyScroll } from '../../../utils/lockBodyScroll';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -245,10 +246,11 @@ const isLoggedIn = useSelector(selectIsAuthenticated);
     }
   }, [isOpen, isLoggedIn, dispatch]);
 
-  // ── Body scroll lock ───────────────────────────────────────────────────────
+  // ── Body scroll lock (compensate scrollbar width → no layout flicker) ───────
   useEffect(() => {
-    document.body.style.overflow = isOpen ? 'hidden' : 'unset';
-    return () => { document.body.style.overflow = 'unset'; };
+    if (isOpen) lockBodyScroll();
+    else unlockBodyScroll();
+    return () => unlockBodyScroll();
   }, [isOpen]);
 
   // ── Clear errors when closing ──────────────────────────────────────────────

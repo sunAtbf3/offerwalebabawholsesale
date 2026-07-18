@@ -199,3 +199,114 @@ export const selectAdminOrdersListQueryArgs = createSelector(
 );
 
 export const selectAdminOrdersSummaryQueryArgs = selectDateArgs;
+
+/** RTO tab UI state — lifetime by default (not Orders tab's last-30 window). */
+const rtoInitialState = {
+  activeSection: 'dashboard',
+  statusFilter: '',
+  search: '',
+  searchInput: '',
+  page: 1,
+  limit: 20,
+  datePreset: 'all',
+  customDateFrom: '',
+  customDateTo: '',
+};
+
+const adminRtoUiSlice = createSlice({
+  name: 'adminRtoUi',
+  initialState: rtoInitialState,
+  reducers: {
+    setRtoActiveSection: (state, { payload }) => {
+      state.activeSection = payload || 'dashboard';
+      state.page = 1;
+    },
+    setRtoStatusFilter: (state, { payload }) => {
+      state.statusFilter = payload ?? '';
+      state.page = 1;
+    },
+    setRtoSearchInput: (state, { payload }) => {
+      state.searchInput = payload ?? '';
+    },
+    commitRtoSearch: (state) => {
+      state.search = String(state.searchInput || '').trim();
+      state.page = 1;
+    },
+    clearRtoSearch: (state) => {
+      state.search = '';
+      state.searchInput = '';
+      state.page = 1;
+    },
+    setRtoPage: (state, { payload }) => {
+      state.page = Math.max(1, Number(payload) || 1);
+    },
+    setRtoLimit: (state, { payload }) => {
+      state.limit = Math.min(100, Math.max(1, Number(payload) || 20));
+      state.page = 1;
+    },
+    setRtoDatePreset: (state, { payload }) => {
+      state.datePreset = payload || 'all';
+      state.page = 1;
+      if (payload !== 'custom') {
+        state.customDateFrom = '';
+        state.customDateTo = '';
+      }
+    },
+    commitRtoCustomRange: (state, { payload }) => {
+      state.customDateFrom = String(payload?.from || '');
+      state.customDateTo = String(payload?.to || '');
+      state.datePreset = 'custom';
+      state.page = 1;
+    },
+    resetAdminRtoUi: () => ({ ...rtoInitialState }),
+  },
+});
+
+export const {
+  setRtoActiveSection,
+  setRtoStatusFilter,
+  setRtoSearchInput,
+  commitRtoSearch,
+  clearRtoSearch,
+  setRtoPage,
+  setRtoLimit,
+  setRtoDatePreset,
+  commitRtoCustomRange,
+  resetAdminRtoUi,
+} = adminRtoUiSlice.actions;
+
+export const adminRtoUiReducer = adminRtoUiSlice.reducer;
+
+const selectAdminRtoUi = (state) => state.adminRtoUi;
+
+function buildRtoDateQueryArgs(ui) {
+  if (ui.datePreset === 'custom') {
+    const fromIso = localDateStrToStartIso(ui.customDateFrom);
+    const toIso = localDateStrToEndIso(ui.customDateTo);
+    if (fromIso && toIso) return { from: fromIso, to: toIso };
+    return { rangePreset: 'all' };
+  }
+  if (ui.datePreset === 'today') return { rangePreset: 'today' };
+  if (ui.datePreset === 'last7') return { rangePreset: 'last7' };
+  if (ui.datePreset === 'last30') return { rangePreset: 'last30' };
+  return { rangePreset: 'all' };
+}
+
+export const selectAdminRtoListQueryArgs = createSelector([selectAdminRtoUi], (ui) => {
+  const section = ui.activeSection === 'dashboard' ? 'all' : ui.activeSection;
+  const dateArgs = buildRtoDateQueryArgs(ui);
+  return {
+    page: ui.page,
+    limit: ui.limit,
+    section: ['reports', 'analytics', 'redispatch', 'cod_restricted'].includes(ui.activeSection)
+      ? undefined
+      : section,
+    status: ui.statusFilter || undefined,
+    search: ui.search || undefined,
+    ...dateArgs,
+  };
+});
+
+export const selectAdminRtoAnalyticsQueryArgs = createSelector([selectAdminRtoUi], (ui) =>
+  buildRtoDateQueryArgs(ui)
+);

@@ -1,13 +1,12 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
-// import axiosInstance from '../../../../SERVICES/axiosInstance';
-import wholesaleAxios from "../../../../SERVICES/Wholesaleaxios";
+import wholesaleAxios, { AUTH_CONTEXT_ADMIN } from "../../../../SERVICES/Wholesaleaxios";
 
 /**
- * Axios adapter for RTK Query — matches userAnalyticsApi pattern; never use raw axios in components.
+ * Axios adapter for RTK Query — matches ecom adminOrdersApi (admin auth + blob support).
  */
 const axiosBaseQuery =
   ({ baseUrl } = { baseUrl: '' }) =>
-  async ({ url, method, data, params, headers }) => {
+  async ({ url, method, data, params, headers, responseType }) => {
     try {
       const result = await wholesaleAxios({
         url: baseUrl + url,
@@ -15,6 +14,8 @@ const axiosBaseQuery =
         data,
         params,
         headers: { ...headers },
+        authContext: AUTH_CONTEXT_ADMIN,
+        ...(responseType ? { responseType } : {}),
       });
       return { data: result.data };
     } catch (axiosError) {
@@ -44,8 +45,13 @@ const axiosBaseQuery =
 export const adminOrdersApi = createApi({
   reducerPath: 'adminOrdersApi',
   baseQuery: axiosBaseQuery({ baseUrl: '' }),
-  // ADDED: AdminOrderTracking tag type (was missing in wholesale)
-  tagTypes: ['AdminOrdersSummary', 'AdminOrdersList', 'AdminOrderTracking'],
+  tagTypes: [
+    'AdminOrdersSummary',
+    'AdminOrdersList',
+    'AdminOrderTracking',
+    'AdminRtoList',
+    'AdminRtoAnalytics',
+  ],
   keepUnusedDataFor: 30,
   endpoints: (builder) => ({
     /**
@@ -397,6 +403,143 @@ export const adminOrdersApi = createApi({
         { type: 'AdminOrderTracking', id: orderId },
       ],
     }),
+
+    // ── RTO (ecom parity) ────────────────────────────────────────────────────
+    getAdminRtoOrders: builder.query({
+      query: (params = {}) => ({
+        url: '/admin/rto/orders',
+        method: 'GET',
+        params,
+      }),
+      providesTags: (result) => {
+        const tags = [
+          { type: 'AdminRtoList', id: 'LIST' },
+          { type: 'AdminRtoAnalytics', id: 'SUMMARY' },
+        ];
+        const orders = result?.data?.orders;
+        if (Array.isArray(orders)) {
+          for (const o of orders) {
+            if (o?.orderId) tags.push({ type: 'AdminRtoList', id: o.orderId });
+          }
+        }
+        return tags;
+      },
+    }),
+
+    getAdminRtoAnalytics: builder.query({
+      query: (params = {}) => ({
+        url: '/admin/rto/analytics',
+        method: 'GET',
+        params,
+      }),
+      providesTags: [{ type: 'AdminRtoAnalytics', id: 'SUMMARY' }],
+    }),
+
+    adminAutoSyncRtoStatuses: builder.mutation({
+      query: (arg = {}) => {
+        const params = {};
+        if (arg.from) params.from = arg.from;
+        if (arg.to) params.to = arg.to;
+        if (arg.rangePreset) params.rangePreset = arg.rangePreset;
+        if (arg.presetDays != null && arg.presetDays !== '' && !arg.from && !arg.to && !arg.rangePreset) {
+          params.presetDays = arg.presetDays;
+        }
+        if (arg.preset === '30d') params.preset = '30d';
+        if (arg.staleMinutes != null) params.staleMinutes = arg.staleMinutes;
+        if (arg.maxRunMs != null) params.maxRunMs = arg.maxRunMs;
+        return {
+          url: '/admin/rto/auto-sync-statuses',
+          method: 'POST',
+          params,
+        };
+      },
+      invalidatesTags: (result, error) => {
+        if (error) return [];
+        const updated = result?.data?.summary?.updated ?? 0;
+        const synced = result?.data?.summary?.synced ?? 0;
+        if (updated <= 0 && synced <= 0) return [];
+        return [
+          { type: 'AdminRtoList', id: 'LIST' },
+          { type: 'AdminRtoAnalytics', id: 'SUMMARY' },
+        ];
+      },
+    }),
+
+    exportAdminRtoReport: builder.query({
+      query: (params = {}) => ({
+        url: '/admin/rto/report',
+        method: 'GET',
+        params,
+        responseType: 'blob',
+      }),
+    }),
+
+    adminRtoRefund: builder.mutation({
+      query: (body) => ({
+        url: '/admin/rto/refund',
+        method: 'POST',
+        data: body,
+      }),
+      invalidatesTags: (result, error, arg) => {
+        if (error) return [];
+        const id = arg?.orderId;
+        return [
+          { type: 'AdminRtoList', id: 'LIST' },
+          { type: 'AdminRtoAnalytics', id: 'SUMMARY' },
+          ...(id ? [{ type: 'AdminRtoList', id: String(id) }] : []),
+        ];
+      },
+    }),
+
+    adminRtoReject: builder.mutation({
+      query: (body) => ({
+        url: '/admin/rto/reject',
+        method: 'POST',
+        data: body,
+      }),
+      invalidatesTags: (result, error, arg) => {
+        if (error) return [];
+        const id = arg?.orderId;
+        return [
+          { type: 'AdminRtoList', id: 'LIST' },
+          { type: 'AdminRtoAnalytics', id: 'SUMMARY' },
+          ...(id ? [{ type: 'AdminRtoList', id: String(id) }] : []),
+        ];
+      },
+    }),
+
+    /** @deprecated use adminRtoReject */
+    adminRtoResolve: builder.mutation({
+      query: (body) => ({
+        url: '/admin/rto/reject',
+        method: 'POST',
+        data: body,
+      }),
+      invalidatesTags: (result, error, arg) => {
+        if (error) return [];
+        const id = arg?.orderId;
+        return [
+          { type: 'AdminRtoList', id: 'LIST' },
+          { type: 'AdminRtoAnalytics', id: 'SUMMARY' },
+          ...(id ? [{ type: 'AdminRtoList', id: String(id) }] : []),
+        ];
+      },
+    }),
+
+    adminRtoBulkAction: builder.mutation({
+      query: (body) => ({
+        url: '/admin/rto/bulk-action',
+        method: 'POST',
+        data: body,
+      }),
+      invalidatesTags: (result, error) => {
+        if (error) return [];
+        return [
+          { type: 'AdminRtoList', id: 'LIST' },
+          { type: 'AdminRtoAnalytics', id: 'SUMMARY' },
+        ];
+      },
+    }),
   }),
 });
 
@@ -423,4 +566,12 @@ export const {
   useAdminBulkApprovalCancelMutation,
   useAdminBulkFulfillmentShipNowMutation,
   useAdminBulkFulfillmentSchedulePickupMutation,
+  useGetAdminRtoOrdersQuery,
+  useGetAdminRtoAnalyticsQuery,
+  useLazyExportAdminRtoReportQuery,
+  useAdminAutoSyncRtoStatusesMutation,
+  useAdminRtoRefundMutation,
+  useAdminRtoRejectMutation,
+  useAdminRtoResolveMutation,
+  useAdminRtoBulkActionMutation,
 } = adminOrdersApi;

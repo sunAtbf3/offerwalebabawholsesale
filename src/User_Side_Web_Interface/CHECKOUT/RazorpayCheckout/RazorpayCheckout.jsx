@@ -32,6 +32,11 @@ const ensureRazorpayScript = () => {
   return razorpayScriptLoadPromise;
 };
 
+/** Call when user dismisses / closes Razorpay — ecom parity helper. */
+export const markRazorpaySessionClosed = () => {
+  /* wholesale modal lifecycle is parent-driven; keep export for checkout callers */
+};
+
 /**
  * RazorpayCheckout Component - FIXED: Removed deprecated config.display
  *

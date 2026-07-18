@@ -23,6 +23,7 @@ import {
 } from "../REDUX_FEATURES/REDUX_SLICES/UserWIshlist/userWishlistSLice";
 import { toast } from "react-toastify";
 import { selectIsAuthenticated } from "../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice";
+import { getProductRatingDisplay } from "../../utils/productRatingDisplay";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatPrice = (n) => {
@@ -78,6 +79,8 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
   const discountPct  = hasDiscount
     ? Math.round(((basePrice - salePrice) / basePrice) * 100)
     : null;
+
+  const ratingUi = getProductRatingDisplay(product, null);
   const moq          = variant.minimumOrderQuantity ?? variant.price?.minimumOrderQuantity ?? null;
 
   // ── From Version 2: full availability logic ───────────────────────────────
@@ -348,7 +351,9 @@ const WholesaleProductCard = ({ product, index = 0 }) => {
           </h3>
           <div className="flex items-center gap-0.5 flex-shrink-0 mt-0.5">
             <Star size={11} className="text-yellow-400 fill-yellow-400" />
-            <span className="text-[10px] font-semibold text-zinc-600">4.3</span>
+            <span className="text-[10px] font-semibold text-zinc-600">
+              {Number(ratingUi.average).toFixed(1)}
+            </span>
           </div>
         </div>
 

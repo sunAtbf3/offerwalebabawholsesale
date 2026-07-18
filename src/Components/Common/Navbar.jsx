@@ -7,7 +7,8 @@ import {
   CircleUser,
   Phone,
   ShoppingBag,
-  ChevronRight
+  ChevronRight,
+  Bell
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { openModal } from '../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerSlice';
@@ -24,6 +25,9 @@ import SearchModal from './Search_Modal/SearchModal';
 import { fetchAddresses, selectDefaultAddress } from '../REDUX_FEATURES/REDUX_SLICES/Useraddressslice';
 import { setLoggingOut } from '../../SERVICES/Wholesaleaxios';
 import { useGetAllCategoriesQuery } from '../REDUX_FEATURES/REDUX_SLICES/SHOP_BY_CATEGORY/categoriesApi';
+import NotificationBellIcon from './NotificationBellIcon';
+import NotificationsModal from './NotificationsModal';
+import { useGetUnreadNotificationCountQuery } from '../REDUX_FEATURES/REDUX_SLICES/notificationsApi';
 
 /* ─────────────────────────────────────────────
    LOCATION DISPLAY  (logic unchanged)
@@ -142,9 +146,21 @@ const Navbar = ({ searchQuery, setSearchQuery }) => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [showSearchTooltip, setShowSearchTooltip] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const scrollPos = useRef(0);
   const ticking = useRef(false);
   const accountRef = useRef(null);
+
+  const { data: unreadCount = 0 } = useGetUnreadNotificationCountQuery(undefined, {
+    skip: !isAuthenticated,
+    refetchOnMountOrArgChange: true,
+    refetchOnFocus: false,
+    refetchOnReconnect: false,
+  });
+
+  const openNotifications = useCallback(() => setNotificationsOpen(true), []);
+  const closeNotifications = useCallback(() => setNotificationsOpen(false), []);
+  const hasUnreadNotifications = isAuthenticated && unreadCount > 0;
 
 useEffect(() => {
   const handleOutside = (e) => {
@@ -199,6 +215,11 @@ useEffect(() => {
   useEffect(() => {
     if (isAuthenticated) dispatch(fetchAddresses());
   }, [dispatch, isAuthenticated]);
+
+  /* ── close notifications modal on logout ── */
+  useEffect(() => {
+    if (!isAuthenticated) setNotificationsOpen(false);
+  }, [isAuthenticated]);
 
   const handleSearchFocus = useCallback(() => setIsSearchModalOpen(true), []);
 
@@ -378,6 +399,18 @@ useEffect(() => {
               {/* Location */}
               <LocationDisplay userAddress={userAddress} />
 
+              {/* Desktop only: bell beside icons when unread (mobile uses Menu↔Bell swap) */}
+              {hasUnreadNotifications && (
+                <div className="hidden lg:block">
+                  <NotificationBellIcon
+                    count={unreadCount}
+                    onClick={openNotifications}
+                    variant="header"
+                    showLabel={false}
+                  />
+                </div>
+              )}
+
               {/* Wishlist */}
               <button
                 onClick={() => setWishlistOpen(true)}
@@ -466,6 +499,22 @@ useEffect(() => {
   <Package size={14} /> My Orders
 </Link>
                       <button
+                        type="button"
+                        onClick={() => {
+                          setIsAccountOpen(false);
+                          openNotifications();
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+                      >
+                        <Bell size={14} />
+                        Notifications
+                        {unreadCount > 0 && (
+                          <span className="ml-auto text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
+                            {unreadCount > 9 ? '9+' : unreadCount}
+                          </span>
+                        )}
+                      </button>
+                      <button
                         onClick={handleLogout}
                         disabled={isLoggingOutState}
                         className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg mt-1 border-t border-slate-100 pt-2 transition-colors"
@@ -478,14 +527,27 @@ useEffect(() => {
                 )}
               </div>
 
-              {/* Hamburger (mobile / tablet) */}
-              <button
-                className="lg:hidden p-1.5 text-slate-800 hover:bg-slate-100 rounded-xl transition-colors"
-                onClick={() => setIsMobileMenuOpen(true)}
-                aria-label="Open menu"
-              >
-                <Menu size={22} />
-              </button>
+              {/* Menu ↔ Notification bell swap (mobile/tablet, unread only) */}
+              {hasUnreadNotifications ? (
+                <div className="lg:hidden">
+                  <NotificationBellIcon
+                    count={unreadCount}
+                    onClick={openNotifications}
+                    variant="header"
+                    showLabel={false}
+                    shaking
+                  />
+                </div>
+              ) : (
+                <button
+                  className="lg:hidden p-1.5 text-slate-800 hover:bg-slate-100 rounded-xl transition-colors"
+                  onClick={() => setIsMobileMenuOpen(true)}
+                  aria-label="Open menu"
+                  type="button"
+                >
+                  <Menu size={22} />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -576,6 +638,20 @@ useEffect(() => {
     </button>
   </div>
 )}
+
+    {/* Notifications — directly under Welcome back / My Account */}
+    {isAuthenticated && (
+      <div className="px-3 mb-1">
+        <NotificationBellIcon
+          count={unreadCount}
+          variant="drawerRow"
+          onClick={() => {
+            setIsMobileMenuOpen(false);
+            openNotifications();
+          }}
+        />
+      </div>
+    )}
 
     {/* Search */}
     <div className="px-4 pt-3.5 pb-2.5">
@@ -729,6 +805,13 @@ useEffect(() => {
       <WholesaleCartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} onOpenAuth={handleOpenAuth} />
       <WishlistSidebar isOpen={wishlistOpen} onClose={() => setWishlistOpen(false)} onOpenAuth={handleOpenAuth} />
       <SearchModal isOpen={isSearchModalOpen} onClose={() => setIsSearchModalOpen(false)} initialQuery={searchQuery} />
+      {isAuthenticated && (
+        <NotificationsModal
+          open={notificationsOpen}
+          onClose={closeNotifications}
+          isLoggedIn={isAuthenticated}
+        />
+      )}
     </>
   );
 };

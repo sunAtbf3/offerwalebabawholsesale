@@ -31,7 +31,9 @@ import adminBulkUploadReducer from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/b
 import categoriesReducer from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/categoriesSlice";
 import { userAnalyticsApi } from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/userAnalyticsApi";
 import { seoAnalyticsApi, seoUiReducer } from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/adminSeoAnalytics";
-import adminOrdersUiReducer from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/order_management/adminOrdersSlice";
+import adminOrdersUiReducer, {
+  adminRtoUiReducer,
+} from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/order_management/adminOrdersSlice";
 import { adminOrdersApi } from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/order_management/adminOrdersApi";
 import staffReducer from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/staffSlice";
 import staffPasswordReducer from "../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/staffPasswordSlice";
@@ -39,10 +41,12 @@ import { wholesalerApi as adminWholesalerApi } from "../../ADMIN_SEGMENT/ADMIN_R
 import userWishlistReducer from "../REDUX_SLICES/UserWIshlist/userWishlistSLice";
 import userAddressReducer from "../REDUX_SLICES/Useraddressslice";
 import { searchApi } from "../REDUX_SLICES/searchApi";
+import { notificationsApi } from "../REDUX_SLICES/notificationsApi";
 import orderReducer from "../REDUX_SLICES/orderSlice";
 import checkoutReducer from "../REDUX_SLICES/checkoutSlice/checkoutSlice";
 import couponReducer from '../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/couponApi/CouponSlice';
 import { couponApi } from '../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/couponApi/couponApi';
+import { outOfStockInquiryApi } from '../../ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/outOfStockInquiryApi';
 
 export const store = configureStore({
   reducer: {
@@ -53,6 +57,7 @@ export const store = configureStore({
     [productsApi.reducerPath]: productsApi.reducer,
     [wholesalerApi.reducerPath]: wholesalerApi.reducer,
     [searchApi.reducerPath]: searchApi.reducer,
+    [notificationsApi.reducerPath]: notificationsApi.reducer,
     userCategories: userCategoriesReducer,
     userProducts: userProductsReducer,
     wholesaler: wholesalerReducer,
@@ -75,12 +80,14 @@ export const store = configureStore({
     staffPassword: staffPasswordReducer,
     seoUi: seoUiReducer,
     adminOrdersUi: adminOrdersUiReducer,
+    adminRtoUi: adminRtoUiReducer,
         [couponApi.reducerPath]: couponApi.reducer,
     [userAnalyticsApi.reducerPath]: userAnalyticsApi.reducer,
     [seoAnalyticsApi.reducerPath]: seoAnalyticsApi.reducer,
     [adminOrdersApi.reducerPath]: adminOrdersApi.reducer,
     [adminAuthApi.reducerPath]: adminAuthApi.reducer,
     [adminWholesalerApi.reducerPath]: adminWholesalerApi.reducer,
+    [outOfStockInquiryApi.reducerPath]: outOfStockInquiryApi.reducer,
   },
 
   middleware: (getDefaultMiddleware) =>
@@ -98,6 +105,7 @@ export const store = configureStore({
       wholesalerApi.middleware,
       authApi.middleware,
       searchApi.middleware,
+      notificationsApi.middleware,
       // ADMIN MIDDLEWARES (EXTRACTED FROM FIRST FILE)
       adminAuthApi.middleware,
       userAnalyticsApi.middleware,
@@ -105,6 +113,7 @@ export const store = configureStore({
       adminOrdersApi.middleware,
       adminWholesalerApi.middleware,
             couponApi.middleware,
+      outOfStockInquiryApi.middleware,
     ),
   
   devTools: import.meta.env.MODE !== "production",

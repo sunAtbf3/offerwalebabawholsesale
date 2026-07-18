@@ -30,6 +30,7 @@ import {
 } from '../../REDUX_FEATURES/REDUX_SLICES/checkoutSlice/checkoutSlice';
 import { selectIsAuthenticated } from "../../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice";
 import { selectDefaultAddress } from "../../REDUX_FEATURES/REDUX_SLICES/Useraddressslice";
+import { lockBodyScroll, unlockBodyScroll } from "../../../utils/lockBodyScroll";
 
 // ─── Price formatter ──────────────────────────────────────────────────────────
 const fmt = (n) => {
@@ -683,10 +684,11 @@ const WholesaleCartSidebar = ({ isOpen, onClose, onOpenAuth }) => {
     }
   }, [isOpen, isLoggedIn, dispatch]);
 
-  // ── Body scroll lock ──────────────────────────────────────────────────────
+  // ── Body scroll lock (compensate scrollbar width → no layout flicker) ─────
   useEffect(() => {
-    document.body.style.overflow = isOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    if (isOpen) lockBodyScroll();
+    else unlockBodyScroll();
+    return () => unlockBodyScroll();
   }, [isOpen]);
 
   // ── Clear errors on close ─────────────────────────────────────────────────

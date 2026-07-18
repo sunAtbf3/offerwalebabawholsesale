@@ -48,7 +48,8 @@ import {
   resetPaymentVerification,
   abandonOnlineCheckout,
   clearPlacedOrderForDismissedGateway,
-} from "../../components/REDUX_FEATURES/REDUX_SLICES/checkoutSlice/checkoutSlice";
+} from "../../Components/REDUX_FEATURES/REDUX_SLICES/checkoutSlice/checkoutSlice";
+import { quoteParamsForPaymentSelection } from "../../utils/checkoutQuoteParams";
 
 // Redux — address  (wholesale paths)
 import {
@@ -83,7 +84,7 @@ import { formatInr as fmt } from "../../utils/formatInr";
 import SavingsBanner from "../../components/Common/SavingsBanner";
 import { AddressFormModal } from "../User_Dash_Segment/UserSubPages/UserAddress";
 import RazorpayCheckout, {
-  PaymentErrorModal, PaymentLoadingModal,
+  PaymentErrorModal, PaymentLoadingModal, markRazorpaySessionClosed,
 } from "./RazorpayCheckout/RazorpayCheckout";
 
 // --- PAYMENT STATE MACHINE ----------------------------------------------------
@@ -786,6 +787,7 @@ const Checkout = () => {
 
   // Place order single-fire guard
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [paymentOptionActivated, setPaymentOptionActivated] = useState(false);
   const placeOrderInFlight = useRef(false);
   const checkoutAttemptKeyRef = useRef(null);
   const shouldEvaluateCodNudgeRef = useRef(false);
@@ -794,6 +796,7 @@ const Checkout = () => {
   const gatewayDismissRecoveryInFlight = useRef(false);
   const gatewayDismissHandlerRef = useRef(async () => {});
   const lastKnownOnlineAmountRef = useRef(null);
+  const activePaymentQuoteIdRef = useRef(null);
   const [onlineFullDisplayAmount, setOnlineFullDisplayAmount] = useState(null);
 
   // Derived
@@ -1039,6 +1042,7 @@ const Checkout = () => {
       dispatch(setPaymentMethod("online"));
       dispatch(setPaymentPlan("full"));
       dispatch(setBalanceCollection("online"));
+      setPaymentOptionActivated(true);
       requestQuote({ paymentHint: "online", plan: "full", balance: "online" });
     }
   }, [step, checkoutPolicy, paymentMethod, dispatch, requestQuote]);
@@ -1180,7 +1184,7 @@ const Checkout = () => {
     setStep(3);
   };
 
-  const selectCheckoutPaymentMode = (mode) => {
+  const selectCheckoutPaymentMode = async (mode) => {
     checkoutAttemptKeyRef.current = null;
     shouldEvaluateCodNudgeRef.current = mode === "cod";
     if (mode !== "cod") setShowPrepaidSavingsPopup(false);
@@ -1208,13 +1212,31 @@ const Checkout = () => {
       dispatch(setBalanceCollection("cod"));
     }
 
-    if (selectedAddressId) {
-      dispatch(resetQuote());
-      dispatch(setSelectedAddress(selectedAddressId));
-      const hint = mode === "cod" ? "cod" : "online";
-      const plan = mode === "advance_cod" ? "advance" : "full";
-      const bal = mode === "advance_cod" ? "cod" : "online";
-      requestQuote({ addressId: selectedAddressId, paymentHint: hint, plan, balance: bal });
+    if (!selectedAddressId) return;
+
+    dispatch(resetQuote());
+    dispatch(setSelectedAddress(selectedAddressId));
+    const quoteParams = quoteParamsForPaymentSelection({
+      paymentMethod: mode === "cod" ? "cod" : "online",
+      paymentPlan: mode === "advance_cod" ? "advance" : "full",
+      balanceCollection: mode === "advance_cod" ? "cod" : "online",
+    });
+
+    try {
+      const quoteResult = await requestQuote({
+        addressId: selectedAddressId,
+        ...quoteParams,
+        unwrap: true,
+      });
+      activePaymentQuoteIdRef.current = quoteResult?.quoteId || null;
+      setPaymentOptionActivated(true);
+    } catch (err) {
+      toast.error(err?.message || "Could not refresh totals for this payment option.", {
+        theme: "dark",
+      });
+      dispatch(setPaymentMethod(null));
+      setPaymentOptionActivated(false);
+      activePaymentQuoteIdRef.current = null;
     }
   };
 
@@ -1277,6 +1299,10 @@ const Checkout = () => {
     if (placeOrderInFlight.current || isPlacingOrder) return;
     if (!quoteId || !selectedAddressId) {
       toast.error("Missing quote or address. Please refresh.", { theme: "dark" });
+      return;
+    }
+    if (!paymentOptionActivated) {
+      toast.error("Please select a payment option first.", { theme: "dark" });
       return;
     }
     if (!paymentMethod) {
@@ -1415,6 +1441,7 @@ const Checkout = () => {
   };
 
   const handleRazorpayClose = useCallback(() => {
+    markRazorpaySessionClosed();
     setShowPaymentErrorModal(false);
     setPaymentError(null);
     void gatewayDismissHandlerRef.current();
@@ -1424,7 +1451,12 @@ const Checkout = () => {
     setShowPaymentErrorModal(false);
     setPaymentError(null);
     setRazorpayPaymentState(PAYMENT_STATE.IDLE);
-    handlePlaceOrder();
+    checkoutAttemptKeyRef.current = null;
+    dispatch(resetQuote());
+    setPaymentOptionActivated(false);
+    activePaymentQuoteIdRef.current = null;
+    dispatch(setPaymentMethod(null));
+    toast.info("Select your payment option again, then place order.", { theme: "dark" });
   };
 
   const handleSwitchToPrepaidFromPopup = () => {
@@ -1446,6 +1478,7 @@ const Checkout = () => {
   const isPlaceOrderDisabled =
     !quote ||
     !paymentMethod ||
+    !paymentOptionActivated ||
     loading.quote ||
     loading.confirm ||
     loading.placeOrder ||

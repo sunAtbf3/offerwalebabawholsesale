@@ -28,6 +28,8 @@ import  WhatsAppFloat  from './Components/WHATSAPP_FLOAT/WhatsAppFloat'
 // ── These two are fine at app-level — they power Navbar badges ───────────────
 import useWishlistInit from "./Components/HOOKS/useWishlistInit";
 import useCartInit from "./Components/HOOKS/useCartInit";
+import usePushNotifications from "./Components/HOOKS/usePushNotifications";
+import PushNotificationPrompt from "./Components/Common/PushNotificationPrompt";
 import ContactUs from './Components/HomeComponents/Contact';
 import UserDashboard from './User_Side_Web_Interface/User_Dash_Segment/UserDashboard';
 import Checkout from './User_Side_Web_Interface/CHECKOUT/Checkout';
@@ -171,7 +173,25 @@ function SessionHandler() {
   useWishlistInit();
   useCartInit();
 
-  return null;
+  const { canPrompt: canShowPushPrompt } = usePushNotifications(
+    isAuthenticated && !isAdminRoute
+  );
+  const [pushPromptVisible, setPushPromptVisible] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated && !isAdminRoute && canShowPushPrompt) {
+      setPushPromptVisible(true);
+    } else {
+      setPushPromptVisible(false);
+    }
+  }, [isAuthenticated, isAdminRoute, canShowPushPrompt]);
+
+  return (
+    <PushNotificationPrompt
+      visible={pushPromptVisible}
+      onDismiss={() => setPushPromptVisible(false)}
+    />
+  );
 }
 
 // ── SessionHandler: checks existing session on every app load ─────────────────

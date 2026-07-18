@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   ShoppingBag, Trash2, Plus, Minus, ArrowRight,
   ShieldCheck, RefreshCw, AlertCircle,
@@ -21,11 +21,9 @@ import {
   selectDisplayCartCount,
 } from '../../../Components/REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice';
 
-// Not ready yet — uncomment when checkoutSlice is implemented
-// import { selectDelivery, resetCheckout } from '../../../Components/REDUX_FEATURES/REDUX_SLICES/checkoutSlice/checkoutSlice';
-// import DeliveryChecker from '../../Common/DeliveryChecker/DeliveryChecker';
-
 import { selectIsAuthenticated } from '../../../Components/REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
+import { selectDefaultAddress } from '../../../Components/REDUX_FEATURES/REDUX_SLICES/Useraddressslice';
+import CartDeliverySection from '../../../Components/Common/CartDeliverySection';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -182,9 +180,13 @@ const UserCart = () => {
   const totalAmount = useSelector(selectCartTotalAmount);
   const loading     = useSelector(selectCartLoading);
   const error       = useSelector(selectCartError);
-  // const delivery = useSelector(selectDelivery); // uncomment when checkoutSlice is ready
+  const defaultAddress = useSelector(selectDefaultAddress);
 
   const currentItems = isLoggedIn ? items : guestItems;
+  const userPincode = useMemo(() => {
+    const pin = String(defaultAddress?.pincode || defaultAddress?.pinCode || "").trim();
+    return /^\d{6}$/.test(pin) ? pin : "";
+  }, [defaultAddress]);
 
   useEffect(() => {
     if (isLoggedIn) {
@@ -337,11 +339,10 @@ const UserCart = () => {
 
         <hr className="border-gray-300 block" />
 
-        {/* DeliveryChecker — uncomment when checkoutSlice is ready */}
-        {/* <div className="px-1 sm:px-2 mt-4">
-          <DeliveryChecker compact showTitle={false} />
+        <div className="px-1 sm:px-2 mt-4">
+          <CartDeliverySection isLoggedIn={isLoggedIn} userPincode={userPincode} />
         </div>
-        <hr className="border-gray-200 block my-4" /> */}
+        <hr className="border-gray-200 block my-4" />
 
         {/* Order Summary */}
         <div className="flex flex-col gap-4 px-1 sm:px-2 mt-4">
