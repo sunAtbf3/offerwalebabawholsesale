@@ -69,6 +69,7 @@ export const fetchCheckoutQuote = createAsyncThunk(
     condition: (_, { getState }) => {
       const loadingState = getState()?.checkout?.loading;
       // Prevent duplicate quote requests while one is in-flight.
+      // Never allow concurrent quotes — each create expires the previous active quote.
       return !loadingState?.quote;
     },
   }
@@ -591,10 +592,29 @@ const checkoutSlice = createSlice({
       .addCase(placeOrder.fulfilled, (state, action) => {
         state.loading.placeOrder = false;
         state.placedOrder = action.payload;
+        // Server marks quote consumed — drop stale id so retry/switch cannot confirm again.
+        state.quote = null;
+        state.quoteId = null;
+        state.quoteExpiresAt = null;
+        state.quoteStatus = "idle";
+        state.confirmed = null;
       })
       .addCase(placeOrder.rejected, (state, action) => {
         state.loading.placeOrder = false;
         state.error.placeOrder = action.payload || { message: "Failed to place order" };
+        const code = action.payload?.code;
+        if (
+          code === "QUOTE_NOT_FOUND" ||
+          code === "QUOTE_STALE" ||
+          code === "QUOTE_EXPIRED" ||
+          code === "QUOTE_NOT_CONFIRMED"
+        ) {
+          state.quote = null;
+          state.quoteId = null;
+          state.quoteExpiresAt = null;
+          state.quoteStatus = "idle";
+          state.confirmed = null;
+        }
       })
 
       // ── abandonOnlineCheckout ────────────────────────────────────────────

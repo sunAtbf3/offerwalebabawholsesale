@@ -105,7 +105,9 @@ const createCheckoutAttemptKey = () => {
 };
 
 const isQuoteRefreshError = (errorCode) =>
-  errorCode === "QUOTE_STALE" || errorCode === "QUOTE_EXPIRED";
+  errorCode === "QUOTE_STALE" ||
+  errorCode === "QUOTE_EXPIRED" ||
+  errorCode === "QUOTE_NOT_FOUND";
 
 /** Aligns with backend checkout policy (1–100 when partial is enabled). */
 const getServerPartialPercent = (policy) => {
@@ -475,12 +477,22 @@ const OrderSummaryCard = ({
   );
 
   const handleUpdateQty = useCallback(async (item, delta) => {
-    const productId = String(item.productId?._id || item.productId);
-    const variantId = String(item.variantId);
+    const productId = String(item.productId?._id || item.product?._id || item.productId);
+    const variantId = String(item.variantId?._id || item.variantId);
     const newQty = item.quantity + delta;
     const key = `${productId}-${variantId}`;
 
+    const moq =
+      item.product?.variants?.find((v) => String(v._id) === String(variantId))
+        ?.minimumOrderQuantity ??
+      item.moq ??
+      1;
+
     if (newQty < 1) return;
+    if (newQty < moq) {
+      toast.error(`Minimum order quantity is ${moq}`, { theme: "dark" });
+      return;
+    }
     setUpdatingId(key);
     try {
       await dispatch(updateCartItem({
@@ -498,8 +510,8 @@ const OrderSummaryCard = ({
   }, [dispatch, onCartMutationSuccess]);
 
   const handleRemove = useCallback(async (item) => {
-    const productId = String(item.productId?._id || item.productId);
-    const variantId = String(item.variantId);
+    const productId = String(item.productId?._id || item.product?._id || item.productId);
+    const variantId = String(item.variantId?._id || item.variantId);
     const key = `${productId}-${variantId}`;
     setUpdatingId(key);
     try {
@@ -556,14 +568,16 @@ const OrderSummaryCard = ({
           {/* Items */}
           <div className="px-4 py-3 space-y-3">
             {cartItems.map((item) => {
-              const productId = String(item.productId?._id || item.productId);
-              const variantId = String(item.variantId);
+              const productId = String(item.productId?._id || item.product?._id || item.productId);
+              const variantId = String(item.variantId?._id || item.variantId);
               const key = `${productId}-${variantId}`;
               const isUpdating = updatingId === key;
 
               const variant = item.product?.variants?.find(
                 v => String(v._id) === variantId
               ) ?? item.product?.variants?.[0];
+              const moq = variant?.minimumOrderQuantity ?? item.moq ?? 1;
+              const atMoq = item.quantity <= moq;
               const image = variant?.images?.[0]?.url || null;
               const name = item.product?.title || item.product?.name || "Product";
               const sizeName = variant?.size || variant?.name || "";
@@ -594,6 +608,9 @@ const OrderSummaryCard = ({
                     </p>
                     {sizeName && (
                       <p style={{ fontSize: 11, color: "#9ca3af" }}>{sizeName}</p>
+                    )}
+                    {moq > 1 && (
+                      <p style={{ fontSize: 10, color: "#9ca3af" }}>MOQ: {moq}</p>
                     )}
                     <div className="flex items-center gap-2 flex-wrap mt-1">
                       <p className="font-black" style={{ fontSize: 13, color: "#111" }}>
@@ -639,14 +656,14 @@ const OrderSummaryCard = ({
                       }}>
                       <button
                         onClick={() => handleUpdateQty(item, -1)}
-                        disabled={isUpdating || item.quantity <= 1}
+                        disabled={isUpdating || atMoq}
                         className="flex items-center justify-center cursor-pointer transition-all active:scale-95"
                         style={{
                           width: 24, height: 24, borderRadius: 6,
-                          background: item.quantity <= 1 ? "#f9f9f9" : "#f0e8d8",
+                          background: atMoq ? "#f9f9f9" : "#f0e8d8",
                           border: "none",
-                          opacity: isUpdating || item.quantity <= 1 ? 0.4 : 1,
-                          cursor: item.quantity <= 1 ? "not-allowed" : "pointer",
+                          opacity: isUpdating || atMoq ? 0.4 : 1,
+                          cursor: atMoq ? "not-allowed" : "pointer",
                         }}
                       >
                         <Minus size={10} style={{ color: "#111" }} />
@@ -793,6 +810,7 @@ const Checkout = () => {
   const shouldEvaluateCodNudgeRef = useRef(false);
   const onlineFullPayableRef = useRef(null);
   const codSavingsPrefetchKeyRef = useRef(null);
+  const codSavingsPrefetchAbortRef = useRef(null);
   const gatewayDismissRecoveryInFlight = useRef(false);
   const gatewayDismissHandlerRef = useRef(async () => {});
   const lastKnownOnlineAmountRef = useRef(null);
@@ -824,9 +842,35 @@ const Checkout = () => {
     return (total * pct) / 100;
   };
 
+  const getPlaceOrderButtonAmount = () => {
+    if (paymentMethod === "cod") {
+      return quote?.amountPayable ?? 0;
+    }
+    if (paymentMethod === "online" && paymentPlan !== "full") {
+      return getPartialPayNowAmount();
+    }
+    return quote?.amountPayable ?? onlineFullPayableRef.current ?? 0;
+  };
+
+  // Partial = COD-style total × %. Never preview against prepaid/online quote alone.
+  const codStylePayableForPartialPreview = (() => {
+    if (checkoutMode === "cod" || checkoutMode === "advance_cod") {
+      return Number(quote?.amountPayable);
+    }
+    const online =
+      onlineFullDisplayAmount ??
+      onlineFullPayableRef.current ??
+      (quote?.amountPayable != null ? Number(quote.amountPayable) : null);
+    if (!Number.isFinite(online)) return NaN;
+    if (Number.isFinite(codVsOnlineSavings) && codVsOnlineSavings > 0) {
+      return online + codVsOnlineSavings;
+    }
+    return online;
+  })();
+
   const advancePreviewNow =
-    quote?.amountPayable != null && policyPartialPercent != null
-      ? (quote.amountPayable * policyPartialPercent) / 100
+    Number.isFinite(codStylePayableForPartialPreview) && policyPartialPercent != null
+      ? (codStylePayableForPartialPreview * policyPartialPercent) / 100
       : 0;
 
   // -- Scroll to top on mount and step change ---------------------------------
@@ -841,6 +885,8 @@ const Checkout = () => {
     setShowPrepaidSavingsPopup(false);
     setCodVsOnlineSavings(0);
     onlineFullPayableRef.current = null;
+    codSavingsPrefetchAbortRef.current?.abort();
+    codSavingsPrefetchAbortRef.current = null;
     codSavingsPrefetchKeyRef.current = null;
     setIsCouponManuallyApplied(false);
     if (couponCode) {
@@ -859,6 +905,7 @@ const Checkout = () => {
   }, [checkoutMode, quote?.amountPayable, loading.quote]);
 
   // -- Prefetch COD quote for nudge savings on step 3 ------------------------
+  // MUST use quotePurpose: "cod_comparison" so backend does NOT create/expire a real quote.
   useEffect(() => {
     if (step !== 3 || loading.quote) return;
     if (checkoutMode === "cod") return;
@@ -874,28 +921,42 @@ const Checkout = () => {
     if (codSavingsPrefetchKeyRef.current === prefetchKey) return;
     codSavingsPrefetchKeyRef.current = prefetchKey;
 
+    const abortController = new AbortController();
+    codSavingsPrefetchAbortRef.current = abortController;
     let cancelled = false;
     (async () => {
       try {
-        const res = await axiosInstance.post("/checkout/quote", {
-          addressId: selectedAddressId,
-          couponCode: isCouponManuallyApplied ? couponCode || undefined : undefined,
-          paymentMethodHint: "cod",
-          paymentPlan: "full",
-          balanceCollection: "online",
-        });
+        const res = await axiosInstance.post(
+          "/checkout/quote",
+          {
+            addressId: selectedAddressId,
+            couponCode: isCouponManuallyApplied ? couponCode || undefined : undefined,
+            paymentMethodHint: "cod",
+            paymentPlan: "full",
+            balanceCollection: "online",
+            quotePurpose: "cod_comparison",
+          },
+          { signal: abortController.signal }
+        );
         if (cancelled || !res.data?.success) return;
         const savings = computeCodVsOnlineSavings(
           res.data?.amountPayable,
           onlinePayable
         );
         setCodVsOnlineSavings(savings);
-      } catch {
+      } catch (err) {
+        if (err?.code === "ERR_CANCELED" || err?.name === "CanceledError") return;
         if (!cancelled) codSavingsPrefetchKeyRef.current = null;
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      abortController.abort();
+      if (codSavingsPrefetchAbortRef.current === abortController) {
+        codSavingsPrefetchAbortRef.current = null;
+      }
+    };
   }, [
     step, checkoutMode, loading.quote, selectedAddressId,
     quote?.amountPayable, couponCode, isCouponManuallyApplied, showCodOption,
@@ -1147,13 +1208,16 @@ const Checkout = () => {
   const handleQuoteRefreshAfterCartMutation = useCallback(async () => {
     checkoutAttemptKeyRef.current = null;
     dispatch(resetQuote());
+    activePaymentQuoteIdRef.current = null;
 
     if (!selectedAddressId || (step !== 2 && step !== 3)) return;
 
     try {
-      await requestQuote({ unwrap: true });
+      const quoteResult = await requestQuote({ unwrap: true });
+      activePaymentQuoteIdRef.current = quoteResult?.quoteId || null;
       toast.info("Checkout totals refreshed.", { theme: "dark" });
     } catch (refreshError) {
+      setPaymentOptionActivated(false);
       toast.error(refreshError?.message || "Could not refresh checkout totals", { theme: "dark" });
     }
   }, [dispatch, requestQuote, selectedAddressId, step]);
@@ -1185,6 +1249,9 @@ const Checkout = () => {
   };
 
   const selectCheckoutPaymentMode = async (mode) => {
+    codSavingsPrefetchAbortRef.current?.abort();
+    codSavingsPrefetchAbortRef.current = null;
+    codSavingsPrefetchKeyRef.current = null;
     checkoutAttemptKeyRef.current = null;
     shouldEvaluateCodNudgeRef.current = mode === "cod";
     if (mode !== "cod") setShowPrepaidSavingsPopup(false);
@@ -1297,8 +1364,27 @@ const Checkout = () => {
   // -- Place order — guarded against double-fire ----------------------------
   const handlePlaceOrder = async () => {
     if (placeOrderInFlight.current || isPlacingOrder) return;
-    if (!quoteId || !selectedAddressId) {
-      toast.error("Missing quote or address. Please refresh.", { theme: "dark" });
+    if (gatewayDismissRecoveryInFlight.current) {
+      toast.info("Restoring your bag after payment was closed. Please wait a moment.", {
+        theme: "dark",
+      });
+      return;
+    }
+    if (placedOrder?.order?.orderId && paymentMethod === "online") {
+      toast.info("Please wait — your previous payment attempt is still being cleared.", {
+        theme: "dark",
+      });
+      return;
+    }
+    if (!quoteId || !quote || !selectedAddressId) {
+      toast.error("Select a payment option to refresh totals, then try again.", { theme: "dark" });
+      return;
+    }
+    if (
+      activePaymentQuoteIdRef.current &&
+      String(quoteId) !== String(activePaymentQuoteIdRef.current)
+    ) {
+      toast.error("Totals are refreshing — please wait, then try again.", { theme: "dark" });
       return;
     }
     if (!paymentOptionActivated) {
@@ -1312,6 +1398,12 @@ const Checkout = () => {
 
     placeOrderInFlight.current = true;
     setIsPlacingOrder(true);
+
+    // Stop any in-flight comparison prefetch so it cannot expire this quote.
+    codSavingsPrefetchAbortRef.current?.abort();
+    codSavingsPrefetchAbortRef.current = null;
+
+    let quoteConfirmedThisAttempt = false;
 
     try {
       const idempotencyKey =
@@ -1331,6 +1423,7 @@ const Checkout = () => {
         paymentAdvancePercent: advancePercentForApi,
         balanceCollection,
       })).unwrap();
+      quoteConfirmedThisAttempt = true;
 
       // Step 2: Place order
       const orderResult = await dispatch(placeOrder({
@@ -1372,15 +1465,21 @@ const Checkout = () => {
       }
     } catch (e) {
       const msg = e?.message || "Failed to place order";
+      if (quoteConfirmedThisAttempt) {
+        dispatch(resetQuote());
+      }
       if (isQuoteRefreshError(e?.code)) {
         checkoutAttemptKeyRef.current = null;
-        toast.info(msg, { theme: "dark" });
-        requestQuote({
-          addressId: selectedAddressId,
-          paymentHint: paymentMethod || "online",
-          plan: paymentPlan,
-          balance: balanceCollection,
-        });
+        dispatch(resetQuote());
+        setPaymentOptionActivated(false);
+        activePaymentQuoteIdRef.current = null;
+        toast.info(
+          e?.code === "QUOTE_NOT_FOUND"
+            ? "Checkout session expired — select your payment option again."
+            : msg,
+          { theme: "dark" }
+        );
+        dispatch(setPaymentMethod(null));
       } else if (e?.code === "IDEMPOTENCY_REQUEST_IN_PROGRESS") {
         toast.info("Your order is already being processed. Please wait a moment.", { theme: "dark" });
       } else if (e?.code === "IDEMPOTENCY_KEY_REUSED") {
@@ -1477,6 +1576,7 @@ const Checkout = () => {
   // -- Derived button state --------------------------------------------------
   const isPlaceOrderDisabled =
     !quote ||
+    !quoteId ||
     !paymentMethod ||
     !paymentOptionActivated ||
     loading.quote ||
@@ -1485,7 +1585,9 @@ const Checkout = () => {
     loading.abandonCheckout ||
     isPlacingOrder ||
     paymentVerification.loading ||
-    (paymentMethod === "online" && !razorpayKey && !razorpayKeyLoading && !razorpayKeyError);
+    Boolean(placedOrder?.order?.orderId) ||
+    (paymentMethod === "online" &&
+      (!razorpayKey || razorpayKeyLoading || Boolean(razorpayKeyError)));
 
   const couponApplyDisabled =
     !selectedAddressId ||
@@ -2077,9 +2179,7 @@ const Checkout = () => {
                 ) : (
                   <>
                     Place Order{" "}
-                    {paymentMethod === "online" && paymentPlan !== "full"
-                      ? fmt(getPartialPayNowAmount())
-                      : fmt(onlineFullPayableRef.current ?? quote?.amountPayable)}
+                    {fmt(getPlaceOrderButtonAmount())}
                   </>
                 )}
               </button>
