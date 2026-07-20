@@ -1,4 +1,4 @@
-import { createSlice, createSelector  } from '@reduxjs/toolkit';
+import { createSlice, createSelector } from '@reduxjs/toolkit';
 
 /**
  * Maps UI tab labels (OrderTab) → backend `bucket` query param.
@@ -7,17 +7,19 @@ export const ORDER_TAB_LABEL_TO_BUCKET = Object.freeze({
   All: 'all',
   Pending: 'new',
   Confirmed: 'bill_sent',
+  'Ready to Ship': 'ready_to_ship',
   Processing: 'ready_to_pick',
   'In transit': 'in_transit',
   Delivered: 'completed',
+  RTO: 'rto',
   Cancelled: 'others',
+  'Pickup Exception': 'pickup_exception',
 });
 
 /** @type {keyof typeof ORDER_TAB_LABEL_TO_BUCKET} */
-export const DEFAULT_ORDER_TAB_LABEL = 'All';
+export const DEFAULT_ORDER_TAB_LABEL = 'Pending';
 
 /** Order statuses where GST invoice + Shiprocket fulfilment UI are allowed (after admin confirm). */
-// ADDED: was missing in wholesale — required by AdminOrderDetailView
 const POST_CONFIRM_ORDER_STATUSES = [
   'confirmed',
   'processing',
@@ -27,7 +29,6 @@ const POST_CONFIRM_ORDER_STATUSES = [
   'return_requested',
 ];
 
-// ADDED: was missing in wholesale — required by AdminOrderDetailView
 export function isPostConfirmOrderStatus(orderStatus) {
   return POST_CONFIRM_ORDER_STATUSES.includes(String(orderStatus || '').toLowerCase());
 }
@@ -39,10 +40,13 @@ export const BUCKET_KEY_TO_TAB_LABEL = Object.freeze({
   all: 'All',
   new: 'Pending',
   bill_sent: 'Confirmed',
+  ready_to_ship: 'Ready to Ship',
+  pickup_exception: 'Pickup Exception',
   ready_to_pick: 'Processing',
   in_transit: 'In transit',
   completed: 'Delivered',
-  Others: 'Cancelled',
+  rto: 'RTO',
+  others: 'Cancelled',
 });
 
 /** @typedef {'today'|'last7'|'last30'|'custom'} DatePresetId */
@@ -93,8 +97,9 @@ const adminOrdersUiSlice = createSlice({
   initialState,
   reducers: {
     setActiveTabLabel: (state, { payload }) => {
-      if (payload && ORDER_TAB_LABEL_TO_BUCKET[payload] != null) {
-        state.activeTabLabel = payload;
+      const label = payload === 'All' ? DEFAULT_ORDER_TAB_LABEL : payload;
+      if (label && ORDER_TAB_LABEL_TO_BUCKET[label] != null) {
+        state.activeTabLabel = label;
         state.page = 1;
       }
     },
@@ -178,27 +183,43 @@ function buildDateQueryArgs(ui) {
   return { rangePreset: 'last30' };
 }
 
-/**
- * Build RTK Query args for list endpoint from Redux state.
- */
-const selectUi = (state) => state.adminOrdersUi;
-const selectDateArgs = createSelector(selectUi, (ui) => buildDateQueryArgs(ui));
+const selectAdminOrdersUi = (state) => state.adminOrdersUi;
 
-export const selectAdminOrdersListQueryArgs = createSelector(
-  selectUi,
-  selectDateArgs,
-  (ui, dateArgs) => ({
+/**
+ * Build RTK Query args for list endpoint from Redux state (memoized — stable ref when UI slice unchanged).
+ */
+export const selectAdminOrdersListQueryArgs = createSelector([selectAdminOrdersUi], (ui) => {
+  const search = String(ui.search || '').trim();
+  const tabLabel =
+    ui.activeTabLabel === 'All' || !ORDER_TAB_LABEL_TO_BUCKET[ui.activeTabLabel]
+      ? DEFAULT_ORDER_TAB_LABEL
+      : ui.activeTabLabel;
+  const bucket = ORDER_TAB_LABEL_TO_BUCKET[tabLabel];
+  const dateArgs = buildDateQueryArgs(ui);
+  return {
     page: ui.page,
     limit: ui.limit,
     sortBy: ui.sortBy,
     sortOrder: ui.sortOrder,
-    bucket: ORDER_TAB_LABEL_TO_BUCKET[ui.activeTabLabel] || 'all',
-    search: ui.search,
+    /** When search is active, bucket is omitted so the API searches all statuses globally. */
+    ...(search ? {} : { bucket }),
+    search,
     ...dateArgs,
-  })
+  };
+});
+
+/** Date-range args only — used by list + background auto-sync (not summary cards). */
+export const selectAdminOrdersDateQueryArgs = createSelector([selectAdminOrdersUi], (ui) =>
+  buildDateQueryArgs(ui)
 );
 
-export const selectAdminOrdersSummaryQueryArgs = selectDateArgs;
+/**
+ * Summary cards + tab badge counts: always all-time (ignore date/search filters).
+ * Filters apply only to the orders table via list query args.
+ */
+export const ADMIN_ORDERS_SUMMARY_ALL_TIME_ARGS = Object.freeze({ rangePreset: 'all' });
+
+export const selectAdminOrdersSummaryQueryArgs = () => ADMIN_ORDERS_SUMMARY_ALL_TIME_ARGS;
 
 /** RTO tab UI state — lifetime by default (not Orders tab's last-30 window). */
 const rtoInitialState = {
@@ -284,6 +305,7 @@ function buildRtoDateQueryArgs(ui) {
     const fromIso = localDateStrToStartIso(ui.customDateFrom);
     const toIso = localDateStrToEndIso(ui.customDateTo);
     if (fromIso && toIso) return { from: fromIso, to: toIso };
+    // Incomplete custom inputs → keep lifetime list (never silently shrink to 30d).
     return { rangePreset: 'all' };
   }
   if (ui.datePreset === 'today') return { rangePreset: 'today' };
