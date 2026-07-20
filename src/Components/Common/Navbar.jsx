@@ -15,7 +15,7 @@ import { openModal } from '../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerSl
 import { logout, selectUser, selectIsAuthenticated } from '../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
 import { useLogoutMutation } from '../REDUX_FEATURES/REDUX_SLICES/authApi/authApi';
 import LOGO2 from "../../assets/home (3).png";
-import VID2 from "../../assets/Video2.mp4";
+// import VID2 from "../../assets/Video2.mp4";
 import { selectDisplayCartCount } from '../REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice';
 import WholesaleCartSidebar from '../HomeComponents/Sidebar/CartSidebar';
 import WishlistSidebar from '../HomeComponents/Sidebar/Wishlist';
@@ -29,6 +29,8 @@ import NotificationBellIcon from './NotificationBellIcon';
 import NotificationsModal from './NotificationsModal';
 import { useGetUnreadNotificationCountQuery } from '../REDUX_FEATURES/REDUX_SLICES/notificationsApi';
 
+
+const VID2 = 'https://res.cloudinary.com/dnm8cfawi/video/upload/Video2_ajohwk.mp4';
 /* ─────────────────────────────────────────────
    LOCATION DISPLAY  (logic unchanged)
 ───────────────────────────────────────────── */

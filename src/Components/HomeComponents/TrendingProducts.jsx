@@ -21,9 +21,8 @@ const TodayArrival = () => {
     (state) => state.userProducts.tagPage?.['today-arrival'] ?? 1
   );
 
-  const storedProducts = useSelector(
-    (state) => state.userProducts.tagProducts?.['today-arrival'] ?? []
-  );
+  const storedProducts =
+    useSelector((state) => state.userProducts.tagProducts?.['today-arrival']) ?? [];
 
   const { data, isLoading, isFetching, isError } = useGetProductsByTagQuery({
     tag: 'today-arrival',

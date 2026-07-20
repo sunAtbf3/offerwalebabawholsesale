@@ -21,9 +21,8 @@ const SaleIsLive = () => {
     (state) => state.userProducts.tagPage?.['on-sale'] ?? 1
   );
 
-  const storedProducts = useSelector(
-    (state) => state.userProducts.tagProducts?.['on-sale'] ?? []
-  );
+  const storedProducts =
+    useSelector((state) => state.userProducts.tagProducts?.['on-sale']) ?? [];
 
   const { data, isLoading, isFetching, isError } = useGetProductsByTagQuery({
     tag: 'on-sale',
