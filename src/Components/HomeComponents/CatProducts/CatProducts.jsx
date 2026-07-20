@@ -573,26 +573,19 @@ console.log("hasMore", hasMore);
       </div>
 
       {/* ── HERO ──────────────────────────────────────────────────────────── */}
-    <section className="relative min-h-[28vh] sm:min-h-[35vh] md:min-h-[42vh] lg:min-h-[50vh] flex items-end overflow-hidden bg-gray-900">
+      <section className="relative h-[40vh] md:h-[24vh] flex flex-col overflow-hidden bg-gray-900">
   {currentCategoryImage && (
     <img
       src={currentCategoryImage}
       alt={categoryName}
-      className="
-        absolute inset-0
-        w-full h-full
-        object-center
-        md:object-[center_30%]
-        scale-105
-        sm:scale-100
-      "
+            className="absolute inset-0 w-full h-full object-cover"
     />
   )}
 
-  {/* Optional overlay for better text readability */}
-  <div className="absolute inset-0 bg-black/30 sm:bg-black/30 md:bg-black/25" />
+  <div className="absolute inset-0 bg-black/30 md:bg-black/25" />
+  <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#F7A221]" />
 
-  <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 pb-6 sm:pb-10 md:pb-14">
+  <div className="relative z-10 flex flex-1 flex-col justify-end min-h-0 w-full max-w-7xl mx-auto px-4 md:px-8 pb-0">
     <div className="flex items-end justify-between gap-4">
       <div>
         <p className="text-[9px] sm:text-[13px] font-black uppercase tracking-[0.2em] sm:tracking-[0.25em] mb-2 sm:mb-3 flex items-center gap-2 text-white">
@@ -601,7 +594,7 @@ console.log("hasMore", hasMore);
         </p>
 
         <h1
-          className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl uppercase leading-none font-black"
+          className="text-2xl sm:text-4xl md:text-5xl uppercase leading-none font-black"
           style={{
             color:
               categoriesImage.find(
@@ -615,7 +608,7 @@ console.log("hasMore", hasMore);
         </h1>
 
         {currentCategory?.description && (
-          <p className="mt-2 sm:mt-4 max-w-xs sm:max-w-md text-gray-200 text-xs sm:text-sm leading-relaxed font-medium line-clamp-2 sm:line-clamp-none">
+          <p className="mt-2 sm:mt-3 max-w-xs sm:max-w-md text-gray-200 text-xs sm:text-sm leading-relaxed font-medium line-clamp-2">
             {currentCategory.description}
           </p>
         )}
