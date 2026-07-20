@@ -177,12 +177,8 @@ const Step1_PersonalInfo = ({ formData }) => {
       <div>
         <h2 className="text-xl font-black text-[#0F172A]">Register Interest</h2>
         <p className="text-sm text-slate-500 mt-0.5">
-          Share basic details only. After approval you&apos;ll complete business info and
-          activate on{" "}
-          <a href="/activate" className="text-[#478B8D] font-bold underline underline-offset-2">
-            /activate
-          </a>
-          .
+          Share basic details only. After approval you&apos;ll complete business info
+          and activate your account.
         </p>
       </div>
 

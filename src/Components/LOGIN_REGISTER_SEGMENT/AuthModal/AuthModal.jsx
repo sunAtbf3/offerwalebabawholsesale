@@ -1,5 +1,5 @@
 // Components/LOGIN_REGISTER_SEGMENT/AuthModal/AuthModal.jsx
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useState } from "react";
 import { X, UserPlus, LogIn } from "lucide-react";
 import logo from "../../../assets/logo2.svg"
 import { useDispatch, useSelector } from "react-redux";
@@ -11,13 +11,16 @@ import {
 } from "../../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerSlice";
 import LoginPage from "../LoginPage/LoginPage";
 import RegisterPage from "../RegisterPage/RegisterPage";
+import ForgotPassword from "../ForgotPassword/ForgotPassword";
 
 const AuthModal = () => {
   const dispatch = useDispatch();
   const isOpen = useSelector(selectIsModalOpen);
   const activeTab = useSelector(selectActiveTab);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const handleLoginSuccess = (user) => {
+    setShowForgotPassword(false);
     dispatch(closeModal());
     console.log('[AuthModal] Login successful for:', user?.name || user?.email);
   };
@@ -33,6 +36,7 @@ const AuthModal = () => {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
+      setShowForgotPassword(false);
     }
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
@@ -44,6 +48,11 @@ const AuthModal = () => {
 
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) dispatch(closeModal());
+  };
+
+  const handleTabChange = (tab) => {
+    setShowForgotPassword(false);
+    dispatch(setActiveTab(tab));
   };
 
   return (
@@ -84,46 +93,66 @@ const AuthModal = () => {
           </button>
         </div>
 
-        {/* Logo */}
-        <div className="flex justify-center pt-3 sm:pt-4 shrink-0">
-          <img
-            className="w-20 h-20 sm:w-28 sm:h-28 object-contain"
-            src={logo}
-            alt="OfferWaleBaba logo"
-          />
-        </div>
+        {showForgotPassword ? (
+          <div className="overflow-y-auto flex-1 px-4 sm:px-6 py-4 sm:py-5">
+            <ForgotPassword
+              onBack={() => setShowForgotPassword(false)}
+              onLoginClick={() => {
+                setShowForgotPassword(false);
+                dispatch(setActiveTab("login"));
+              }}
+              onLoginSuccess={handleLoginSuccess}
+            />
+          </div>
+        ) : (
+          <>
+            {/* Logo */}
+            <div className="flex justify-center pt-3 sm:pt-4 shrink-0">
+              <img
+                className="w-20 h-20 sm:w-28 sm:h-28 object-contain"
+                src={logo}
+                alt="OfferWaleBaba logo"
+              />
+            </div>
 
-        {/* Tab switcher */}
-        <div className="flex px-4 sm:px-6 pt-3 sm:pt-4 gap-2 shrink-0">
-          <button
-            onClick={() => dispatch(setActiveTab("login"))}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl
-                        text-xs font-black uppercase tracking-wider transition-all duration-200
-                        ${activeTab === "login"
-                          ? "bg-[#0F172A] text-white shadow-lg"
-                          : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                        }`}
-          >
-            <LogIn size={13} /> Login
-          </button>
-          <button
-            onClick={() => dispatch(setActiveTab("register"))}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl
-                        text-xs font-black uppercase tracking-wider transition-all duration-200
-                        ${activeTab === "register"
-                          ? "bg-[#478B8D] text-[#0F172A] shadow-lg"
-                          : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                        }`}
-          >
-            <UserPlus size={13} /> Register
-          </button>
-        </div>
+            {/* Tab switcher */}
+            <div className="flex px-4 sm:px-6 pt-3 sm:pt-4 gap-2 shrink-0">
+              <button
+                onClick={() => handleTabChange("login")}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl
+                            text-xs font-black uppercase tracking-wider transition-all duration-200
+                            ${activeTab === "login"
+                              ? "bg-[#0F172A] text-white shadow-lg"
+                              : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                            }`}
+              >
+                <LogIn size={13} /> Login
+              </button>
+              <button
+                onClick={() => handleTabChange("register")}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl
+                            text-xs font-black uppercase tracking-wider transition-all duration-200
+                            ${activeTab === "register"
+                              ? "bg-[#478B8D] text-[#0F172A] shadow-lg"
+                              : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                            }`}
+              >
+                <UserPlus size={13} /> Register
+              </button>
+            </div>
 
-        {/* Scrollable content */}
-        <div className="overflow-y-auto flex-1 px-4 sm:px-6 py-4 sm:py-5">
-          {activeTab === "login" && <LoginPage onLoginSuccess={handleLoginSuccess} />}
-          {activeTab === "register" && <RegisterPage />}
-        </div>
+            {/* Scrollable content */}
+            <div className="overflow-y-auto flex-1 px-4 sm:px-6 py-4 sm:py-5">
+              {activeTab === "login" && (
+                <LoginPage
+                  onLoginSuccess={handleLoginSuccess}
+                  onForgotPasswordClick={() => setShowForgotPassword(true)}
+                />
+              )}
+              {activeTab === "register" && <RegisterPage />}
+            </div>
+          </>
+        )}
 
       </div>
     </div>

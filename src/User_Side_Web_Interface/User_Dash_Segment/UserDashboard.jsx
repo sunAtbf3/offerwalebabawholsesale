@@ -10,7 +10,7 @@ import UserProfile from './UserSubPages/UserProfile';
 import UserOrders from './UserSubPages/UserOrders';
 import UserWishlist from './UserSubPages/UserWishlist';
 import UserAddress from './UserSubPages/UserAddress';
-// import UserTicket from './UserSubPages/UserTicket';
+import UserTicket from './UserSubPages/UserTicket';
 import UserCart from './UserSubPages/UserCart';
 
 import { logout, selectUser } from '../../Components/REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
@@ -34,7 +34,7 @@ const UserDashboard = () => {
         { id: 'userwishlist', label: 'My Wishlist',     icon: <Heart size={20} />,        component: <UserWishlist /> },
         { id: 'usercart',     label: 'My Cart',         icon: <ShoppingCart size={20} />, component: <UserCart /> },
         { id: 'useraddress',  label: 'Manage Address',  icon: <MapPin size={20} />,       component: <UserAddress /> },
-        // { id: 'usertickets',  label: 'Help & Support',  icon: <LifeBuoy size={20} />,     component: <UserTicket /> },
+        { id: 'usertickets',  label: 'Help & Support',  icon: <LifeBuoy size={20} />,     component: <UserTicket /> },
     ];
 
     // Toggle tab open/closed; update URL without full navigation

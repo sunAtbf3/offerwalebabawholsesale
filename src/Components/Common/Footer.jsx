@@ -222,9 +222,9 @@ const Footer = () => {
     className="h-24 sm:h-32 lg:h-36 xl:h-40 2xl:h-44 w-auto object-contain transition-all duration-500"
   />
 </div>
-                <p className="text-[14px] font-bold text-zinc-800 tracking-[0.3em] uppercase mt-4">
+                {/* <p className="text-[14px] font-bold text-zinc-800 tracking-[0.3em] uppercase mt-4">
                   Wholesale. Sourcing. Fulfillment.
-                </p>
+                </p> */}
               </div>
 
               <p className="text-slate-400 text-sm font-medium leading-relaxed">

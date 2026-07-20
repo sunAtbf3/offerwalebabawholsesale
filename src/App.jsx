@@ -52,7 +52,7 @@ function Layout({ children }) {
       {!shouldHide && <Navbar />}
       {children}
       {!shouldHide && <Footer />}
-         <WhatsAppFloat />
+      {!shouldHide && <WhatsAppFloat />}
     </>
   );
 }

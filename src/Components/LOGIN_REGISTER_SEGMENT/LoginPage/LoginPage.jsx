@@ -38,7 +38,7 @@ const getLoginErrorMessage = (error) => {
   return message || "Login failed. Please try again.";
 };
 
-const LoginPage = ({ onLoginSuccess }) => {
+const LoginPage = ({ onLoginSuccess, onForgotPasswordClick }) => {
   const [form, setForm] = useState({ mobileOrEmail: "", password: "" });
   const [errors, setErrors] = useState({});
   const [showPass, setShowPass] = useState(false);
@@ -155,6 +155,18 @@ const LoginPage = ({ onLoginSuccess }) => {
             <p className="text-xs text-red-500 font-medium">{errors.password}</p>
           )}
         </div>
+
+        {onForgotPasswordClick && (
+          <div className="flex justify-end -mt-1">
+            <button
+              type="button"
+              onClick={onForgotPasswordClick}
+              className="text-[11px] font-bold uppercase tracking-wide text-slate-400 hover:text-amber-600 transition-colors py-0.5"
+            >
+              Forgot Password?
+            </button>
+          </div>
+        )}
 
         <button
           type="submit"
