@@ -5,11 +5,11 @@ import {
   selectDefaultAddress,
   selectOtherAddresses,
   selectAddressLoading,
-} from "../../../components/REDUX_FEATURES/REDUX_SLICES/Useraddressslice";
+} from "../../../Components/REDUX_FEATURES/REDUX_SLICES/Useraddressslice";
 import {
   setSelectedAddress,
   selectSelectedAddressId,
-} from "../../../components/REDUX_FEATURES/REDUX_SLICES/checkoutSlice/checkoutSlice";
+} from "../../../Components/REDUX_FEATURES/REDUX_SLICES/checkoutSlice/checkoutSlice";
 import {
   MapPin, Home, Briefcase, Star, Plus,
   CheckCircle2, ChevronDown, ChevronUp, Loader2,

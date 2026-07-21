@@ -17,7 +17,7 @@ import {
   fetchAddresses, addAddress, updateAddress, deleteAddress,
   clearAddressErrors, selectDefaultAddress, selectOtherAddresses,
   selectAddressLoading, selectAddressError,
-} from "../../../components/REDUX_FEATURES/REDUX_SLICES/Useraddressslice";
+} from "../../../Components/REDUX_FEATURES/REDUX_SLICES/Useraddressslice";
 import {
   validateAddressFormStep2,
   ADDRESS_LINE1_MIN_LEN,

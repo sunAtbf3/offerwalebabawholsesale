@@ -11,14 +11,14 @@ import AuthModal from './Components/LOGIN_REGISTER_SEGMENT/AuthModal/AuthModal';
 import ActivatePage from './Components/Website_Pages/ActivatePage/ActivatePage';
 import { useGetMeQuery } from './Components/REDUX_FEATURES/REDUX_SLICES/authApi/authApi';
 import { selectIsAuthenticated } from './Components/REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
-import UserTab from "./components/ADMIN_SEGMENT/ADMIN_TABS/USER/UserTab";
-import AdminDashboard from "./components/ADMIN_SEGMENT/Admin_dashboard";
+import UserTab from "./Components/ADMIN_SEGMENT/ADMIN_TABS/USER/UserTab";
+import AdminDashboard from "./Components/ADMIN_SEGMENT/Admin_dashboard";
 import AdminLogin from './Components/ADMIN_SEGMENT/ADMIN_LOGIN_SEGMENT/AdminLogin';
 import AdminUnauthorized from './Components/ADMIN_SEGMENT/ADMIN_LOGIN_SEGMENT/AdminUnauthorized';
 import AdminPrivateRoute from './Components/ADMIN_SEGMENT/ADMIN_LOGIN_SEGMENT/AdminPrivateRoute';
-import { adminForceLogout } from './components/ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/adminAuthSlice';
+import { adminForceLogout } from "./Components/ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/adminAuthSlice";
 import { logout } from './Components/REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
-import { WHOLESALE_USER_ACCESS_TOKEN_KEY } from './SERVICES/wholesaleAxios';
+import { WHOLESALE_USER_ACCESS_TOKEN_KEY } from "./SERVICES/Wholesaleaxios";
 import './App.css';
 import ShopByPrice from './Components/HomeComponents/ShopByWHoleSalePrice/ShopByPrice';
 import  WhatsAppFloat  from './Components/WHATSAPP_FLOAT/WhatsAppFloat'

@@ -7,7 +7,7 @@ import { TAB_REGISTRY } from "./TabRegistry";
 import { ROLE_PERMISSIONS, ROLE_LABELS, ROLES } from "./roles";
 import { useNavigate } from "react-router-dom";
 import { selectAdminUser } from "./ADMIN_REDUX_MANAGEMENT/adminAuthSlice";
-import { WHOLESALE_ADMIN_ACCESS_TOKEN_KEY } from "../../SERVICES/wholesaleAxios";
+import { WHOLESALE_ADMIN_ACCESS_TOKEN_KEY } from "../../SERVICES/Wholesaleaxios";
 
 import LOGO from "../../assets/logo2.png";
 // ── Settings dashboard import (used when activeTab === "settings") ─────────

@@ -56,17 +56,17 @@ import {
   selectDefaultAddress, selectOtherAddresses,
   addAddress, selectAddressLoading, selectAddressError,
   clearAddressErrors,
-} from "../../components/REDUX_FEATURES/REDUX_SLICES/Useraddressslice";
+} from "../../Components/REDUX_FEATURES/REDUX_SLICES/Useraddressslice";
 
 // Redux — cart  (wholesale paths)
 import {
   selectCartItems, selectDisplayCartCount,
   updateCartItem, removeCartItem,
   fetchCart,
-} from "../../components/REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice";
+} from "../../Components/REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice";
 
 // Redux — auth  (wholesale paths)
-import { selectUser } from "../../components/REDUX_FEATURES/REDUX_SLICES/authApi/authSlice";
+import { selectUser } from "../../Components/REDUX_FEATURES/REDUX_SLICES/authApi/authSlice";
 
 import axiosInstance from "../../SERVICES/Wholesaleaxios"; // ← wholesale axios
 
@@ -81,7 +81,7 @@ import {
   getCartLineUnitMrp,
 } from "../../utils/checkoutPriceDisplay";
 import { formatInr as fmt } from "../../utils/formatInr";
-import SavingsBanner from "../../components/Common/SavingsBanner";
+import SavingsBanner from "../../Components/Common/SavingsBanner";
 import { AddressFormModal } from "../User_Dash_Segment/UserSubPages/UserAddress";
 import RazorpayCheckout, {
   PaymentErrorModal, PaymentLoadingModal, markRazorpaySessionClosed,
