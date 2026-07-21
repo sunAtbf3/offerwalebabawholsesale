@@ -11,7 +11,7 @@ import {
   selectWishlistItems,
   selectWishlistLoading,
   selectWishlistError,
-} from '../../../Components/REDUX_FEATURES/REDUX_SLICES/UserWishlist/userWishlistSlice';
+} from '../../../Components/REDUX_FEATURES/REDUX_SLICES/UserWIshlist/userWishlistSLice';
 
 import ProductCard from '../../../Components/ProductCard/WholesaleProductCard';
 
