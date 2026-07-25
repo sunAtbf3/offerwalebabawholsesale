@@ -67,6 +67,14 @@ export const TAB_REGISTRY = [
     badge: null,
   },
   {
+    id: "wholesaler",
+    label: "Wholesalers",
+    icon: "M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6",
+    component: WholesalerDashboard,
+    badge: null,
+    subItems: null,  // No dropdown, uses internal tabs
+  },
+  {
     id: "archived",
     label: "Archived",
     icon: "M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4",
@@ -157,14 +165,7 @@ export const TAB_REGISTRY = [
     // NOTE: no subItems here — settings sidebar is internal to SettingsDashboard
     //       so AdminDashboard won't render a dropdown for it
   },
-  {
-    id: "wholesaler",
-    label: "Wholesalers",
-    icon: "M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6",
-    component: WholesalerDashboard,
-    badge: null,
-    subItems: null,  // No dropdown, uses internal tabs
-  },
+
 
   // ── HOW TO ADD A NEW TOP-LEVEL TAB WITH SUB-TABS ────────────────────────
   // 1. Create  ADMIN_TABS/DEMO_SEGMENT/demoTabRegistry.js   (list sub-tabs)

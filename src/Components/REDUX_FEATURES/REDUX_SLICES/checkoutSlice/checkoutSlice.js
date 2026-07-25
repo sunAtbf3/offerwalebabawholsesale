@@ -66,7 +66,7 @@ export const fetchCheckoutQuote = createAsyncThunk(
     }
   },
   {
-    condition: (_, { getState }) => {
+      condition: (_, { getState }) => {
       const loadingState = getState()?.checkout?.loading;
       // Prevent duplicate quote requests while one is in-flight.
       // Never allow concurrent quotes — each create expires the previous active quote.
