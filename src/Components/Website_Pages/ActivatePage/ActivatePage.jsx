@@ -59,6 +59,47 @@ function normalizeMobile(raw) {
 }
 
 /**
+ * Build "OTP for …" label from send-otp / complete-details API delivery fields.
+ * Prefer email for now (OTP is delivered to registered email).
+ */
+function formatOtpDestination(delivery, fallbackMobile = "") {
+  const via = Array.isArray(delivery?.deliveredVia) ? delivery.deliveredVia : [];
+  const targets = delivery?.targets || {};
+  const email =
+    targets.email ||
+    delivery?.email ||
+    delivery?.request?.email ||
+    null;
+  const phone = normalizeMobile(
+    targets.sms || delivery?.mobileNumber || fallbackMobile
+  );
+
+  const wantsEmail = via.includes("email") || via.includes("EMAIL");
+  const wantsSms = via.includes("sms") || via.includes("SMS");
+
+  if (wantsEmail && wantsSms) {
+    const parts = [];
+    if (email) parts.push(email);
+    if (phone) parts.push(`+91 ${phone}`);
+    if (parts.length) return parts.join(" & ");
+  }
+  if (wantsEmail && email) return email;
+  if (wantsSms && phone) return `+91 ${phone}`;
+
+  // Soft fallback from message text
+  const msg = String(delivery?.message || "").toLowerCase();
+  if (msg.includes("email") && email) return email;
+  if ((msg.includes("phone") || msg.includes("sms") || msg.includes("mobile")) && phone) {
+    return `+91 ${phone}`;
+  }
+
+  // Default: prefer email (current OTP channel)
+  if (email) return email;
+  if (phone) return `+91 ${phone}`;
+  return "your registered email";
+}
+
+/**
  * Resolve which Activate UI stage to show from onboarding status.
  * Details-incomplete approved users always land on complete-details (not OTP first).
  */
@@ -101,8 +142,18 @@ async function resolveActivateRoute({
     }
     if (autoSendOtp && sendOtp) {
       try {
-        await sendOtp({ mobileNumber: m }).unwrap();
-        return { ok: true, stage: "otp", mobile: m, request: req, otpSent: true };
+        const otpRes = await sendOtp({ mobileNumber: m }).unwrap();
+        return {
+          ok: true,
+          stage: "otp",
+          mobile: m,
+          request: req,
+          otpSent: true,
+          otpDestination: formatOtpDestination(
+            { ...otpRes, email: otpRes?.email || req.email },
+            m
+          ),
+        };
       } catch (otpErr) {
         logError("sendActivationOtp", otpErr);
         if (otpErr?.data?.code === "WHOLESALER_DETAILS_INCOMPLETE") {
@@ -114,11 +165,25 @@ async function resolveActivateRoute({
           mobile: m,
           request: req,
           otpSent: false,
+          otpDestination: formatOtpDestination(
+            { email: req.email, mobileNumber: m },
+            m
+          ),
           otpWarning: otpErr?.data?.message || "OTP could not be sent automatically. Use Resend OTP.",
         };
       }
     }
-    return { ok: true, stage: "otp", mobile: m, request: req, otpSent: false };
+    return {
+      ok: true,
+      stage: "otp",
+      mobile: m,
+      request: req,
+      otpSent: false,
+      otpDestination: formatOtpDestination(
+        { email: req.email, mobileNumber: m },
+        m
+      ),
+    };
   }
 
   return { ok: false, error: "Unexpected onboarding state. Please contact support." };
@@ -153,7 +218,7 @@ const LookupPhase = ({ onRoute, initialMobile = "" }) => {
         toast.info("Account already activated. Please log in.");
       }
       if (routed.otpSent) {
-        toast.info("OTP sent to your registered contact!");
+        toast.info("OTP sent to your registered email!");
       } else if (routed.otpWarning) {
         toast.warning(routed.otpWarning);
       }
@@ -256,7 +321,7 @@ const StatusCard = ({ icon: Icon, title, body, tone = "amber", onBack }) => {
   );
 };
 
-const OtpPhase = ({ mobileNumber, onBack }) => {
+const OtpPhase = ({ mobileNumber, otpDestination, onBack }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [form, setForm] = useState({ otp: "", password: "", confirmPassword: "" });
@@ -265,6 +330,7 @@ const OtpPhase = ({ mobileNumber, onBack }) => {
   const [showConf, setShowConf] = useState(false);
   const [verifyOtp, { isLoading }] = useVerifyActivationOtpMutation();
   const [sendOtp, { isLoading: resending }] = useSendActivationOtpMutation();
+  const destinationLabel = otpDestination || "your registered email";
 
   const validate = () => {
     const errs = {};
@@ -285,7 +351,7 @@ const OtpPhase = ({ mobileNumber, onBack }) => {
   const handleResend = async () => {
     try {
       await sendOtp({ mobileNumber }).unwrap();
-      toast.info("OTP resent successfully.");
+      toast.info("OTP resent to your registered email.");
     } catch (err) {
       logError("sendActivationOtp.resend", err);
       if (err?.data?.code === "WHOLESALER_DETAILS_INCOMPLETE") {
@@ -361,8 +427,8 @@ const OtpPhase = ({ mobileNumber, onBack }) => {
         </div>
         <h2 className="text-2xl font-black text-[#0F172A]">Verify & Set Password</h2>
         <p className="text-sm text-slate-500 mt-2">
-          OTP for{" "}
-          <span className="font-black text-[#0F172A]">+91 {mobileNumber}</span>
+          OTP sent to{" "}
+          <span className="font-black text-[#0F172A] break-all">{destinationLabel}</span>
         </p>
       </div>
 
@@ -376,7 +442,7 @@ const OtpPhase = ({ mobileNumber, onBack }) => {
         value={form.otp}
         onChange={(e) => handleChange("otp")(e.target.value.replace(/\D/g, ""))}
         error={errors.otp}
-        hint="Check your registered email / mobile"
+        hint="Check your registered email inbox"
       />
 
       <Field
@@ -463,6 +529,8 @@ const ActivatePage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [stage, setStage] = useState("boot"); // boot | lookup | complete | otp | pending | rejected | activated
   const [mobile, setMobile] = useState("");
+  const [registeredEmail, setRegisteredEmail] = useState("");
+  const [otpDestination, setOtpDestination] = useState("");
   const [lookup] = useLazyGetWholesalerOnboardingStatusQuery();
   const [sendOtp] = useSendActivationOtpMutation();
   const bootedRef = useRef(false);
@@ -470,6 +538,15 @@ const ActivatePage = () => {
   const handleRoute = useCallback((routed) => {
     setMobile(routed.mobile);
     setStage(routed.stage);
+    const emailFromRoute =
+      routed?.request?.email ||
+      routed?.email ||
+      "";
+    if (emailFromRoute) setRegisteredEmail(emailFromRoute);
+    setOtpDestination(
+      routed.otpDestination ||
+        formatOtpDestination({ email: emailFromRoute }, routed.mobile)
+    );
     // Keep deep-link mobile in URL for refresh; sync step for shareability.
     const next = new URLSearchParams();
     next.set("mobile", routed.mobile);
@@ -507,7 +584,7 @@ const ActivatePage = () => {
           return;
         }
         if (routed.otpSent) {
-          toast.info("OTP sent to your registered contact!");
+          toast.info("OTP sent to your registered email!");
         } else if (routed.otpWarning) {
           toast.warning(routed.otpWarning);
         }
@@ -540,8 +617,18 @@ const ActivatePage = () => {
             <CompleteDetailsForm
               mobileNumber={mobile}
               onBack={() => setStage("lookup")}
-              onOtpReady={() =>
-                handleRoute({ stage: "otp", mobile, otpSent: true })
+              onOtpReady={(payload) =>
+                handleRoute({
+                  stage: "otp",
+                  mobile,
+                  otpSent: payload?.otpAlreadySent !== false,
+                  email: payload?.email || registeredEmail,
+                  request: { email: payload?.email || registeredEmail },
+                  otpDestination: formatOtpDestination(
+                    { email: payload?.email || registeredEmail },
+                    mobile
+                  ),
+                })
               }
             />
           )}
@@ -549,6 +636,7 @@ const ActivatePage = () => {
           {stage === "otp" && (
             <OtpPhase
               mobileNumber={mobile}
+              otpDestination={otpDestination}
               onBack={() => setStage("lookup")}
             />
           )}

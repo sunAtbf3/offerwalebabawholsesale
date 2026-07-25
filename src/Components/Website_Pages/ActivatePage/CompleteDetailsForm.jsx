@@ -152,11 +152,14 @@ const CompleteDetailsForm = ({ mobileNumber, onBack, onOtpReady }) => {
       const otpSent = result?.otpSent !== false;
       toast.success(
         otpSent
-          ? "Details saved. OTP sent — set your password to activate."
+          ? "Details saved. OTP sent to your email — set your password to activate."
           : "Details saved. Request OTP on the next screen if you did not receive one.",
         { autoClose: 6500 }
       );
-      onOtpReady({ otpAlreadySent: otpSent });
+      onOtpReady({
+        otpAlreadySent: otpSent,
+        email: result?.request?.email || "",
+      });
     } catch (err) {
       logError("completeWholesalerDetails", err);
       const status = err?.status;
@@ -165,7 +168,7 @@ const CompleteDetailsForm = ({ mobileNumber, onBack, onOtpReady }) => {
 
       if (status === 409 && code === "WHOLESALER_DETAILS_ALREADY_COMPLETE") {
         toast.info("Details already submitted. Continue with OTP.", { autoClose: 5000 });
-        onOtpReady({ otpAlreadySent: false });
+        onOtpReady({ otpAlreadySent: false, email: err?.data?.request?.email || "" });
         return;
       }
       if (status === 404) {
