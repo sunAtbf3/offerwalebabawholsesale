@@ -346,6 +346,8 @@ const ProductsTab = ({ onSwitchTab }) => {
     }
   };
 
+  const [showLowStockOnly, setShowLowStockOnly] = useState(false);
+
   const {
     products,
     totalProducts,
@@ -359,26 +361,34 @@ const ProductsTab = ({ onSwitchTab }) => {
     hasLoadedOnce: productsHasLoadedOnce,
     error: productsError,
   } = useSelector((s) => s.adminGetProducts);
-  const normalizedProducts = useMemo(
-    () =>
-      products.map((p) => ({
-        ...p,
-        tags: p.tags || [],
-      })),
-    [products]
-  );
 
   const {
     products: lowStockProducts,
     total: lowStockTotal,
+    page: lowStockPage,
     loading: lowStockLoading,
   } = useSelector(
     (s) =>
       s.adminGetProducts.lowStockProducts || {
         products: [],
         total: 0,
+        page: 1,
         loading: false,
       }
+  );
+
+  const currentProducts = showLowStockOnly ? lowStockProducts : products;
+  const currentTotal = showLowStockOnly ? lowStockTotal : totalProducts;
+  const pageNum = showLowStockOnly ? (lowStockPage || 1) : currentPage;
+  const totalPagesCount = showLowStockOnly ? Math.ceil(lowStockTotal / PRODUCTS_PAGE_LIMIT) : totalPages;
+
+  const normalizedProducts = useMemo(
+    () =>
+      currentProducts.map((p) => ({
+        ...p,
+        tags: p.tags || [],
+      })),
+    [currentProducts]
   );
 
   const { products: archivedProducts } = useSelector((s) => s.adminArchived);
@@ -395,7 +405,6 @@ const ProductsTab = ({ onSwitchTab }) => {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
   const [detailProduct, setDetailProduct] = useState(null);
-  const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [selectedSlugs, setSelectedSlugs] = useState(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
@@ -472,10 +481,14 @@ const ProductsTab = ({ onSwitchTab }) => {
   }, [dispatch]);
 
   useEffect(() => {
-    dispatch(
-      fetchProducts({ page: 1, limit: PRODUCTS_PAGE_LIMIT, search: debouncedSearch })
-    );
-  }, [dispatch, debouncedSearch]);
+    if (showLowStockOnly) {
+      dispatch(fetchLowStockProducts({ page: 1, limit: PRODUCTS_PAGE_LIMIT }));
+    } else {
+      dispatch(
+        fetchProducts({ page: 1, limit: PRODUCTS_PAGE_LIMIT, search: debouncedSearch })
+      );
+    }
+  }, [dispatch, debouncedSearch, showLowStockOnly]);
   const [todayIndeterminate, setTodayIndeterminate] = useState(false);
   const [saleIndeterminate, setSaleIndeterminate] = useState(false);
 
@@ -512,7 +525,7 @@ const ProductsTab = ({ onSwitchTab }) => {
 
   useEffect(() => {
     setSelectedSlugs(new Set());
-  }, [currentPage]);
+  }, [pageNum]);
 
   useEffect(() => {
     if (productsError) toast.error(`Failed to load products: ${productsError}`);
@@ -534,25 +547,33 @@ const ProductsTab = ({ onSwitchTab }) => {
   }, [deleteSuccess, dispatch]);
 
   const refreshProducts = useCallback(() => {
-    dispatch(
-      fetchProducts({
-        page: currentPage,
-        limit: PRODUCTS_PAGE_LIMIT,
-        search: debouncedSearch,
-      })
-    );
-    dispatch(fetchLowStockProducts({ page: 1, limit: 1 }));
-  }, [dispatch, currentPage, debouncedSearch]);
-
-  const handlePageChange = (newPage) => {
-    if (newPage >= 1 && newPage <= totalPages) {
+    if (showLowStockOnly) {
+      dispatch(fetchLowStockProducts({ page: pageNum, limit: PRODUCTS_PAGE_LIMIT }));
+    } else {
       dispatch(
         fetchProducts({
-          page: newPage,
+          page: pageNum,
           limit: PRODUCTS_PAGE_LIMIT,
           search: debouncedSearch,
         })
       );
+    }
+    dispatch(fetchLowStockProducts({ page: 1, limit: 1 }));
+  }, [dispatch, pageNum, debouncedSearch, showLowStockOnly]);
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPagesCount) {
+      if (showLowStockOnly) {
+        dispatch(fetchLowStockProducts({ page: newPage, limit: PRODUCTS_PAGE_LIMIT }));
+      } else {
+        dispatch(
+          fetchProducts({
+            page: newPage,
+            limit: PRODUCTS_PAGE_LIMIT,
+            search: debouncedSearch,
+          })
+        );
+      }
     }
   };
 
@@ -705,8 +726,6 @@ const ProductsTab = ({ onSwitchTab }) => {
       const matchesStatus = filterStatus === "all" || product.status === filterStatus;
       const matchesCategory =
         filterCategory === "all" || getCategoryId(product.category) === filterCategory;
-      const matchesLowStock =
-        !showLowStockOnly || lowStockProducts.some((lp) => lp._id === product._id);
 
       const range = getDateFilterRange();
       let matchesDate = true;
@@ -720,14 +739,12 @@ const ProductsTab = ({ onSwitchTab }) => {
         }
       }
 
-      return matchesStatus && matchesCategory && matchesLowStock && matchesDate;
+      return matchesStatus && matchesCategory && matchesDate;
     });
   }, [
     normalizedProducts,
     filterStatus,
     filterCategory,
-    showLowStockOnly,
-    lowStockProducts,
     getDateFilterRange,
   ]);
 
@@ -1231,18 +1248,18 @@ const ProductsTab = ({ onSwitchTab }) => {
           )}
         </div>
 
-      {totalPages > 1 && (
+      {totalPagesCount > 1 && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-500">
-              Showing {(currentPage - 1) * PRODUCTS_PAGE_LIMIT + 1}–
-              {Math.min(currentPage * PRODUCTS_PAGE_LIMIT, totalProducts)} of {totalProducts} products
+              Showing {(pageNum - 1) * PRODUCTS_PAGE_LIMIT + 1}–
+              {Math.min(pageNum * PRODUCTS_PAGE_LIMIT, currentTotal)} of {currentTotal} products
               {debouncedSearch ? ` matching "${debouncedSearch}"` : ""}
             </p>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
+                onClick={() => handlePageChange(pageNum - 1)}
+                disabled={pageNum === 1}
                 className="px-4 py-2 text-sm cursor-pointer font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1251,27 +1268,27 @@ const ProductsTab = ({ onSwitchTab }) => {
                 Previous
               </button>
               <div className="flex gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum;
-                  if (totalPages <= 5) pageNum = i + 1;
-                  else if (currentPage <= 3) pageNum = i + 1;
-                  else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
-                  else pageNum = currentPage - 2 + i;
+                {Array.from({ length: Math.min(5, totalPagesCount) }, (_, i) => {
+                  let pageBtnNum;
+                  if (totalPagesCount <= 5) pageBtnNum = i + 1;
+                  else if (pageNum <= 3) pageBtnNum = i + 1;
+                  else if (pageNum >= totalPagesCount - 2) pageBtnNum = totalPagesCount - 4 + i;
+                  else pageBtnNum = pageNum - 2 + i;
                   return (
                     <button
-                      key={pageNum}
-                      onClick={() => handlePageChange(pageNum)}
-                      className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer ${pageNum === currentPage ? "bg-blue-600 text-white" : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
+                      key={pageBtnNum}
+                      onClick={() => handlePageChange(pageBtnNum)}
+                      className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer ${pageBtnNum === pageNum ? "bg-blue-600 text-white" : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
                         }`}
                     >
-                      {pageNum}
+                      {pageBtnNum}
                     </button>
                   );
                 })}
               </div>
               <button
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
+                onClick={() => handlePageChange(pageNum + 1)}
+                disabled={pageNum === totalPagesCount}
                 className="px-4 py-2 text-sm cursor-pointer font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Next
