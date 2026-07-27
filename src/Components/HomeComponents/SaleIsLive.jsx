@@ -152,7 +152,7 @@ const SaleIsLive = () => {
               </button>
 
               {/* View All — sirf authenticated user ko */}
-              {isAuthenticated && categorySlug && (
+              {/* {isAuthenticated && categorySlug && (
                 <Link
                   to={`/category/${categorySlug}`}
                   className="flex items-center gap-2 text-xs sm:text-sm font-bold text-white uppercase tracking-widest group bg-[#F59E0B] border border-[#F59E0B] px-6 sm:px-10 py-3 sm:py-4 rounded-2xl hover:bg-[#D97706] transition-all shadow-sm"
@@ -160,7 +160,7 @@ const SaleIsLive = () => {
                   View All
                   <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                 </Link>
-              )}
+              )} */}
             </div>
           )}
 
