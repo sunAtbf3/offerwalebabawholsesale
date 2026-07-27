@@ -275,7 +275,7 @@ useEffect(() => {
               <Zap size={13} className="text-amber-500" /> Fast Enterprise Delivery
             </span>
           </div>
-          <div className="flex gap-4 xl:gap-6 items-center">
+          <div className="pr-5 flex gap-4 xl:gap-6 items-center">
             <a href="#" className="hover:text-amber-500 transition-colors hidden xl:block">Taxes &amp; Invoicing</a>
             <a href="tel:+919370686008" className="hover:text-amber-500 transition-colors text-amber-500">
               Support: +91 93706 86008

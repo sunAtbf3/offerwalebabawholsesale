@@ -11,27 +11,27 @@ import 'swiper/css/effect-fade';
 
 const HeroBanner = () => {
   const slides = [
-    {
-      id: 1,
-      tag: "Bulk Deal",
-      title: "Smartphones & Accessories",
-      image: "https://images.unsplash.com/photo-1616348436168-de43ad0db179?q=80&w=2000&auto=format&fit=crop",
-      btnText: "Shop Electronics"
-    },
-    {
-      id: 2,
-      tag: "New Arrival",
-      title: "Premium Men's Apparel",
-      image: "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?q=80&w=2000&auto=format&fit=crop",
-      btnText: "View Wholesale Fashion"
-    },
-    {
-      id: 3,
-      tag: "Clearance",
-      title: "Modern Office Furniture",
-      image: "https://images.unsplash.com/photo-1524758631624-e2822e304c36?q=80&w=2000&auto=format&fit=crop",
-      btnText: "Explore Furniture"
-    }
+    // {
+    //   id: 1,
+    //   tag: "Bulk Deal",
+    //   title: "Smartphones & Accessories",
+    //   image: "https://images.unsplash.com/photo-1616348436168-de43ad0db179?q=80&w=2000&auto=format&fit=crop",
+    //   btnText: "Shop Electronics"
+    // },
+    // {
+    //   id: 2,
+    //   tag: "New Arrival",
+    //   title: "Premium Men's Apparel",
+    //   image: "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?q=80&w=2000&auto=format&fit=crop",
+    //   btnText: "View Wholesale Fashion"
+    // },
+    // {
+    //   id: 3,
+    //   tag: "Clearance",
+    //   title: "Modern Office Furniture",
+    //   image: "https://images.unsplash.com/photo-1524758631624-e2822e304c36?q=80&w=2000&auto=format&fit=crop",
+    //   btnText: "Explore Furniture"
+    // }
   ];
 
   return (
