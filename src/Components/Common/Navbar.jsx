@@ -277,7 +277,7 @@ useEffect(() => {
               </span>
             </div>
             <div className="flex gap-4 xl:gap-6 items-center">
-              {/* <a href="#" className="hover:text-amber-500 transition-colors hidden xl:block">Taxes &amp; Invoicing</a> */}
+              { <a href="#" className="hover:text-amber-500 transition-colors hidden xl:block">Taxes &amp; Invoicing</a>}
               <a href="tel:+919370686008" className="hover:text-amber-500 transition-colors text-amber-500">
                 Support: +91 93706 86008
               </a>

@@ -12,7 +12,7 @@ const Home = () => {
 
   return (
     <div className="min-h-screen overflow-hidden">
-      <HeroBanner />
+      {/* <HeroBanner /> */}
       <TrendingProducts />
       <SaleIsLive />
       <ExploreBestsellers />
