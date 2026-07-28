@@ -170,7 +170,7 @@ const policiesData = [
       },
       {
         "heading": "Data Security",
-        "content": "We implement industry-standard SSL encryption and secure payment gateways to protect your data during transmission and storage. All payment transactions are processed through certified third-party gateways.\n\nOfferWaaleBaba does not store your credit or debit card details on our servers. Our systems are regularly audited and tested to ensure your information remains protected against unauthorized access."
+        "content": "We implement industry-standard SSL encryption and secure payment gateways to protect your data during transmission and storage. All payment transactions are processed through certified third-party gateways.\n\nOfferWaleBaba does not store your credit or debit card details on our servers. Our systems are regularly audited and tested to ensure your information remains protected against unauthorized access."
       },
       {
         "heading": "Cookies & Tracking",

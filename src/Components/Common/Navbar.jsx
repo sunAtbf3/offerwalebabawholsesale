@@ -263,23 +263,25 @@ useEffect(() => {
       <nav className="sticky top-0 w-full z-[100] font-sans shadow-sm bg-white overflow-visible">
 
         {/* ── TOP UTILITY STRIP (desktop only) ── */}
-        <div className="bg-[#0F172A] text-white/70 py-2 px-4 lg:px-6 hidden lg:flex justify-between items-center text-[11px] font-bold tracking-widest border-b border-white/5 uppercase">
-          <div className="flex gap-4 xl:gap-6 items-center">
-            <span className="flex items-center gap-2 border-r border-white/10 pr-4 xl:pr-6">
-              <ShieldCheck size={13} className="text-amber-500" /> GST Verified Portal
-            </span>
-            <span className="flex items-center gap-2 border-r border-white/10 pr-4 xl:pr-6">
-              <Package size={13} className="text-amber-500" /> Bulk Order Discounts
-            </span>
-            <span className="flex items-center gap-2">
-              <Zap size={13} className="text-amber-500" /> Fast Enterprise Delivery
-            </span>
-          </div>
-          <div className="pr-5 flex gap-4 xl:gap-6 items-center">
-            <a href="#" className="hover:text-amber-500 transition-colors hidden xl:block">Taxes &amp; Invoicing</a>
-            <a href="tel:+919370686008" className="hover:text-amber-500 transition-colors text-amber-500">
-              Support: +91 93706 86008
-            </a>
+        <div className="bg-[#0F172A] text-white/70 py-2 hidden lg:block border-b border-white/5 uppercase">
+          <div className="max-w-[1440px] mx-auto px-3 sm:px-5 lg:px-8 flex justify-between items-center text-[11px] font-bold tracking-widest">
+            <div className="flex gap-4 xl:gap-6 items-center">
+              <span className="flex items-center gap-2 border-r border-[#ffffff20] pr-4 xl:pr-6 whitespace-nowrap">
+                <ShieldCheck size={13} className="text-amber-500" /> GST Verified Portal
+              </span>
+              <span className="flex items-center gap-2 border-[#ffffff20] border-r pr-4 xl:pr-6 whitespace-nowrap">
+                <Package size={13} className="text-amber-500" /> Bulk Order Discounts
+              </span>
+              <span className="flex items-center gap-2 whitespace-nowrap">
+                <Zap size={13} className="text-amber-500" /> Fast Enterprise Delivery
+              </span>
+            </div>
+            <div className="flex gap-4 xl:gap-6 items-center">
+              {/* <a href="#" className="hover:text-amber-500 transition-colors hidden xl:block">Taxes &amp; Invoicing</a> */}
+              <a href="tel:+919370686008" className="hover:text-amber-500 transition-colors text-amber-500">
+                Support: +91 93706 86008
+              </a>
+            </div>
           </div>
         </div>
 
