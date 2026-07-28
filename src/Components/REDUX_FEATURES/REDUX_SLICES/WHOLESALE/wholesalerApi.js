@@ -80,6 +80,22 @@ export const wholesalerApi = createApi({
       }),
     }),
 
+    createRegistrationPaymentOrder: builder.mutation({
+      query: ({ mobileNumber }) => ({
+        url: "/wholesaler/activate/payment-order",
+        method: "POST",
+        body: { mobileNumber },
+      }),
+    }),
+
+    verifyRegistrationPayment: builder.mutation({
+      query: ({ mobileNumber, razorpay_order_id, razorpay_payment_id, razorpay_signature }) => ({
+        url: "/wholesaler/activate/payment-verify",
+        method: "POST",
+        body: { mobileNumber, razorpay_order_id, razorpay_payment_id, razorpay_signature },
+      }),
+    }),
+
     verifyActivationOtp: builder.mutation({
       query: ({ mobileNumber, otp, password }) => ({
         url: "/wholesaler/activate/verify",
@@ -95,5 +111,7 @@ export const {
   useCompleteWholesalerDetailsMutation,
   useLazyGetWholesalerOnboardingStatusQuery,
   useSendActivationOtpMutation,
+  useCreateRegistrationPaymentOrderMutation,
+  useVerifyRegistrationPaymentMutation,
   useVerifyActivationOtpMutation,
 } = wholesalerApi;

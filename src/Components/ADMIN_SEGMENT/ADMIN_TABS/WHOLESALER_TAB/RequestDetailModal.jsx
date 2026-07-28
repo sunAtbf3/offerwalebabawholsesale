@@ -7,7 +7,7 @@ import {
   useNotifyApplicantMutation,
 } from "../../ADMIN_REDUX_MANAGEMENT/wholesalerApi/wholesalerApi";
 
-const RequestDetailModal = ({ isOpen, onClose, request, onRequestAction }) => {
+const RequestDetailModal = ({ isOpen, onClose, request }) => {
   const [isLoadingOwner, setIsLoadingOwner] = useState(false);
   const [isLoadingApplicant, setIsLoadingApplicant] = useState(false);
   
@@ -253,6 +253,20 @@ const RequestDetailModal = ({ isOpen, onClose, request, onRequestAction }) => {
                     <div className="col-span-2">
                       <p className="font-medium text-gray-700">Last Updated:</p>
                       <p>{new Date(request.updatedAt).toLocaleString()}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-medium text-gray-700">Registration Payment:</p>
+                    <p>{String(request?.registrationPaymentStatus || "pending").replace(/_/g, " ")}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-700">Fee Amount:</p>
+                    <p>Rs. {Number(request?.registrationFeeAmount || 1200).toLocaleString()}</p>
+                  </div>
+                  {request?.registrationPaidAt && (
+                    <div className="col-span-2">
+                      <p className="font-medium text-gray-700">Payment Completed:</p>
+                      <p>{new Date(request.registrationPaidAt).toLocaleString()}</p>
                     </div>
                   )}
                 </div>

@@ -8,6 +8,7 @@ import {
   Loader2,
   CheckCircle2,
   ArrowRight,
+  IndianRupee,
   ShieldCheck,
   Clock,
   XCircle,
@@ -17,12 +18,16 @@ import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import {
   useLazyGetWholesalerOnboardingStatusQuery,
+  useCreateRegistrationPaymentOrderMutation,
   useSendActivationOtpMutation,
+  useVerifyRegistrationPaymentMutation,
   useVerifyActivationOtpMutation,
   logError,
 } from "../../REDUX_FEATURES/REDUX_SLICES/WHOLESALE/wholesalerApi";
 import { setAuthenticatedSession } from "../../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice";
 import CompleteDetailsForm from "./CompleteDetailsForm";
+import wholesaleAxios from "../../../SERVICES/Wholesaleaxios";
+import RazorpayCheckout from "../../../User_Side_Web_Interface/CHECKOUT/RazorpayCheckout/RazorpayCheckout";
 
 const Field = ({ label, icon: Icon, error, hint, rightEl, ...props }) => (
   <div className="flex flex-col gap-1.5">
@@ -101,7 +106,7 @@ function formatOtpDestination(delivery, fallbackMobile = "") {
 
 /**
  * Resolve which Activate UI stage to show from onboarding status.
- * Details-incomplete approved users always land on complete-details (not OTP first).
+ * Details-incomplete approved users always land on complete-details.
  */
 async function resolveActivateRoute({
   mobileNumber,
@@ -134,6 +139,10 @@ async function resolveActivateRoute({
   // Approved: KYC first whenever details are incomplete — ignores preferredStep=otp.
   if (req.status === "approved" && req.canCompleteDetails) {
     return { ok: true, stage: "complete", mobile: m, request: req };
+  }
+
+  if (req.status === "approved" && req.canPayRegistration) {
+    return { ok: true, stage: "payment", mobile: m, request: req };
   }
 
   if (req.status === "approved" && req.canRequestActivationOtp) {
@@ -294,7 +303,9 @@ const LookupPhase = ({ onRoute, initialMobile = "" }) => {
   );
 };
 
-const StatusCard = ({ icon: Icon, title, body, tone = "amber", onBack }) => {
+const StatusCard = (props) => {
+  const { title, body, tone = "amber", onBack } = props;
+  const StatusIcon = props.icon;
   const tones = {
     amber: "bg-amber-100 text-amber-600",
     red: "bg-red-100 text-red-600",
@@ -306,7 +317,7 @@ const StatusCard = ({ icon: Icon, title, body, tone = "amber", onBack }) => {
       <div
         className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto ${tones[tone]}`}
       >
-        <Icon size={32} />
+        <StatusIcon size={32} />
       </div>
       <h2 className="text-2xl font-black text-[#0F172A]">{title}</h2>
       <p className="text-sm text-slate-500 max-w-sm mx-auto">{body}</p>
@@ -317,6 +328,158 @@ const StatusCard = ({ icon: Icon, title, body, tone = "amber", onBack }) => {
       >
         Back
       </button>
+    </div>
+  );
+};
+
+const PaymentPhase = ({ mobileNumber, request, onBack, onPaid }) => {
+  const [createOrder, createState] = useCreateRegistrationPaymentOrderMutation();
+  const [verifyPayment, verifyState] = useVerifyRegistrationPaymentMutation();
+  const [sendOtp] = useSendActivationOtpMutation();
+  const [razorpayKey, setRazorpayKey] = useState("");
+  const [razorpayOrder, setRazorpayOrder] = useState(null);
+  const [paymentState, setPaymentState] = useState("idle");
+  const [gatewayError, setGatewayError] = useState("");
+
+  const feeAmount = Number(request?.registrationFeeAmount || 1200);
+  const fetchRazorpayKey = useCallback(async () => {
+    if (razorpayKey) return razorpayKey;
+    const res = await wholesaleAxios.get("/public/razorpay-key");
+    const keyId = res?.data?.keyId;
+    if (!keyId) throw new Error("Razorpay key is not available right now.");
+    setRazorpayKey(keyId);
+    return keyId;
+  }, [razorpayKey]);
+
+  const handleStartPayment = async () => {
+    setGatewayError("");
+    try {
+      const [orderRes] = await Promise.all([
+        createOrder({ mobileNumber }).unwrap(),
+        fetchRazorpayKey(),
+      ]);
+      if (orderRes?.alreadyPaid || !orderRes?.razorpayOrder?.id) {
+        const otpRes = await sendOtp({ mobileNumber }).unwrap();
+        onPaid?.({
+          email: request?.email || "",
+          otpDestination: formatOtpDestination({ ...otpRes, email: request?.email }, mobileNumber),
+        });
+        return;
+      }
+      setRazorpayOrder(orderRes.razorpayOrder);
+    } catch (err) {
+      logError("createRegistrationPaymentOrder", err);
+      const message = err?.data?.message || err?.message || "Could not start payment.";
+      setGatewayError(message);
+      toast.error(message);
+    }
+  };
+
+  const handleSuccess = async (response) => {
+    try {
+      await verifyPayment({
+        mobileNumber,
+        razorpay_order_id: response.razorpay_order_id,
+        razorpay_payment_id: response.razorpay_payment_id,
+        razorpay_signature: response.razorpay_signature,
+      }).unwrap();
+      const otpRes = await sendOtp({ mobileNumber }).unwrap();
+      toast.success("Payment verified. OTP sent to your registered email.");
+      onPaid?.({
+        email: request?.email || "",
+        otpDestination: formatOtpDestination({ ...otpRes, email: request?.email }, mobileNumber),
+      });
+    } catch (err) {
+      logError("verifyRegistrationPayment", err);
+      const message = err?.data?.message || "Payment verification failed. Please try again.";
+      setGatewayError(message);
+      toast.error(message);
+      setRazorpayOrder(null);
+      setPaymentState("failed");
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="text-center">
+        <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <IndianRupee size={32} className="text-amber-600" />
+        </div>
+        <h2 className="text-2xl font-black text-[#0F172A]">Registration Payment</h2>
+        <p className="text-sm text-slate-500 mt-2">
+          Pay the one-time wholesale registration fee to unlock activation.
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 space-y-2">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-slate-600">Registered mobile</span>
+          <span className="font-black text-[#0F172A]">+91 {mobileNumber}</span>
+        </div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-slate-600">Registered email</span>
+          <span className="font-black text-[#0F172A]">{request?.email || "—"}</span>
+        </div>
+        <div className="flex items-center justify-between text-base pt-2 border-t border-amber-200">
+          <span className="font-bold text-slate-700">Amount payable</span>
+          <span className="text-2xl font-black text-amber-700">Rs. {feeAmount.toLocaleString()}</span>
+        </div>
+      </div>
+
+      {gatewayError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {gatewayError}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={handleStartPayment}
+        disabled={createState.isLoading || verifyState.isLoading}
+        className="w-full py-3.5 rounded-xl bg-[#0F172A] text-white font-black text-sm uppercase tracking-wider hover:opacity-95 disabled:opacity-60 flex items-center justify-center gap-2"
+      >
+        {createState.isLoading || verifyState.isLoading ? (
+          <>
+            <Loader2 size={16} className="animate-spin" /> Processing...
+          </>
+        ) : (
+          <>
+            Pay Registration Fee <ArrowRight size={16} />
+          </>
+        )}
+      </button>
+
+      <button
+        type="button"
+        onClick={onBack}
+        className="w-full py-3.5 rounded-xl border-2 border-slate-200 font-black text-sm uppercase tracking-wider"
+      >
+        Back
+      </button>
+
+      {razorpayOrder?.id && razorpayKey && (
+        <RazorpayCheckout
+          razorpayOrder={razorpayOrder}
+          razorpayKey={razorpayKey}
+          orderId={`WHOLESALE-${mobileNumber}`}
+          totalAmount={feeAmount}
+          userEmail={request?.email || ""}
+          userName={request?.fullName || "Wholesaler"}
+          userPhone={mobileNumber}
+          paymentState={paymentState}
+          onPaymentStateChange={setPaymentState}
+          onSuccess={handleSuccess}
+          onFailure={(message) => {
+            setGatewayError(message);
+            toast.error(message);
+            setRazorpayOrder(null);
+          }}
+          onClose={() => {
+            setRazorpayOrder(null);
+            setPaymentState("cancelled");
+          }}
+        />
+      )}
     </div>
   );
 };
@@ -527,10 +690,11 @@ const OtpPhase = ({ mobileNumber, otpDestination, onBack }) => {
 const ActivatePage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [stage, setStage] = useState("boot"); // boot | lookup | complete | otp | pending | rejected | activated
+  const [stage, setStage] = useState("boot"); // boot | lookup | complete | payment | otp | pending | rejected | activated
   const [mobile, setMobile] = useState("");
   const [registeredEmail, setRegisteredEmail] = useState("");
   const [otpDestination, setOtpDestination] = useState("");
+  const [requestState, setRequestState] = useState(null);
   const [lookup] = useLazyGetWholesalerOnboardingStatusQuery();
   const [sendOtp] = useSendActivationOtpMutation();
   const bootedRef = useRef(false);
@@ -543,6 +707,7 @@ const ActivatePage = () => {
       routed?.email ||
       "";
     if (emailFromRoute) setRegisteredEmail(emailFromRoute);
+    if (routed?.request) setRequestState(routed.request);
     setOtpDestination(
       routed.otpDestination ||
         formatOtpDestination({ email: emailFromRoute }, routed.mobile)
@@ -551,6 +716,7 @@ const ActivatePage = () => {
     const next = new URLSearchParams();
     next.set("mobile", routed.mobile);
     if (routed.stage === "complete") next.set("step", "complete");
+    if (routed.stage === "payment") next.set("step", "payment");
     if (routed.stage === "otp") next.set("step", "otp");
     setSearchParams(next, { replace: true });
   }, [setSearchParams]);
@@ -563,7 +729,7 @@ const ActivatePage = () => {
     const qStep = String(searchParams.get("step") || "").toLowerCase();
 
     if (!/^\d{10}$/.test(qMobile)) {
-      setStage("lookup");
+      Promise.resolve().then(() => setStage("lookup"));
       return;
     }
 
@@ -571,7 +737,7 @@ const ActivatePage = () => {
       try {
         const routed = await resolveActivateRoute({
           mobileNumber: qMobile,
-          preferredStep: qStep === "otp" ? "otp" : "complete",
+          preferredStep: qStep === "otp" ? "otp" : qStep === "payment" ? "payment" : "complete",
           lookup,
           sendOtp,
           // Don't auto-send OTP when opening complete-details deep link.
@@ -617,17 +783,32 @@ const ActivatePage = () => {
             <CompleteDetailsForm
               mobileNumber={mobile}
               onBack={() => setStage("lookup")}
-              onOtpReady={(payload) =>
+              onContinue={(payload) =>
+                handleRoute({
+                  stage: "payment",
+                  mobile,
+                  email: payload?.email || registeredEmail,
+                  request: payload?.request || { email: payload?.email || registeredEmail },
+                })
+              }
+            />
+          )}
+
+          {stage === "payment" && (
+            <PaymentPhase
+              mobileNumber={mobile}
+              request={requestState || { email: registeredEmail }}
+              onBack={() => setStage("complete")}
+              onPaid={(payload) =>
                 handleRoute({
                   stage: "otp",
                   mobile,
-                  otpSent: payload?.otpAlreadySent !== false,
+                  otpSent: true,
                   email: payload?.email || registeredEmail,
                   request: { email: payload?.email || registeredEmail },
-                  otpDestination: formatOtpDestination(
-                    { email: payload?.email || registeredEmail },
-                    mobile
-                  ),
+                  otpDestination:
+                    payload?.otpDestination ||
+                    formatOtpDestination({ email: payload?.email || registeredEmail }, mobile),
                 })
               }
             />

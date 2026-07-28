@@ -1,9 +1,10 @@
 // ADMIN_SEGMENT/ADMIN_TABS/WHOLESALER_TAB/WholesalerDashboard.jsx
 
-import React, { useState } from "react";
+import React from "react";
 import { useSearchParams } from "react-router-dom";
 import { WHOLESALER_TAB_REGISTRY } from "./wholesalerTabRegistry";
 import RequestsListTab from "./RequestsListTab";
+import PaymentRequestsTab from "./PaymentRequestsTab";
 import { useGetWholesalerSummaryQuery } from "../../ADMIN_REDUX_MANAGEMENT/wholesalerApi/wholesalerApi";
 
 const WholesalerDashboard = () => {
@@ -34,6 +35,8 @@ const WholesalerDashboard = () => {
         return <RequestsListTab statusFilter="rejected" onRequestAction={refetchSummary} />;
       case "activated_requests":
         return <RequestsListTab statusFilter="activated" onRequestAction={refetchSummary} />;
+      case "payment_requests":
+        return <PaymentRequestsTab onRequestAction={refetchSummary} />;
       default:
         return <RequestsListTab statusFilter="" onRequestAction={refetchSummary} />;
     }

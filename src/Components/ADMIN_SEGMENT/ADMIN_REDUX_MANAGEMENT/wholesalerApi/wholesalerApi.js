@@ -39,10 +39,10 @@ export const wholesalerApi = createApi({
   endpoints: (builder) => ({
     // Get all wholesaler requests with filters
     getWholesalerRequests: builder.query({
-      query: ({ status = '', page = 1, limit = 10 }) => ({
+      query: ({ status = '', paymentStatus = '', page = 1, limit = 10 }) => ({
         url: '/admin/requests',
         method: 'GET',
-        params: { status, page, limit },
+        params: { status, paymentStatus, page, limit },
       }),
       providesTags: (result) =>
         result
@@ -77,7 +77,7 @@ export const wholesalerApi = createApi({
         url: `/admin/requests/${id}/notify-owner`,
         method: 'GET',
       }),
-      invalidatesTags: (result, error, { id }) => [{ type: 'WholesalerRequests', id: 'LIST' }],
+      invalidatesTags: () => [{ type: 'WholesalerRequests', id: 'LIST' }],
     }),
 
     // Notify applicant - returns waMeUrl (works for approved AND rejected)
@@ -86,7 +86,7 @@ export const wholesalerApi = createApi({
         url: `/admin/requests/${id}/notify-applicant`,
         method: 'GET',
       }),
-      invalidatesTags: (result, error, { id }) => [{ type: 'WholesalerRequests', id: 'LIST' }],
+      invalidatesTags: () => [{ type: 'WholesalerRequests', id: 'LIST' }],
     }),
   }),
 });

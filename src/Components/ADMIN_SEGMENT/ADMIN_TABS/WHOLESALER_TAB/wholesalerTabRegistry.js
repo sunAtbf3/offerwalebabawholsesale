@@ -26,4 +26,9 @@ export const WHOLESALER_TAB_REGISTRY = [
     label: "Activated",
     icon: "M5 13l4 4L19 7",
   },
+  {
+    id: "payment_requests",
+    label: "Payments",
+    icon: "M12 8c-2.21 0-4 .895-4 2s1.79 2 4 2 4 .895 4 2-1.79 2-4 2m0-8v8m0 0v2",
+  },
 ];

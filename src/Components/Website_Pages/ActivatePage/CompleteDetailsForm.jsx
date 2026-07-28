@@ -78,9 +78,9 @@ const FileUpload = ({ label, hint, file, onFileChange, error }) => {
 
 /**
  * Phase-2: after owner approval — business details + proofs.
- * On success backend sends activation OTP; parent advances to OTP verify.
+ * On success backend advances onboarding to the registration payment step.
  */
-const CompleteDetailsForm = ({ mobileNumber, onBack, onOtpReady }) => {
+const CompleteDetailsForm = ({ mobileNumber, onBack, onContinue }) => {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({ ...INITIAL });
   const [errors, setErrors] = useState({});
@@ -149,16 +149,13 @@ const CompleteDetailsForm = ({ mobileNumber, onBack, onOtpReady }) => {
 
     try {
       const result = await completeDetails(fd).unwrap();
-      const otpSent = result?.otpSent !== false;
       toast.success(
-        otpSent
-          ? "Details saved. OTP sent to your email — set your password to activate."
-          : "Details saved. Request OTP on the next screen if you did not receive one.",
+        result?.message || "Details saved. Complete the registration payment to continue.",
         { autoClose: 6500 }
       );
-      onOtpReady({
-        otpAlreadySent: otpSent,
+      onContinue?.({
         email: result?.request?.email || "",
+        request: result?.request || null,
       });
     } catch (err) {
       logError("completeWholesalerDetails", err);
@@ -167,8 +164,8 @@ const CompleteDetailsForm = ({ mobileNumber, onBack, onOtpReady }) => {
       const message = err?.data?.message ?? "";
 
       if (status === 409 && code === "WHOLESALER_DETAILS_ALREADY_COMPLETE") {
-        toast.info("Details already submitted. Continue with OTP.", { autoClose: 5000 });
-        onOtpReady({ otpAlreadySent: false, email: err?.data?.request?.email || "" });
+        toast.info("Details already submitted. Continue to payment.", { autoClose: 5000 });
+        onContinue?.({ email: err?.data?.request?.email || "", request: err?.data?.request || null });
         return;
       }
       if (status === 404) {
