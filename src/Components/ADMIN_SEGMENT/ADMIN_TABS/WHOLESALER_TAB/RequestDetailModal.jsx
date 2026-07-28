@@ -48,6 +48,70 @@ const RequestDetailModal = ({ isOpen, onClose, request }) => {
   };
   
   if (!isOpen) return null;
+
+  const docMedia = request?.ownerReviewMirror?.media || {};
+  const idProof = docMedia?.idProof || null;
+  const businessProof = docMedia?.businessAddressProof || null;
+
+  const renderProofCard = (label, proof) => {
+    if (!proof || proof.kind === "empty") {
+      return (
+        <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4">
+          <p className="text-sm font-medium text-gray-900">{label}</p>
+          <p className="mt-1 text-sm text-gray-500">No document provided.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
+        <div>
+          <p className="text-sm font-medium text-gray-900">{label}</p>
+          <p className="text-xs text-gray-500">{proof.label || "Uploaded document"}</p>
+        </div>
+
+        {proof.isImage && proof.openHref && (
+          <div className="overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+            <img
+              src={proof.openHref}
+              alt={label}
+              className="h-48 w-full object-contain bg-white"
+              loading="lazy"
+            />
+          </div>
+        )}
+
+        {proof.preview && (
+          <pre className="overflow-x-auto rounded-lg bg-gray-50 p-3 text-xs text-gray-600 whitespace-pre-wrap break-words">
+            {proof.preview}
+          </pre>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          {proof.openHref && (
+            <a
+              href={proof.openHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              {proof.isPdf ? "View Proof" : "Open"}
+            </a>
+          )}
+          {proof.originalHref && proof.originalHref !== proof.openHref && (
+            <a
+              href={proof.originalHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Open Original
+            </a>
+          )}
+        </div>
+      </div>
+    );
+  };
   
   const getStatusActions = () => {
     switch (request?.status) {
@@ -197,36 +261,22 @@ const RequestDetailModal = ({ isOpen, onClose, request }) => {
               </div>
               
               {/* Documents */}
-              {(request?.idProofUrl || request?.businessAddressProofUrl) && (
+              {(idProof || businessProof || request?.idProofUpload || request?.businessAddressProofUpload) && (
                 <div>
                   <h4 className="text-sm font-semibold text-gray-900 mb-3 border-b border-gray-200 pb-2">Documents</h4>
-                  <div className="space-y-3">
-                    {request?.idProofUrl && (
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">ID Proof</p>
-                        <a
-                          href={request.idProofUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-blue-600 hover:text-blue-800 underline break-all"
-                        >
-                          View Document →
-                        </a>
-                      </div>
-                    )}
-                    {request?.businessAddressProofUrl && (
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Business Address Proof</p>
-                        <a
-                          href={request.businessAddressProofUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-blue-600 hover:text-blue-800 underline break-all"
-                        >
-                          View Document →
-                        </a>
-                      </div>
-                    )}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {renderProofCard("ID Proof", idProof || {
+                      kind: request?.idProofUpload ? "url" : "empty",
+                      label: "Uploaded document",
+                      openHref: request?.idProofUpload || null,
+                      originalHref: request?.idProofUpload || null,
+                    })}
+                    {renderProofCard("Business Address Proof", businessProof || {
+                      kind: request?.businessAddressProofUpload ? "url" : "empty",
+                      label: "Uploaded document",
+                      openHref: request?.businessAddressProofUpload || null,
+                      originalHref: request?.businessAddressProofUpload || null,
+                    })}
                   </div>
                 </div>
               )}
