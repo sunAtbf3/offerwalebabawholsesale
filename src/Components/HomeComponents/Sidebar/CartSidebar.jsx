@@ -32,6 +32,23 @@ import { selectIsAuthenticated } from "../../REDUX_FEATURES/REDUX_SLICES/authApi
 import { selectDefaultAddress } from "../../REDUX_FEATURES/REDUX_SLICES/Useraddressslice";
 import { lockBodyScroll, unlockBodyScroll } from "../../../utils/lockBodyScroll";
 
+const DEFAULT_NOT_DELIVERABLE_MESSAGE = 'Delivery not available at this time. Please try again later.';
+
+function getCustomerSafeDeliveryMessage(message) {
+  const raw = String(message || '').trim();
+  if (!raw) return DEFAULT_NOT_DELIVERABLE_MESSAGE;
+  const normalized = raw.toLowerCase();
+  if (
+    /under verification|profile|kyc|not configured|warehouse|pickup pincode|pickup pin|api key|private key|public key/.test(
+      normalized
+    ) ||
+    /\bauth\b|unauthori[sz]ed|forbidden|credential|token/.test(normalized)
+  ) {
+    return DEFAULT_NOT_DELIVERABLE_MESSAGE;
+  }
+  return raw;
+}
+
 // ─── Price formatter ──────────────────────────────────────────────────────────
 const fmt = (n) => {
   if (n == null) return "—";
@@ -477,6 +494,8 @@ useEffect(() => {
 
   const isChecking = !!(checkoutLoading?.delivery) || isDeliveryLoading;
   const hasResult  = delivery?.isDeliverable !== null && !!delivery?.checkedPincode && !isEditing;
+  const safeDeliveryMessage = getCustomerSafeDeliveryMessage(delivery?.message);
+  const safeCheckoutErrorMessage = getCustomerSafeDeliveryMessage(checkoutError?.delivery?.message);
 
   // ── Spinner ─────────────────────────────────────────────────
   if (isChecking && !isEditing) {
@@ -521,7 +540,7 @@ useEffect(() => {
                     Not deliverable to {delivery.checkedPincode}
                   </p>
                   <p className="text-[10px] text-red-500 font-medium mt-0.5">
-                    {delivery.message || "We don't deliver to this pincode yet"}
+                    {safeDeliveryMessage}
                   </p>
                 </div>
               </>
@@ -536,7 +555,7 @@ useEffect(() => {
         </div>
         {checkoutError?.delivery && (
           <p className="text-[10px] text-red-500 font-bold flex items-center gap-1">
-            <XCircle size={11} /> {checkoutError.delivery.message}
+            <XCircle size={11} /> {safeCheckoutErrorMessage}
           </p>
         )}
       </div>
@@ -611,7 +630,7 @@ useEffect(() => {
 
       {checkoutError?.delivery && (
         <p className="text-[10px] text-red-500 font-bold flex items-center gap-1">
-          <XCircle size={11} /> {checkoutError.delivery.message}
+          <XCircle size={11} /> {safeCheckoutErrorMessage}
         </p>
       )}
     </div>
