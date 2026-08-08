@@ -168,6 +168,7 @@ const ShopByPrice = () => {
     reset: resetPage,
     isError: productsError,
     error: productsErrorDetail,
+    loadMoreError,
     refetch,
   } = usePaginatedFetch({
     useQuery: useGetAllProductsQuery,
@@ -184,8 +185,16 @@ const ShopByPrice = () => {
   }, [products]);
 
   const pageIsLoading = isLoading && products.length === 0;
-  const hasError      = !pageIsLoading && productsError;
+  const hasError      = !pageIsLoading && productsError && products.length === 0;
   const hasMore       = pagination?.hasNextPage ?? false;
+  const loadMoreBanner = useMemo(() => {
+    if (!loadMoreError) return null;
+    const msg = String(loadMoreError?.message || productsErrorDetail?.message || '').toLowerCase();
+    if (loadMoreError?.status === 429 || msg.includes('too many requests') || msg.includes('slow down')) {
+      return 'Too many requests — please wait a moment, then try Load More again.';
+    }
+    return loadMoreError?.message || 'Failed to load more products. Please try again.';
+  }, [loadMoreError, productsErrorDetail]);
 
   // ── Filter helpers ────────────────────────────────────────────────────────────
   const toggleFilter = useCallback((key, value) => {
@@ -571,11 +580,18 @@ const ShopByPrice = () => {
                   loadingMore={loadingMore}
                 />
 
+                {loadMoreBanner ? (
+                  <div className="mt-6 mx-auto max-w-md rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-center">
+                    <p className="text-sm text-amber-900">{loadMoreBanner}</p>
+                  </div>
+                ) : null}
+
                 {/* Load more */}
                 <div className="mt-12 sm:mt-16 lg:mt-20 text-center">
                   {hasMore ? (
                     <div className="space-y-4 sm:space-y-6">
                       <button
+                        type="button"
                         onClick={handleLoadMore}
                         disabled={loadingMore}
                         className="px-8 sm:px-10 py-2.5 sm:py-3 text-xs rounded-full bg-zinc-800 text-zinc-100 hover:bg-[#F7A221] transition-all duration-300 disabled:opacity-60"

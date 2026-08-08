@@ -1,85 +1,179 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// usePaginatedFetch.js
-// Generic pagination hook that works with RTK Query's merge strategy.
-// Replaces the old hook that relied on createAsyncThunk.
-//
-// Usage:
-//   const { data, isLoading, isFetchingMore, pagination, loadMore, reset }
-//     = usePaginatedFetch({ useQuery: useGetProductsByCategoryQuery, args: { slug }, limit: 8 })
-// ─────────────────────────────────────────────────────────────────────────────
-
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 /**
- * @param {Function} useQuery   — RTK Query hook (e.g. useGetProductsByCategoryQuery)
- * @param {object}   baseArgs   — args passed to the hook (e.g. { slug })
- * @param {number}   limit      — items per page (default 12)
- * @param {string}   dataKey    — key in the response that holds the array (default "products")
- * @param {boolean}  skip       — whether to skip the query (default false)
+ * Wholesale RTK Query pagination helper.
+ *
+ * Usage:
+ *   usePaginatedFetch({
+ *     useQuery: useGetProductsByCategoryQuery,
+ *     baseArgs: { slug },
+ *     limit: 10,
+ *     dataKey: 'products',
+ *     skip: !slug,
+ *   })
+ *
+ * - Page only advances after a successful response (no skip on 429)
+ * - Load-more lock prevents double-clicks
+ * - isFetchingMore clears when the request settles (success or error)
  */
-const usePaginatedFetch = ({ useQuery, baseArgs, limit = 12, dataKey = "products", skip = false }) => {
+export default function usePaginatedFetch({
+  useQuery,
+  baseArgs = {},
+  limit = 12,
+  dataKey = 'products',
+  skip = false,
+}) {
   const [page, setPage] = useState(1);
-  const [resetKey, setResetKey] = useState(0); // ✅ force re-mount trick
-  const isFetchingMoreRef = useRef(false);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const pageRef = useRef(1);
+  const loadMoreLockRef = useRef(false);
+  const prevBaseArgsRef = useRef(null);
+  const isMountedRef = useRef(true);
 
-  const prevArgsRef = useRef(baseArgs);
   useEffect(() => {
-    if (JSON.stringify(prevArgsRef.current) !== JSON.stringify(baseArgs)) {
-      setPage(1);
-      setResetKey((k) => k + 1); // ✅ reset cache on slug change
-      isFetchingMoreRef.current = false;
-    }
-    prevArgsRef.current = baseArgs;
-  }, [baseArgs]);
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
-  const { data: rawData, isLoading, isFetching, isError, error, refetch } = useQuery(
-    { ...baseArgs, page, limit, _resetKey: resetKey }, // ✅ resetKey args mein pass karo
-    { skip }
+  useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
+
+  const baseArgsKey = useMemo(() => JSON.stringify(baseArgs || {}), [baseArgs]);
+
+  // Reset to page 1 when filter/slug args change
+  useEffect(() => {
+    if (prevBaseArgsRef.current === null) {
+      prevBaseArgsRef.current = baseArgsKey;
+      return;
+    }
+    if (prevBaseArgsRef.current !== baseArgsKey) {
+      prevBaseArgsRef.current = baseArgsKey;
+      setPage(1);
+      pageRef.current = 1;
+      setIsFetchingMore(false);
+      loadMoreLockRef.current = false;
+    }
+  }, [baseArgsKey]);
+
+  const queryArgs = useMemo(
+    () => ({
+      ...(baseArgs || {}),
+      page,
+      limit,
+    }),
+    [baseArgs, page, limit]
   );
 
-  const data = rawData?.[dataKey] ?? [];
-  const total = rawData?.total ?? 0;
-  const currentPage = rawData?.page ?? 1;
-  const currentLimit = rawData?.limit ?? limit;
-  const totalPages = Math.ceil(total / currentLimit);
-  const hasNextPage = currentPage < totalPages;
+  const {
+    data: rawData,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useQuery(queryArgs, {
+    skip: Boolean(skip),
+    // Keep prior list visible while fetching next page
+    refetchOnMountOrArgChange: true,
+  });
 
-  const pagination = {
-    total,
-    page: currentPage,
-    limit: currentLimit,
-    totalPages,
-    hasNextPage,
-    hasPrevPage: currentPage > 1,
-  };
+  const data = useMemo(() => {
+    if (!rawData) return [];
+    const list = rawData[dataKey];
+    return Array.isArray(list) ? list : [];
+  }, [rawData, dataKey]);
 
-  const isFetchingMore = isFetching && data.length > 0 && page > 1;
+  const pagination = useMemo(() => {
+    if (!rawData) {
+      return {
+        total: 0,
+        page: 1,
+        limit,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPrevPage: false,
+      };
+    }
+    const total = Number(rawData.total) || 0;
+    const currentPage = Number(rawData.page) || page;
+    const pageLimit = Number(rawData.limit) || limit;
+    const totalPages =
+      Number(rawData.totalPages) ||
+      (pageLimit > 0 ? Math.ceil(total / pageLimit) : 0);
+    const hasNextPage =
+      rawData.hasNextPage != null
+        ? Boolean(rawData.hasNextPage)
+        : currentPage * pageLimit < total;
+
+    return {
+      total,
+      page: currentPage,
+      limit: pageLimit,
+      totalPages,
+      hasNextPage,
+      hasPrevPage: currentPage > 1,
+    };
+  }, [rawData, page, limit]);
+
+  // Clear local load-more spinner when RTK fetch settles
+  useEffect(() => {
+    if (!isFetching && isFetchingMore) {
+      setIsFetchingMore(false);
+      loadMoreLockRef.current = false;
+    }
+  }, [isFetching, isFetchingMore]);
+
+  // On error during load-more, roll page back so retry hits the same page
+  useEffect(() => {
+    if (!isError || page <= 1) return;
+    // Only roll back when this was a load-more (page advanced locally ahead of cache)
+    if (Number(rawData?.page) > 0 && Number(rawData.page) < page) {
+      setPage(Number(rawData.page));
+      pageRef.current = Number(rawData.page);
+    } else if (!rawData && page > 1) {
+      setPage(1);
+      pageRef.current = 1;
+    }
+    setIsFetchingMore(false);
+    loadMoreLockRef.current = false;
+  }, [isError, page, rawData]);
 
   const loadMore = useCallback(() => {
-    if (!hasNextPage || isFetching) return;
-    isFetchingMoreRef.current = true;
-    setPage((prev) => prev + 1);
-  }, [hasNextPage, isFetching]);
+    if (skip) return;
+    if (loadMoreLockRef.current || isFetching || isFetchingMore) return;
+    if (!pagination.hasNextPage) return;
+
+    const nextPage = pageRef.current + 1;
+    if (pagination.totalPages > 0 && nextPage > pagination.totalPages) return;
+
+    loadMoreLockRef.current = true;
+    setIsFetchingMore(true);
+    setPage(nextPage);
+    pageRef.current = nextPage;
+  }, [skip, isFetching, isFetchingMore, pagination.hasNextPage, pagination.totalPages]);
 
   const reset = useCallback(() => {
-    isFetchingMoreRef.current = false;
     setPage(1);
-    setResetKey((k) => k + 1); // ✅ yahi key change karke cache bust hoga
+    pageRef.current = 1;
+    setIsFetchingMore(false);
+    loadMoreLockRef.current = false;
   }, []);
 
   return {
     data,
-    isLoading: isLoading && data.length === 0,
-    isFetchingMore,
-    isFetching,
+    isLoading: Boolean(isLoading && data.length === 0),
+    isFetchingMore: Boolean(isFetchingMore || (isFetching && page > 1 && data.length > 0)),
     pagination,
+    page,
     loadMore,
     reset,
-    isError,
-    error,
+    resetPage: reset,
+    isError: Boolean(isError && data.length === 0),
+    error: error || null,
+    loadMoreError: Boolean(isError && data.length > 0) ? error : null,
     refetch,
   };
-};
-
-
-export default usePaginatedFetch;
+}

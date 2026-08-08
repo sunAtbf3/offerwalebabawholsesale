@@ -226,6 +226,7 @@ const CatProducts = () => {
     reset: resetPage,
     isError: productsError,
     error: productsErrorDetail,
+    loadMoreError,
     refetch,
   } = usePaginatedFetch({
     useQuery: useGetProductsByCategoryQuery,
@@ -244,9 +245,17 @@ const CatProducts = () => {
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const pageIsLoading = (isLoading || categoryLoading) && products.length === 0;
-  const hasError      = !pageIsLoading && (productsError || categoryError);
+  const hasError      = !pageIsLoading && ((productsError && products.length === 0) || (categoryError && products.length === 0));
   const hasMore       = pagination?.hasNextPage ?? false;
   const categoryName  = currentCategory?.name || slug?.replace(/-/g, " ") || "Collection";
+  const loadMoreBanner = useMemo(() => {
+    if (!loadMoreError) return null;
+    const msg = String(loadMoreError?.message || productsErrorDetail?.message || '').toLowerCase();
+    if (loadMoreError?.status === 429 || msg.includes('too many requests') || msg.includes('slow down')) {
+      return 'Too many requests — please wait a moment, then try Load More again.';
+    }
+    return loadMoreError?.message || 'Failed to load more products. Please try again.';
+  }, [loadMoreError, productsErrorDetail]);
   
   const resetToFirstPage = useCallback(() => {
   setAllProductsFetched(false);
@@ -756,10 +765,15 @@ console.log("hasMore", hasMore);
                   products={sortedProducts}
                   loadingMore={loadingMore}
                 />
+                {loadMoreBanner ? (
+                  <div className="mt-6 mx-auto max-w-md rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-center">
+                    <p className="text-sm text-amber-900">{loadMoreBanner}</p>
+                  </div>
+                ) : null}
                 <div className="mt-12 sm:mt-16 lg:mt-20 text-center">
                  {hasMore && !activeFilterCount ? (
   <div className="space-y-4 sm:space-y-6">
-    <button onClick={handleLoadMore} disabled={loadingMore}
+    <button type="button" onClick={handleLoadMore} disabled={loadingMore}
       className="px-8 sm:px-10 py-2.5 sm:py-3 text-xs bg-zinc-800 text-zinc-100 hover:bg-zinc-50 transition-all hover:text-zinc-800 border hover:border-zinc-800 duration-300 disabled:opacity-60">
       <span className="flex items-center gap-2 font-semibold uppercase tracking-widest">
         {loadingMore ? <Loader2 size={13} className="animate-spin" /> : "Load More"}
