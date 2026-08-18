@@ -8,6 +8,20 @@ import {
   getGuestCart,
 } from "../REDUX_FEATURES/REDUX_SLICES/UserCart/userCartSlice";
 import { selectIsAuthenticated } from "../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice";
+import { WHOLESALE_USER_ACCESS_TOKEN_KEY } from "../../SERVICES/Wholesaleaxios";
+import {
+  isCustomerTokenCompatible,
+  isSilentPortalScopePayload,
+} from "../../SERVICES/authPortalSession";
+
+const hasWholesaleCustomerSession = () => {
+  try {
+    const token = localStorage.getItem(WHOLESALE_USER_ACCESS_TOKEN_KEY);
+    return Boolean(token) && isCustomerTokenCompatible(token, "wholesale");
+  } catch {
+    return false;
+  }
+};
 
 const useCartInit = () => {
   const dispatch = useDispatch();
@@ -15,46 +29,31 @@ const useCartInit = () => {
 
   // ── On app boot — always load guest cart from localStorage into Redux ──────
   useEffect(() => {
-    console.log("🛒 [useCartInit] Loading guest cart from localStorage...");
     dispatch(loadGuestCart());
   }, [dispatch]);
 
   // ── If user logs out, re-load guest cart to keep UI in sync ──────────────
   useEffect(() => {
     if (isAuthenticated) return;
-    console.log("🛒 [useCartInit] User logged out — reloading guest cart...");
     dispatch(loadGuestCart());
   }, [isAuthenticated, dispatch]);
 
   // ── When login state changes ───────────────────────────────────────────────
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !hasWholesaleCustomerSession()) return;
 
     const init = async () => {
       try {
-        console.log("🛒 [useCartInit] User logged in — initializing cart...");
-
-        // Step 1 — check guest cart
         const guestItems = getGuestCart();
 
-        // Step 2 — merge guest cart into DB if items exist
         if (guestItems.length > 0) {
-          console.log(`🛒 [useCartInit] Found ${guestItems.length} guest items — merging...`);
-
-          // backend merge expects: [{ productId, variantId, quantity }]
-          // but guest cart stores productSlug — so we send what we have
-          // backend addToCart supports productSlug too via mergeCart
           await dispatch(mergeCart({ items: guestItems })).unwrap();
           dispatch(clearGuestCartItems());
-          console.log("✅ [useCartInit] Guest cart merged and cleared");
         }
 
-        // Step 3 — fetch full cart from DB
         await dispatch(fetchCart()).unwrap();
-        console.log("✅ [useCartInit] Cart fetched successfully");
-
       } catch (error) {
-        // Non-fatal — log but don't crash app
+        if (isSilentPortalScopePayload(error)) return;
         console.group("🔴 [useCartInit] ERROR during cart init");
         console.error(error);
         console.groupEnd();

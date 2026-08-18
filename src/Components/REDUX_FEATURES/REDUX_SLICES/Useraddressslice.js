@@ -1,6 +1,11 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axiosInstance from "../../../SERVICES/Wholesaleaxios";
 import { logout } from "./authApi/authSlice";
+import {
+  isScopeMismatchAxiosError,
+  isSilentPortalScopePayload,
+  thunkRejectFromAxios,
+} from "../../../SERVICES/authPortalSession";
 
 // ── Error Logger ──────────────────────────────────────────────────────────────
 const logError = (context, error, info = {}) => {
@@ -27,11 +32,8 @@ export const fetchAddresses = createAsyncThunk(
       console.log(`✅ [fetchAddresses] got ${response.data.count} addresses`);
       return response.data;
     } catch (error) {
-      logError("fetchAddresses", error);
-      return rejectWithValue({
-        message: error.response?.data?.message || "Failed to load addresses",
-        status: error.response?.status,
-      });
+      if (!isScopeMismatchAxiosError(error)) logError("fetchAddresses", error);
+      return rejectWithValue(thunkRejectFromAxios(error, "Failed to load addresses"));
     }
   }
 );
@@ -147,6 +149,10 @@ const userAddressSlice = createSlice({
       })
       .addCase(fetchAddresses.rejected, (state, action) => {
         state.loading.fetch = false;
+        if (isSilentPortalScopePayload(action.payload)) {
+          state.error.fetch = null;
+          return;
+        }
         state.error.fetch = action.payload || { message: "Failed to fetch addresses" };
         console.error("❌ [fetchAddresses] rejected:", action.payload?.message);
       })

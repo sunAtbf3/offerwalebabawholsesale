@@ -8,6 +8,20 @@ import {
   getGuestWishlistSlugs,
 } from "../REDUX_FEATURES/REDUX_SLICES/UserWIshlist/userWishlistSLice";
 import { selectIsAuthenticated } from "../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice";
+import { WHOLESALE_USER_ACCESS_TOKEN_KEY } from "../../SERVICES/Wholesaleaxios";
+import {
+  isCustomerTokenCompatible,
+  isSilentPortalScopePayload,
+} from "../../SERVICES/authPortalSession";
+
+const hasWholesaleCustomerSession = () => {
+  try {
+    const token = localStorage.getItem(WHOLESALE_USER_ACCESS_TOKEN_KEY);
+    return Boolean(token) && isCustomerTokenCompatible(token, "wholesale");
+  } catch {
+    return false;
+  }
+};
 
 const useWishlistInit = () => {
   const dispatch = useDispatch();
@@ -15,42 +29,31 @@ const useWishlistInit = () => {
 
   // ── On app boot — always load guest wishlist from localStorage into Redux ──
   useEffect(() => {
-    console.log("💛 [useWishlistInit] Loading guest wishlist from localStorage...");
     dispatch(loadGuestWishlist());
   }, [dispatch]);
 
   // ── If user logs out, re-load guest wishlist to keep UI in sync ──────
   useEffect(() => {
     if (isAuthenticated) return;
-    console.log("💛 [useWishlistInit] User logged out — reloading guest wishlist...");
     dispatch(loadGuestWishlist());
   }, [isAuthenticated, dispatch]);
 
   // ── When login state changes ──────────────────────────────────────────────
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !hasWholesaleCustomerSession()) return;
 
     const init = async () => {
       try {
-        console.log("💛 [useWishlistInit] User logged in — initializing wishlist...");
-
-        // Step 1 — check if guest had any items
         const guestSlugs = getGuestWishlistSlugs();
 
-        // Step 2 — merge guest items into DB if any exist
         if (guestSlugs.length > 0) {
-          console.log(`💛 [useWishlistInit] Found ${guestSlugs.length} guest items — merging...`);
           await dispatch(mergeWishlist({ slugs: guestSlugs })).unwrap();
-          dispatch(clearGuestItems()); // clear localStorage + state after merge
-          console.log("✅ [useWishlistInit] Guest wishlist merged and cleared");
+          dispatch(clearGuestItems());
         }
 
-        // Step 3 — fetch full wishlist from DB
         await dispatch(fetchWishlist()).unwrap();
-        console.log("✅ [useWishlistInit] Wishlist fetched successfully");
-
       } catch (error) {
-        // Non-fatal — log but don't crash app
+        if (isSilentPortalScopePayload(error)) return;
         console.group("🔴 [useWishlistInit] ERROR during wishlist init");
         console.error(error);
         console.groupEnd();

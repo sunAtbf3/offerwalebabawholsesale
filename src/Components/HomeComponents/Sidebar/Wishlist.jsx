@@ -26,6 +26,8 @@ import {
 import { selectDisplayWishlistCount } from '../../REDUX_FEATURES/REDUX_SLICES/UserWIshlist/userWishlistSLice';
 import { selectIsAuthenticated } from '../../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
 import { lockBodyScroll, unlockBodyScroll } from '../../../utils/lockBodyScroll';
+import { WHOLESALE_USER_ACCESS_TOKEN_KEY } from '../../../SERVICES/Wholesaleaxios';
+import { isCustomerTokenCompatible, isSilentPortalScopePayload } from '../../../SERVICES/authPortalSession';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -235,14 +237,20 @@ const isLoggedIn = useSelector(selectIsAuthenticated);
   const currentItems = isLoggedIn ? items : guestItems;
   const displayCount = isLoggedIn ? totalCount : guestItems.length;
 
-  // ── Fetch wishlist when sidebar opens (logged in only) ────────────────────
+  // ── Fetch wishlist when sidebar opens (wholesale customer session only) ────
   useEffect(() => {
-    if (isOpen && isLoggedIn) {
-      console.log('💛 [WishlistSidebar] opened — refreshing wishlist from DB');
+    try {
+      if (!isOpen || !isLoggedIn) return;
+      const token = localStorage.getItem(WHOLESALE_USER_ACCESS_TOKEN_KEY);
+      if (!isCustomerTokenCompatible(token, "wholesale")) return;
       dispatch(fetchWishlist())
         .unwrap()
-        .then(() => console.log('✅ [WishlistSidebar] wishlist refreshed'))
-        .catch((e) => logError('fetchWishlist on open', e));
+        .catch((e) => {
+          if (isSilentPortalScopePayload(e)) return;
+          logError("fetchWishlist on open", e);
+        });
+    } catch {
+      /* never block sidebar */
     }
   }, [isOpen, isLoggedIn, dispatch]);
 

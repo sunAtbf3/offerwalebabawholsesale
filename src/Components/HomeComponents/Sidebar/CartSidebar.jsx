@@ -31,6 +31,8 @@ import {
 import { selectIsAuthenticated } from "../../REDUX_FEATURES/REDUX_SLICES/authApi/authSlice";
 import { selectDefaultAddress } from "../../REDUX_FEATURES/REDUX_SLICES/Useraddressslice";
 import { lockBodyScroll, unlockBodyScroll } from "../../../utils/lockBodyScroll";
+import { WHOLESALE_USER_ACCESS_TOKEN_KEY } from "../../../SERVICES/Wholesaleaxios";
+import { isCustomerTokenCompatible, isSilentPortalScopePayload } from "../../../SERVICES/authPortalSession";
 
 const DEFAULT_NOT_DELIVERABLE_MESSAGE = 'Delivery not available at this time. Please try again later.';
 
@@ -696,10 +698,20 @@ const WholesaleCartSidebar = ({ isOpen, onClose, onOpenAuth }) => {
     [currentItems]
   );
 
-  // ── Fetch cart when sidebar opens ─────────────────────────────────────────
+  // ── Fetch cart when sidebar opens (wholesale customer session only) ────────
   useEffect(() => {
-    if (isOpen && isLoggedIn) {
-      dispatch(fetchCart()).unwrap().catch((e) => logError("fetchCart", e));
+    try {
+      if (!isOpen || !isLoggedIn) return;
+      const token = localStorage.getItem(WHOLESALE_USER_ACCESS_TOKEN_KEY);
+      if (!isCustomerTokenCompatible(token, "wholesale")) return;
+      dispatch(fetchCart())
+        .unwrap()
+        .catch((e) => {
+          if (isSilentPortalScopePayload(e)) return;
+          logError("fetchCart", e);
+        });
+    } catch {
+      /* never block sidebar */
     }
   }, [isOpen, isLoggedIn, dispatch]);
 

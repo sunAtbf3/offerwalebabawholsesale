@@ -23,6 +23,8 @@ import { selectDisplayWishlistCount } from '../REDUX_FEATURES/REDUX_SLICES/UserW
 import { Link, useNavigate } from 'react-router-dom';
 import SearchModal from './Search_Modal/SearchModal';
 import { fetchAddresses, selectDefaultAddress } from '../REDUX_FEATURES/REDUX_SLICES/Useraddressslice';
+import { WHOLESALE_USER_ACCESS_TOKEN_KEY } from '../../SERVICES/Wholesaleaxios';
+import { isCustomerTokenCompatible } from '../../SERVICES/authPortalSession';
 import { setLoggingOut } from '../../SERVICES/Wholesaleaxios';
 import { useGetAllCategoriesQuery } from '../REDUX_FEATURES/REDUX_SLICES/SHOP_BY_CATEGORY/categoriesApi';
 import NotificationBellIcon from './NotificationBellIcon';
@@ -213,9 +215,16 @@ useEffect(() => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  /* ── fetch addresses when authenticated ── */
+  /* ── fetch addresses when authenticated with a wholesale customer session ── */
   useEffect(() => {
-    if (isAuthenticated) dispatch(fetchAddresses());
+    try {
+      if (!isAuthenticated) return;
+      const token = localStorage.getItem(WHOLESALE_USER_ACCESS_TOKEN_KEY);
+      if (!isCustomerTokenCompatible(token, "wholesale")) return;
+      dispatch(fetchAddresses());
+    } catch {
+      /* never block navbar */
+    }
   }, [dispatch, isAuthenticated]);
 
   /* ── close notifications modal on logout ── */

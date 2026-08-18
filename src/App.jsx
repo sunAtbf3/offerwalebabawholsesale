@@ -19,6 +19,7 @@ import AdminPrivateRoute from './Components/ADMIN_SEGMENT/ADMIN_LOGIN_SEGMENT/Ad
 import { adminForceLogout } from "./Components/ADMIN_SEGMENT/ADMIN_REDUX_MANAGEMENT/adminAuthSlice";
 import { logout } from './Components/REDUX_FEATURES/REDUX_SLICES/authApi/authSlice';
 import { WHOLESALE_USER_ACCESS_TOKEN_KEY } from "./SERVICES/Wholesaleaxios";
+import { isCustomerTokenCompatible } from "./SERVICES/authPortalSession";
 import './App.css';
 import ShopByPrice from './Components/HomeComponents/ShopByWHoleSalePrice/ShopByPrice';
 import  WhatsAppFloat  from './Components/WHATSAPP_FLOAT/WhatsAppFloat'
@@ -134,7 +135,14 @@ function SessionHandler() {
     location.pathname.startsWith('/admin/login') ||
     location.pathname.startsWith('/admin/unauthorized') ||
     location.pathname.startsWith('/no-access');
-  const hasUserToken = Boolean(localStorage.getItem(WHOLESALE_USER_ACCESS_TOKEN_KEY));
+  const hasUserToken = (() => {
+    try {
+      const token = localStorage.getItem(WHOLESALE_USER_ACCESS_TOKEN_KEY);
+      return Boolean(token) && isCustomerTokenCompatible(token, "wholesale");
+    } catch {
+      return false;
+    }
+  })();
   
   const { isLoading, error } = useGetMeQuery(undefined, {
     // Only run once on mount to check existing session

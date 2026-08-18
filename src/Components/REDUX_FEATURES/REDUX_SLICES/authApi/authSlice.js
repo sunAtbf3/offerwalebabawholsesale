@@ -87,14 +87,27 @@ const authSlice = createSlice({
         state.user = payload.user || payload;
         state.error = null;
       })
-      .addMatcher(authApi.endpoints.getMe.matchRejected, (state, { error }) => {
+      .addMatcher(authApi.endpoints.getMe.matchRejected, (state, action) => {
         state.loading = false;
         state.isAuthenticated = false;
         state.user = null;
-        if (error?.status !== 401) {
-          state.error = error?.data?.message || 'Failed to fetch user';
+        const payload = action.payload;
+        const status = payload?.status;
+        const code = payload?.data?.code;
+        const isScopeDenied =
+          code === "PORTAL_ACCESS_DENIED" ||
+          code === "STOREFRONT_SCOPE_FORBIDDEN";
+        if (status === 401 || isScopeDenied) {
+          state.error = null;
+          try {
+            localStorage.removeItem(WHOLESALE_USER_ACCESS_TOKEN_KEY);
+          } catch {
+            /* ignore */
+          }
+          return;
         }
-        logError('getMe.rejected', error);
+        state.error = payload?.data?.message || "Failed to fetch user";
+        logError("getMe.rejected", action.error || payload);
       });
 
     // ── logout ─────────────────────────────────────────────────────────────
