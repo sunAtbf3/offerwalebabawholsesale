@@ -312,7 +312,9 @@ const [adminLogout, { isLoading: loggingOut }] = useAdminLogoutMutation();
       {/* which has its OWN sidebar (grouped) + content panel.                  */}
       {/* onExit navigates back to defaultTab and restores main sidebar.         */}
       {isSettingsActive ? (
-        <SettingsDashboard onExit={handleSettingsExit} />
+        <div className="min-w-0 flex-1">
+          <SettingsDashboard onExit={handleSettingsExit} />
+        </div>
       ) : (
         /* ── Main content (all non-settings tabs) ───────────────────────── */
         <main className="flex-1 overflow-y-auto">
