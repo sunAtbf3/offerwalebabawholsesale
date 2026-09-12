@@ -29,6 +29,7 @@ import SkeletonCard from "../../ProductCard/Skelleton/SkeletonCard";
 
 import { useGetAllProductsQuery } from "../../REDUX_FEATURES/REDUX_SLICES/ProductsApi/productsApi";
 import usePaginatedFetch from "../../HOOKS/usePaginatedFetch";
+import useWholesaleGuestCatalogGate from "../../HOOKS/useWholesaleGuestCatalogGate";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Column count helper
@@ -118,6 +119,7 @@ const VirtualizedProductGrid = ({ products, loadingMore }) => {
 const ShopByPrice = () => {
   const { slug } = useParams();
   const navigate  = useNavigate();
+  const { isAuthenticated, guardLoadMore } = useWholesaleGuestCatalogGate();
 
   const PRICE_FILTERS = {
     "under-299":  { maxPrice: 299  },
@@ -187,6 +189,9 @@ const ShopByPrice = () => {
   const pageIsLoading = isLoading && products.length === 0;
   const hasError      = !pageIsLoading && productsError && products.length === 0;
   const hasMore       = pagination?.hasNextPage ?? false;
+  const requestLoadMore = useCallback(() => {
+    guardLoadMore(handleLoadMore);
+  }, [guardLoadMore, handleLoadMore]);
   const loadMoreBanner = useMemo(() => {
     if (!loadMoreError) return null;
     const msg = String(loadMoreError?.message || productsErrorDetail?.message || '').toLowerCase();
@@ -592,16 +597,18 @@ const ShopByPrice = () => {
                     <div className="space-y-4 sm:space-y-6">
                       <button
                         type="button"
-                        onClick={handleLoadMore}
+                        onClick={requestLoadMore}
                         disabled={loadingMore}
                         className="px-8 sm:px-10 py-2.5 sm:py-3 text-xs rounded-full bg-zinc-800 text-zinc-100 hover:bg-[#F7A221] transition-all duration-300 disabled:opacity-60"
                       >
                         <span className="flex items-center gap-2 font-semibold uppercase tracking-widest">
-                          {loadingMore ? <Loader2 size={13} className="animate-spin" /> : "Load More"}
+                          {loadingMore ? <Loader2 size={13} className="animate-spin" /> : isAuthenticated ? "Load More" : "View More"}
                         </span>
                       </button>
                       <p className="text-[10px] text-zinc-400 uppercase tracking-widest">
-                        {products.length} / {pagination?.total || 0} loaded
+                        {isAuthenticated
+                          ? `${products.length} / ${pagination?.total || 0} loaded`
+                          : "Sign in to browse the full collection"}
                       </p>
                     </div>
                   ) : (

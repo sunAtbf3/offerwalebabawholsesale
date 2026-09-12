@@ -58,9 +58,23 @@ registerRoute(
 );
 
 function toAbsoluteAssetUrl(url) {
-  if (!url) return `${self.location.origin}/pwa-192x192.png`;
-  if (/^https?:\/\//i.test(url)) return url;
-  return new URL(url, self.location.origin).href;
+  const fallback = `${self.location.origin}/pwa-192x192.png`;
+  if (!url) return fallback;
+  try {
+    if (/^https?:\/\//i.test(url)) {
+      const parsed = new URL(url);
+      if (
+        /\/pwa-\d+x\d+\.(png|webp|jpe?g)$/i.test(parsed.pathname) ||
+        /\/favicon\.(ico|png)$/i.test(parsed.pathname)
+      ) {
+        return `${self.location.origin}${parsed.pathname}`;
+      }
+      return parsed.href;
+    }
+    return new URL(url, self.location.origin).href;
+  } catch {
+    return fallback;
+  }
 }
 
 function parsePushPayload(event) {
@@ -72,11 +86,31 @@ function parsePushPayload(event) {
   } catch {
     data = { body: event.data?.text?.() || '' };
   }
+  const imageRaw = typeof data.image === 'string' ? data.image.trim() : '';
+  let image = undefined;
+  if (imageRaw && /^https:\/\//i.test(imageRaw)) {
+    try {
+      image = new URL(imageRaw).href;
+    } catch {
+      image = undefined;
+    }
+  }
+
+  let icon = toAbsoluteAssetUrl(data.icon || '/pwa-192x192.png');
+  let badge = toAbsoluteAssetUrl(data.badge || '/pwa-192x192.png');
+  const brandFallback = `${self.location.origin}/pwa-192x192.png`;
+
+  if (image && (icon === image || badge === image)) {
+    if (icon === image) icon = brandFallback;
+    if (badge === image) badge = brandFallback;
+  }
+
   return {
     title: data.title || 'OfferWaaleBaba',
     body: data.body || '',
-    icon: toAbsoluteAssetUrl(data.icon || '/pwa-192x192.png'),
-    badge: toAbsoluteAssetUrl(data.badge || data.icon || '/pwa-192x192.png'),
+    icon,
+    badge,
+    image,
     tag: data.tag || 'offerwalebaba',
     actions: Array.isArray(data.actions) ? data.actions : undefined,
     data: data.data || { url: data.url || '/' },
@@ -94,6 +128,9 @@ self.addEventListener('push', (event) => {
     renotify: true,
     requireInteraction: true,
   };
+  if (payload.image) {
+    options.image = payload.image;
+  }
   if (payload.actions?.length) {
     options.actions = payload.actions;
   }
@@ -119,12 +156,40 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
   const resolveTargetUrl = () => {
-    const raw =
-      event.notification?.data?.url ||
-      event.notification?.data?.ctaUrl ||
-      '/';
+    const d = event.notification?.data || {};
+    const slug = typeof d.productSlug === 'string' ? d.productSlug.trim() : '';
+    if (
+      (d.type === 'back_in_stock' || d.type === 'oos-restock') &&
+      slug &&
+      !slug.includes('/') &&
+      !slug.includes('\\') &&
+      !slug.includes('..')
+    ) {
+      try {
+        if (typeof d.url === 'string' && d.url.startsWith('/product')) {
+          return new URL(d.url, self.location.origin).href;
+        }
+        const storefront = d.storefront === 'wholesale' ? 'wholesale' : 'ecomm';
+        const prefix = storefront === 'wholesale' ? '/product' : '/products';
+        return new URL(`${prefix}/${encodeURIComponent(slug)}`, self.location.origin).href;
+      } catch {
+        // fall through
+      }
+    }
+
+    const raw = d.url || d.ctaUrl || '/';
     try {
-      if (/^https?:\/\//i.test(raw)) return new URL(raw).href;
+      if (/^https?:\/\//i.test(raw)) {
+        const absolute = new URL(raw);
+        if (
+          absolute.origin !== self.location.origin &&
+          /^\/products?\//i.test(absolute.pathname)
+        ) {
+          return new URL(absolute.pathname + absolute.search + absolute.hash, self.location.origin)
+            .href;
+        }
+        return absolute.href;
+      }
       return new URL(raw, self.location.origin).href;
     } catch {
       return `${self.location.origin}/`;

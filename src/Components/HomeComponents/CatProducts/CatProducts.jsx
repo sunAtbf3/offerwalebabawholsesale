@@ -6,6 +6,7 @@ import React, {
   useCallback, useState, useRef, useMemo, useEffect,
 } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import useWholesaleGuestCatalogGate from "../../HOOKS/useWholesaleGuestCatalogGate";
 import {
   ArrowLeft, AlertCircle, RefreshCw, ChevronRight,
   Filter, X, SlidersHorizontal, Loader2, ChevronDown,
@@ -184,6 +185,7 @@ pb-4 sm:pb-6 lg:pb-10">
 const CatProducts = () => {
   const { slug }  = useParams();
   const navigate  = useNavigate();
+  const { isAuthenticated, guardLoadMore } = useWholesaleGuestCatalogGate();
 
   // ── UI state ───────────────────────────────────────────────────────────────
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -405,13 +407,20 @@ if (filters.deals.length > 0) {
     (filters.moqMax !== '' ? 1 : 0)
   ), [filters]);
 
+  const requestLoadMore = useCallback(() => {
+    guardLoadMore(handleLoadMore);
+  }, [guardLoadMore, handleLoadMore]);
+
+  // Logged-in only: filters need the full category, so keep prefetching pages.
+  // Guests stay on the first-page preview (same rule as home View All).
   useEffect(() => {
-  if (activeFilterCount === 0) return;
-  if (allProductsFetched) return;
-  if (!hasMore) { setAllProductsFetched(true); return; }
-  if (loadingMore) return;
-  handleLoadMore();
-}, [activeFilterCount, hasMore, loadingMore, allProductsFetched, handleLoadMore]);
+    if (!isAuthenticated) return;
+    if (activeFilterCount === 0) return;
+    if (allProductsFetched) return;
+    if (!hasMore) { setAllProductsFetched(true); return; }
+    if (loadingMore) return;
+    handleLoadMore();
+  }, [isAuthenticated, activeFilterCount, hasMore, loadingMore, allProductsFetched, handleLoadMore]);
 
   const handleRetry = useCallback(() => { resetPage(); refetch(); }, [resetPage, refetch]);
   console.log("products", products.length);
@@ -771,9 +780,21 @@ console.log("hasMore", hasMore);
                   </div>
                 ) : null}
                 <div className="mt-12 sm:mt-16 lg:mt-20 text-center">
-                 {hasMore && !activeFilterCount ? (
+                 {hasMore && !isAuthenticated ? (
   <div className="space-y-4 sm:space-y-6">
-    <button type="button" onClick={handleLoadMore} disabled={loadingMore}
+    <button type="button" onClick={requestLoadMore}
+      className="px-8 sm:px-10 py-2.5 sm:py-3 text-xs bg-zinc-800 text-zinc-100 hover:bg-zinc-50 transition-all hover:text-zinc-800 border hover:border-zinc-800 duration-300">
+      <span className="flex items-center gap-2 font-semibold uppercase tracking-widest">
+        View More
+      </span>
+    </button>
+    <p className="text-[10px] text-zinc-400 uppercase tracking-widest">
+      Sign in to browse the full collection
+    </p>
+  </div>
+) : hasMore && !activeFilterCount ? (
+  <div className="space-y-4 sm:space-y-6">
+    <button type="button" onClick={requestLoadMore} disabled={loadingMore}
       className="px-8 sm:px-10 py-2.5 sm:py-3 text-xs bg-zinc-800 text-zinc-100 hover:bg-zinc-50 transition-all hover:text-zinc-800 border hover:border-zinc-800 duration-300 disabled:opacity-60">
       <span className="flex items-center gap-2 font-semibold uppercase tracking-widest">
         {loadingMore ? <Loader2 size={13} className="animate-spin" /> : "Load More"}

@@ -16,6 +16,7 @@ import {
   clearProductsForTag,
   clearCurrentProduct,
 } from "../../REDUX_SLICES/ProductsApi/userProductsSlice";
+import useWholesaleGuestCatalogGate from "../../../HOOKS/useWholesaleGuestCatalogGate";
 
 const TAG_META = {
   "on-sale": { title: "On Sale", subtitle: "Best deals, handpicked for you" },
@@ -26,6 +27,7 @@ const TagProducts = () => {
   const { slug } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { isAuthenticated, guardLoadMore } = useWholesaleGuestCatalogGate();
   console.log("Tags", slug);
   
 
@@ -181,12 +183,14 @@ const TagProducts = () => {
   const handleLoadMore = () => {
     if (!hasMore) return;
 
-    dispatch(
-      setPageForTag({
-        tag: normalizedTag,
-        page: page + 1,
-      })
-    );
+    guardLoadMore(() => {
+      dispatch(
+        setPageForTag({
+          tag: normalizedTag,
+          page: page + 1,
+        })
+      );
+    });
   };
 
 return (
@@ -342,7 +346,7 @@ return (
                   onClick={handleLoadMore}
                   disabled={isFetching}
 className="px-6 sm:px-8 py-2.5 sm:py-3 bg-black text-white text-[10px] sm:text-xs uppercase tracking-widest rounded hover:opacity-90"                >
-                  {isFetching ? "Loading..." : "Load More"}
+                  {isFetching ? "Loading..." : isAuthenticated ? "Load More" : "View More"}
                 </button>
               </div>
             )}
