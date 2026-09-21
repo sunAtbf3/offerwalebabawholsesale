@@ -19,6 +19,7 @@ import AdminPendingOrderEditPanel from "./AdminPendingOrderEditPanel";
 import AdminPendingAddressPanel from "./AdminPendingAddressPanel";
 import OrderShipmentTrackingPanel from "./OrderShipmentTrackingPanel";
 import OrderPaymentSummaryCard from "./OrderPaymentSummaryCard";
+import { filterCapsForPackingViewer } from "../../roles";
 
 /** @deprecated Prefer shipmentOps.opsState — kept for legacy sync heuristics only. */
 function isPickupBookedOnOrder(ship, opsState) {
@@ -230,7 +231,9 @@ function normalizeTrackingEvents(rawEvents = []) {
       status: event?.status || "Shipment update",
       description: event?.description || null,
       location: event?.location || null,
-      timestamp: event?.timestamp || event?.at || null,
+      // Shipmozo scans use `date`/`time`; Shiprocket often uses `at`/`timestamp`
+      timestamp:
+        event?.timestamp || event?.at || event?.time || event?.date || event?.datetime || null,
     }))
     .filter((event) => event.status || event.description || event.timestamp);
 }
@@ -429,6 +432,7 @@ export default function AdminOrderDetailView({
   order,
   /** From staff GET /orders/items/:id — server-evaluated payment gate for Shiprocket */
   fulfillmentPaymentGate,
+  packingViewer = false,
   tracking,
   trackingLoading,
   trackingError,
@@ -457,7 +461,7 @@ export default function AdminOrderDetailView({
   const [schedulePickup, pickupState] = useAdminFulfillmentSchedulePickupMutation();
   const [syncShiprocket, syncShiprocketState] = useAdminFulfillmentSyncShiprocketMutation();
   const [fulfillmentManifest, manifestState] = useAdminFulfillmentManifestMutation();
-  const [, labelState] = useAdminFulfillmentShippingLabelMutation();
+  const [shippingLabel, labelState] = useAdminFulfillmentShippingLabelMutation();
   const [cancelShipment, cancelState] = useAdminFulfillmentCancelShipmentMutation();
   const [retryPickup, retryPickupState] = useAdminFulfillmentRetryPickupMutation();
   const [bulkConfirm, bulkConfirmState] = useAdminBulkApprovalConfirmMutation();
@@ -500,8 +504,8 @@ export default function AdminOrderDetailView({
 
   const orderSt = String(order?.orderStatus || "").toLowerCase();
   const shippingProviderKey = resolveShippingProviderKey(order);
-  const isShipmozo = shippingProviderKey === "shipmozo";
-  const providerName = isShipmozo ? "Shipmozo" : "Shiprocket";
+  const isShipmozoProvider = shippingProviderKey === "shipmozo";
+  const providerDisplayName = isShipmozoProvider ? "Shipmozo" : "Shiprocket";
   const paySt = String(order?.paymentStatus || "").toLowerCase();
   const moneyCaptured =
     (paySt === "paid" || paySt === "partially_paid") && Number(order?.amountPaidInr || 0) > 0.01;
@@ -515,24 +519,26 @@ export default function AdminOrderDetailView({
   const fulfillmentActionsBlocked = unpaidTerminalStatus || isRtoOrder;
   const fulfillmentBlockMessage = fulfillmentActionsBlocked
     ? isRtoOrder
-      ? `${providerName} reports: ${String(shiprocketProviderStatus || "RTO").trim()}. Forward shipment actions are not available during return-to-origin.`
+      ? `${providerDisplayName} reports: ${String(shiprocketProviderStatus || "RTO").trim()}. Forward shipment actions are not available during return-to-origin.`
       : orderSt === "cancelled"
-      ? `This order was cancelled. Ship now, pickup scheduling, shipping labels, and other ${providerName} shipment actions are not available.`
-      : `The customer did not complete payment. ${providerName} fulfilment actions are not available.`
+      ? `This order was cancelled. Ship now, pickup scheduling, shipping labels, and other ${providerDisplayName} shipment actions are not available.`
+      : `The customer did not complete payment. ${providerDisplayName} fulfilment actions are not available.`
     : null;
 
   const carrierPaymentReady = carrierFulfilmentPaymentReady(order, fulfillmentPaymentGate);
-  const canRunFulfillmentActions = !fulfillmentActionsBlocked && carrierPaymentReady;
+  const canRunFulfillmentActions =
+    !packingViewer && !fulfillmentActionsBlocked && carrierPaymentReady;
   const carrierPaymentHint =
     fulfillmentActionsBlocked
       ? null
       : fulfillmentPaymentGate && fulfillmentPaymentGate.ok === false
         ? fulfillmentPaymentGate.message
         : !carrierPaymentReady
-          ? `Waiting for customer payment (or COD rules) before ${providerName} actions.`
+          ? `Waiting for customer payment (or COD rules) before ${providerDisplayName} actions.`
           : null;
 
   useEffect(() => {
+    if (packingViewer) return;
     if (!orderId || !order || loading) return;
     const srId = order?.shipmentInfo?.shiprocketOrderId;
     if (!srId || fulfillmentActionsBlocked) return;
@@ -563,7 +569,7 @@ export default function AdminOrderDetailView({
           await refreshOrder();
           if (typeof onRefreshTracking === "function") await onRefreshTracking();
         }
-      } catch {
+      } catch (_) {
         /* ignore background sync errors */
       }
     })();
@@ -578,6 +584,7 @@ export default function AdminOrderDetailView({
     syncShiprocket,
     refreshOrder,
     onRefreshTracking,
+    packingViewer,
   ]);
 
   const fetchInvoiceObjectUrl = useCallback(async () => {
@@ -616,7 +623,7 @@ export default function AdminOrderDetailView({
         try {
           w.focus();
           w.print();
-        } catch {
+        } catch (_) {
           /* ignore */
         }
       };
@@ -715,7 +722,7 @@ export default function AdminOrderDetailView({
           const t = await e.response.data.text();
           const j = JSON.parse(t);
           if (j?.message) msg = j.message;
-        } catch {
+        } catch (_) {
           /* ignore */
         }
       } else if (e?.response?.data && typeof e.response.data === "object" && e.response.data.message) {
@@ -760,7 +767,7 @@ export default function AdminOrderDetailView({
           const t = await e.response.data.text();
           const j = JSON.parse(t);
           if (j?.message) msg = j.message;
-        } catch {
+        } catch (_) {
           /* ignore */
         }
       } else if (e?.response?.data?.message) {
@@ -774,56 +781,53 @@ export default function AdminOrderDetailView({
 
   const ship = order?.shipmentInfo || {};
   const ops = order?.shipmentOps || {};
-  const caps = ops.actionCapabilities || {};
+  const capsRaw = ops.actionCapabilities || {};
+  const caps = packingViewer ? filterCapsForPackingViewer(capsRaw) : capsRaw;
   const blockReasons = ops.blockReasons || {};
+  /** Packing viewer: label download only (no Ship now / schedule / cancel). */
+  const canPackingViewerDownloadLabel =
+    packingViewer && !fulfillmentActionsBlocked && Boolean(caps.downloadLabel);
   const riskFlags = ops.riskFlags || {};
   const externalLinks = ops.externalLinks || {};
   const hasCarrierAwb = Boolean(ship.awbCode || ship.trackingNumber);
-  const shipmozoNeedsManualPickup = isShipmozo && ship.shipmozoNeedsManualPickup === true;
-  const shipmozoAutoPickup =
-    isShipmozo && hasCarrierAwb && !shipmozoNeedsManualPickup && !caps.schedulePickup;
+  const shipmozoNeedsManualPickup = ship.shipmozoNeedsManualPickup === true;
+  /** Shipmozo default: pickup auto after Ship now — skip forced Schedule → Manifest ladder. */
+  const shipmozoAutoPickupFlow =
+    isShipmozoProvider && hasCarrierAwb && !shipmozoNeedsManualPickup && !caps.schedulePickup;
+  const showShipmozoPickupStep =
+    isShipmozoProvider && (shipmozoNeedsManualPickup || Boolean(caps.schedulePickup));
+  const showManifestStep = !isShipmozoProvider;
   const pickupAlreadyScheduled =
+    shipmozoAutoPickupFlow ||
     ops.opsState === "PICKUP_SCHEDULED" ||
     ops.opsState === "MANIFEST_READY" ||
     ops.opsState === "LABEL_READY" ||
-    ops.opsState === "IN_TRANSIT" ||
-    ops.opsState === "OUT_FOR_DELIVERY" ||
-    ops.opsState === "DELIVERED" ||
-    shipmozoAutoPickup ||
-    (ops.opsState === "LABEL_READY" && !caps.schedulePickup);
-  /** Shipmozo: skip Shiprocket-style manifest; show pickup only when manual schedule is required. */
-  const showPickupStep = !isShipmozo || shipmozoNeedsManualPickup || Boolean(caps.schedulePickup);
-  const showManifestStep = !isShipmozo;
+    (Boolean(ship.pickupScheduledAt || ship.pickupDate) && !caps.schedulePickup);
   const showOpsAlert =
     Boolean(ops.nextStepMessage) &&
     (riskFlags.pickupException || riskFlags.providerReset || riskFlags.needsManualReview);
   const isExceptionOpsState = EXCEPTION_OPS_STATES.has(ops.opsState);
   const showStandardFulfillmentSteps = !isExceptionOpsState;
   const showReshipStepOnly = ops.opsState === "PROVIDER_RESET";
-  const canCancelShipment = Boolean(
-    caps.cancelShipment &&
-      (isShipmozo
-        ? ship.shipmozoOrderId || ship.shipmentId || hasCarrierAwb
-        : ship.shiprocketOrderId)
-  );
 
   const copySupportContext = useCallback(async () => {
-    const text = isShipmozo
-      ? [
-          `Order: ${orderId || "—"}`,
-          `Shipmozo order ID: ${ship?.shipmozoOrderId || ship?.shipmentId || "—"}`,
-          `AWB: ${ship?.awbCode || ship?.trackingNumber || "—"}`,
-          `Courier: ${ship?.courier || "—"}`,
-          `Provider status: ${ship?.providerStatus || ops?.providerStatusRaw || "—"}`,
-          `Ops state: ${ops?.opsStateLabel || ops?.opsState || "—"}`,
-        ].join("\n")
-      : buildShiprocketSupportClipboardText({ orderId, ship, ops });
+    const text =
+      shippingProviderKey === "shipmozo"
+        ? [
+            `Order: ${orderId || "—"}`,
+            `Shipmozo order ID: ${ship?.shipmozoOrderId || ship?.shipmentId || "—"}`,
+            `AWB: ${ship?.awbCode || ship?.trackingNumber || "—"}`,
+            `Courier: ${ship?.courier || "—"}`,
+            `Provider status: ${ship?.providerStatus || ops?.providerStatusRaw || "—"}`,
+            `Ops state: ${ops?.opsStateLabel || ops?.opsState || "—"}`,
+          ].join("\n")
+        : buildShiprocketSupportClipboardText({ orderId, ship, ops });
     try {
       await navigator.clipboard.writeText(text);
       setActionMsg({
         type: "ok",
         surface: "ops",
-        text: `Order details copied. Paste them in ${providerName} support if needed.`,
+        text: `Order details copied. Paste them in ${providerDisplayName} support if needed.`,
       });
     } catch {
       setActionMsg({
@@ -832,12 +836,12 @@ export default function AdminOrderDetailView({
         text: "Could not copy to clipboard. Copy AWB and order ID manually.",
       });
     }
-  }, [orderId, ship, ops, isShipmozo, providerName]);
+  }, [orderId, ship, ops, shippingProviderKey, providerDisplayName]);
 
   const runCancelAndPrepareReship = useCallback(async () => {
     if (
       !window.confirm(
-        `Cancel this shipment on ${providerName} and clear old AWB data so you can Ship now again?`
+        `Cancel this shipment on ${providerDisplayName} and clear old AWB data so you can Ship now again?`
       )
     ) {
       return;
@@ -848,7 +852,9 @@ export default function AdminOrderDetailView({
       setActionMsg({
         type: "ok",
         surface: "ops",
-        text: r?.message || `Cancelled on ${providerName}. Use Ship now below to book again.`,
+        text:
+          r?.message ||
+          `Cancelled on ${providerDisplayName}. Use Ship now below to book again.`,
       });
       await refreshOrder();
     } catch (e) {
@@ -858,7 +864,7 @@ export default function AdminOrderDetailView({
         text: fulfillmentActionErrorText(e, "Cancel failed."),
       });
     }
-  }, [cancelShipment, orderId, refreshOrder, providerName]);
+  }, [cancelShipment, orderId, refreshOrder, providerDisplayName]);
 
   useEffect(() => {
     if (!orderId || !hasCarrierAwb || !ship.shiprocketOrderId) return;
@@ -871,7 +877,7 @@ export default function AdminOrderDetailView({
       try {
         await syncShiprocket(orderId).unwrap();
         if (!cancelled) await refreshOrder();
-      } catch {
+      } catch (_) {
         /* ignore background sync errors */
       }
     })();
@@ -1011,7 +1017,7 @@ export default function AdminOrderDetailView({
           status: providerNow,
           description:
             ops?.opsState === "AWB_ASSIGNED"
-              ? isShipmozo
+              ? isShipmozoProvider
                 ? shipmozoNeedsManualPickup
                   ? "Schedule pickup on Shipmozo to continue."
                   : "Download shipping label on Shipmozo."
@@ -1036,13 +1042,15 @@ export default function AdminOrderDetailView({
   const manifestIsStale = Boolean(currentAwb && ship.manifestUrl && manifestAwb !== currentAwb);
   const labelIsStale = Boolean(currentAwb && ship.labelUrl && labelAwb !== currentAwb);
   const hasManifest = Boolean(ship.manifestUrl) && !manifestIsStale;
+  // Shipmozo labels are fetched live — labelDownloaded marks admin already pulled one.
   const hasLabel =
     (Boolean(ship.labelUrl) && !labelIsStale) ||
-    (isShipmozo && Boolean(ship.labelDownloaded));
+    (isShipmozoProvider && Boolean(ship.labelDownloaded));
   const step1Done = hasCarrierAwb;
   const step2Done = pickupAlreadyScheduled;
-  const step3Done = isShipmozo ? true : hasManifest;
-  const labelStepNumber = isShipmozo && !showPickupStep ? 2 : showManifestStep ? 4 : 3;
+  const step3Done = isShipmozoProvider ? true : hasManifest;
+  const labelStepNumber =
+    isShipmozoProvider && !showShipmozoPickupStep ? 2 : showManifestStep ? 4 : 3;
   const fulfillmentFocusStep =
     primaryActionKey === "shipNow"
       ? 1
@@ -1054,7 +1062,7 @@ export default function AdminOrderDetailView({
             ? labelStepNumber
             : !step1Done
               ? 1
-              : isShipmozo && !showPickupStep
+              : isShipmozoProvider && !showShipmozoPickupStep
                 ? labelStepNumber
                 : !step2Done
                   ? 2
@@ -1137,7 +1145,7 @@ export default function AdminOrderDetailView({
               <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">Pay</span>
               {labelPaymentStatus(order.paymentStatus)}
             </span>
-            {isPendingOrder ? (
+            {isPendingOrder && !packingViewer ? (
               <>
                 <button
                   type="button"
@@ -1205,7 +1213,7 @@ export default function AdminOrderDetailView({
                 </button>
               </>
             ) : null}
-            {showInvoiceAndLogistics ? (
+            {showInvoiceAndLogistics && !packingViewer ? (
               <button
                 type="button"
                 onClick={printTaxInvoice}
@@ -1241,7 +1249,7 @@ export default function AdminOrderDetailView({
           >
             <p className="font-semibold">Settlement pending (after Ship Now)</p>
             <p className="mt-0.5 leading-relaxed text-amber-900/90">
-              OOS edit saved without refund. After Ship Now / Refresh {providerName}, bill uses actual courier shipping
+              OOS edit saved without refund. After Ship Now / Refresh {providerDisplayName}, bill uses actual courier shipping
               (held checkout ship was{" "}
               {formatInr(order.paymentInfo.oosShippingSettlement.heldDeliveryCharges)}; never zero). Excess prepaid is
               refunded; balance due / COD will not increase.
@@ -1280,7 +1288,7 @@ export default function AdminOrderDetailView({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
           {/* Left — items, logistics (not full page), tracking */}
           <div className="lg:col-span-2 space-y-4">
-            {isPendingOrder ? (
+            {isPendingOrder && !packingViewer ? (
               <AdminPendingOrderEditPanel
                 order={order}
                 orderId={orderId}
@@ -1538,12 +1546,13 @@ export default function AdminOrderDetailView({
                 <p className={`font-semibold mt-0.5 truncate ${ship.courier ? "text-slate-900" : "text-slate-400 italic"}`}>
                   {ship.courier || "Pending assignment"}
                 </p>
-                {isShipmozo && (ship.shipmozoOrderId || ship.shipmentId) ? (
+                {shippingProviderKey === "shipmozo" &&
+                (ship.shipmozoOrderId || ship.shipmentId) ? (
                   <p className="text-slate-500 mt-0.5 font-mono truncate">
                     Shipmozo ID {String(ship.shipmozoOrderId || ship.shipmentId).trim()}
                   </p>
                 ) : null}
-                {!isShipmozo && ship.shiprocketOrderId ? (
+                {shippingProviderKey !== "shipmozo" && ship.shiprocketOrderId ? (
                   <p className="text-slate-500 mt-0.5 font-mono truncate">ID {ship.shiprocketOrderId}</p>
                 ) : null}
               </div>
@@ -1628,7 +1637,7 @@ export default function AdminOrderDetailView({
                           setActionMsg({
                             type: "ok",
                             surface: "ops",
-                            text: r?.message || "Updated from Shiprocket.",
+                            text: r?.message || `Updated from ${providerDisplayName}.`,
                           });
                           await refreshOrder();
                         } catch (e) {
@@ -1641,7 +1650,7 @@ export default function AdminOrderDetailView({
                       }}
                       className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-amber-400 bg-white hover:bg-amber-100/60 disabled:opacity-50"
                     >
-                      {syncShiprocketState.isLoading ? "Syncing…" : "Refresh Shiprocket"}
+                      {syncShiprocketState.isLoading ? "Syncing…" : `Refresh ${providerDisplayName}`}
                     </button>
                   ) : null}
                   {caps.cancelShipment ? (
@@ -1705,7 +1714,12 @@ export default function AdminOrderDetailView({
                           !carrierPaymentReady ||
                           !caps.shipNow
                         }
-                        title={blockReasons.shipNow || "Create on Shiprocket (if needed) and assign courier + AWB"}
+                        title={
+                          blockReasons.shipNow ||
+                          (isShipmozoProvider
+                            ? "Assign courier + AWB on Shipmozo"
+                            : "Create on Shiprocket (if needed) and assign courier + AWB")
+                        }
                         onClick={async () => {
                           setActionMsg(null);
                           try {
@@ -1823,7 +1837,7 @@ export default function AdminOrderDetailView({
 
               {showStandardFulfillmentSteps ? (
               <>
-              {showPickupStep ? (
+              {(!isShipmozoProvider || showShipmozoPickupStep) ? (
               <FulfillmentStepCard
                 step={2}
                 focusStep={fulfillmentFocusStep}
@@ -1834,9 +1848,14 @@ export default function AdminOrderDetailView({
                 <p className="text-[11px] text-slate-500 mb-3 max-w-2xl leading-relaxed sr-only">
                   After AWB is assigned, schedule when the courier should collect the parcel.
                 </p>
-                {!pickupAlreadyScheduled && pickupUsesShiprocketRules ? (
+                {!pickupAlreadyScheduled && pickupUsesShiprocketRules && !isShipmozoProvider ? (
                   <p className="text-[11px] text-slate-500 mb-2 max-w-xl">
                     Available dates follow your Shiprocket pickup schedule.
+                  </p>
+                ) : null}
+                {isShipmozoProvider && shipmozoAutoPickupFlow ? (
+                  <p className="text-[11px] text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-2 py-1.5 mb-2 max-w-xl">
+                    Pickup is auto-scheduled on Shipmozo after Ship now. Continue with the shipping label.
                   </p>
                 ) : null}
                 {!pickupAlreadyScheduled && caps.schedulePickup && pickupCalendarRes?.scheduleRulesMessage ? (
@@ -1844,10 +1863,16 @@ export default function AdminOrderDetailView({
                     {pickupCalendarRes.scheduleRulesMessage}
                   </p>
                 ) : null}
-                {pickupAlreadyScheduled ? (
+                {pickupAlreadyScheduled && !isShipmozoProvider ? (
                   <p className="text-[11px] text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-2 py-1.5 mb-2 max-w-xl">
                     Pickup booked on Shiprocket
                     {ship.pickupDate ? ` for ${ship.pickupDate}` : ""}. Continue with Step 3 below.
+                  </p>
+                ) : null}
+                {pickupAlreadyScheduled && isShipmozoProvider ? (
+                  <p className="text-[11px] text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-2 py-1.5 mb-2 max-w-xl">
+                    Pickup booked on Shipmozo
+                    {ship.pickupDate ? ` for ${ship.pickupDate}` : ""}. Download the shipping label next.
                   </p>
                 ) : null}
                 {!pickupAlreadyScheduled ? (
@@ -1921,14 +1946,17 @@ export default function AdminOrderDetailView({
                       Courier pickup day
                     </p>
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      When the courier collects parcels (Shiprocket → Pickups → &quot;For …&quot; date).
+                      When the courier collects parcels
+                      {isShipmozoProvider
+                        ? " (Shipmozo pickup)."
+                        : ' (Shiprocket → Pickups → "For …" date).'}
                     </p>
                     <p className="text-sm font-semibold text-slate-900 mt-1">
                       {ship.pickupDate || "—"}
                     </p>
                     {!ship.pickupDate && pickupAlreadyScheduled ? (
                       <p className="text-[10px] text-amber-700 mt-1">
-                        Not in our DB yet — confirm on Shiprocket panel, then click Refresh from Shiprocket.
+                        Not in our DB yet — confirm on {providerDisplayName} panel, then click Refresh.
                       </p>
                     ) : null}
                   </div>
@@ -1942,13 +1970,22 @@ export default function AdminOrderDetailView({
                         (ship.manifestUrl ? "Yes (manifest on file)" : "—")}
                     </p>
                     {shiprocketMirrorStatus ? (
-                      <p className="text-[10px] text-slate-500 mt-1">Shiprocket status: {shiprocketMirrorStatus}</p>
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        {providerDisplayName} status: {shiprocketMirrorStatus}
+                      </p>
                     ) : null}
                   </div>
                 </div>
                 <button
                   type="button"
-                  disabled={fulfillmentBusy || !carrierPaymentReady || !ship.shiprocketOrderId || !caps.syncShiprocket}
+                  disabled={
+                    fulfillmentBusy ||
+                    !carrierPaymentReady ||
+                    !(isShipmozoProvider
+                      ? ship.shipmozoOrderId || ship.shipmentId || hasCarrierAwb
+                      : ship.shiprocketOrderId) ||
+                    !caps.syncShiprocket
+                  }
                   title={blockReasons.syncShiprocket}
                   onClick={async () => {
                     setActionMsg(null);
@@ -1957,7 +1994,7 @@ export default function AdminOrderDetailView({
                       setActionMsg({
                         type: "ok",
                         surface: "pickup",
-                        text: r?.message || "Updated from Shiprocket.",
+                        text: r?.message || `Updated from ${providerDisplayName}.`,
                       });
                       await refreshOrder();
                     } catch (e) {
@@ -1970,7 +2007,7 @@ export default function AdminOrderDetailView({
                   }}
                   className="mt-2 px-2.5 py-1 text-[11px] font-semibold border border-slate-200 rounded-lg bg-white hover:bg-slate-50 disabled:opacity-50"
                 >
-                  {syncShiprocketState.isLoading ? "Syncing…" : "Refresh from Shiprocket"}
+                  {syncShiprocketState.isLoading ? "Syncing…" : `Refresh from ${providerDisplayName}`}
                 </button>
                 </>
                 ) : null}
@@ -1982,10 +2019,10 @@ export default function AdminOrderDetailView({
                 ) : null}
                 <FulfillmentStatusBanner
                   msg={actionMsg?.surface === "pickup" ? actionMsg : null}
-                  providerLabel={providerName}
+                  providerLabel={providerDisplayName}
                 />
               </FulfillmentStepCard>
-              ) : isShipmozo && shipmozoAutoPickup ? (
+              ) : isShipmozoProvider && shipmozoAutoPickupFlow ? (
                 <div className="rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2.5 text-[11px] text-blue-900">
                   Pickup auto-scheduled on Shipmozo after courier assign. No separate schedule or manifest step —
                   download the shipping label next.
@@ -2108,7 +2145,7 @@ export default function AdminOrderDetailView({
                 ) : null}
                 <FulfillmentStatusBanner
                   msg={actionMsg?.surface === "manifest" ? actionMsg : null}
-                  providerLabel={providerName}
+                  providerLabel={providerDisplayName}
                 />
               </FulfillmentStepCard>
               ) : null}
@@ -2116,24 +2153,24 @@ export default function AdminOrderDetailView({
               <FulfillmentStepCard
                 step={labelStepNumber}
                 focusStep={fulfillmentFocusStep}
-                done={hasLabel && (isShipmozo ? step1Done : step3Done)}
+                done={hasLabel && (isShipmozoProvider ? step1Done : step3Done)}
                 title={`Step ${labelStepNumber} · Shipping label`}
                 heading="Shipping label"
                 id="admin-shipping-label-step"
                 isLast
               >
                 <p className="text-[11px] text-slate-500 mb-2 max-w-xl leading-relaxed sr-only">
-                  Courier AWB label from {providerName} (parcel sticker). Not your GST tax invoice — use Print invoice
+                  Courier AWB label from {providerDisplayName} (parcel sticker). Not your GST tax invoice — use Print invoice
                   in the order header.
                 </p>
-                {hasLabel && !step3Done && !isShipmozo ? (
+                {hasLabel && !step3Done && !isShipmozoProvider ? (
                   <p className="text-[10px] font-semibold text-blue-700 mb-2">
                     Label downloaded on Shiprocket — available after manifest step if needed again.
                   </p>
                 ) : null}
                 {fulfillmentFocusStep === labelStepNumber && caps.downloadLabel ? (
                   <p className="text-xs font-semibold text-indigo-900 mb-2">
-                    Next on {providerName}: download shipping label.
+                    Next on {providerDisplayName}: download shipping label.
                   </p>
                 ) : null}
                 <div className="flex flex-wrap items-center gap-2">
@@ -2167,14 +2204,14 @@ export default function AdminOrderDetailView({
                   >
                     {labelDownloadBusy
                       ? "Downloading…"
-                      : isShipmozo
+                      : isShipmozoProvider
                         ? "Download label"
                         : "Download label (PDF)"}
                   </button>
                 </div>
                 <FulfillmentStatusBanner
                   msg={actionMsg?.surface === "label" ? actionMsg : null}
-                  providerLabel={providerName}
+                  providerLabel={providerDisplayName}
                 />
               </FulfillmentStepCard>
 
@@ -2194,7 +2231,9 @@ export default function AdminOrderDetailView({
                       </span>
                     </summary>
                     <ul className="mt-2 space-y-1 text-xs text-slate-600 border-t border-slate-200 pt-2">
-                      {showPickupStep && fulfillmentFocusStep < 2 && !step2Done ? (
+                      {(!isShipmozoProvider || showShipmozoPickupStep) &&
+                      fulfillmentFocusStep < 2 &&
+                      !step2Done ? (
                         <li className="flex justify-between gap-2">
                           <span>2 · Schedule pickup</span>
                           <span className="italic text-slate-400">Locked</span>
@@ -2207,7 +2246,7 @@ export default function AdminOrderDetailView({
                         </li>
                       ) : null}
                       {fulfillmentFocusStep < labelStepNumber &&
-                      !(hasLabel && (isShipmozo ? step1Done : step3Done)) ? (
+                      !(hasLabel && (isShipmozoProvider ? step1Done : step3Done)) ? (
                         <li className="flex justify-between gap-2">
                           <span>{labelStepNumber} · Shipping label</span>
                           <span className="italic text-slate-400">Locked</span>
@@ -2218,13 +2257,19 @@ export default function AdminOrderDetailView({
                 ) : null}
                 <button
                   type="button"
-                  disabled={fulfillmentBusy || !canCancelShipment}
+                  disabled={
+                    fulfillmentBusy ||
+                    !(isShipmozoProvider
+                      ? ship.shipmozoOrderId || ship.shipmentId || hasCarrierAwb
+                      : ship.shiprocketOrderId) ||
+                    !caps.cancelShipment
+                  }
                   onClick={() => {
                     void runCancelAndPrepareReship();
                   }}
                   className="px-2.5 py-1.5 text-[11px] font-semibold border border-red-200 text-red-700 rounded-md bg-white hover:bg-red-50 disabled:opacity-50"
                 >
-                  {cancelState.isLoading ? "Working…" : `Cancel on ${providerName}`}
+                  {cancelState.isLoading ? "Working…" : `Cancel on ${providerDisplayName}`}
                 </button>
               </div>
               </>
@@ -2259,7 +2304,7 @@ export default function AdminOrderDetailView({
             <AdminPendingAddressPanel
               order={order}
               orderId={orderId}
-              disabled={fulfillmentBusy}
+              disabled={fulfillmentBusy || packingViewer}
               onApplied={async () => {
                 setActionMsg({ type: "ok", text: "Delivery address updated on this order." });
                 await refreshOrder();

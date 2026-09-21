@@ -14,6 +14,7 @@ import {
   useGetAdminPickupCalendarQuery,
 } from "../../ADMIN_REDUX_MANAGEMENT/order_management/adminOrdersApi";
 import wholesaleAxios from "../../../../SERVICES/Wholesaleaxios";
+import { filterCapsForPackingViewer } from "../../roles";
 
 const ACTION_LABELS = {
   accept: "Accept",
@@ -119,6 +120,7 @@ async function downloadBlobFromGet(url, defaultFilename) {
     const m = /filename\*?=(?:UTF-8''|"?)([^";\n]+)/i.exec(dispo);
     if (m && m[1]) filename = decodeURIComponent(m[1].replace(/"/g, "").trim());
   }
+  // Shipmozo labels are PNG; never keep a .pdf extension on an image body.
   if (/^image\//i.test(ct) && /\.pdf$/i.test(filename)) {
     const ext = /jpeg|jpg/i.test(ct) ? "jpg" : /webp/i.test(ct) ? "webp" : "png";
     filename = filename.replace(/\.pdf$/i, `.${ext}`);
@@ -290,13 +292,24 @@ async function executeAction(key, ctx) {
 /**
  * Per-row fulfillment actions (list view) — driven by backend shipment ops capabilities.
  */
-export default function AdminOrderRowActions({ order, onOpenDetail, onFeedback }) {
+export default function AdminOrderRowActions({ order, onOpenDetail, onFeedback, packingViewer = false }) {
   const orderId = order?.orderId;
-  const caps = order?.actionCapabilities || {};
+  const capsRaw = order?.actionCapabilities || {};
+  const caps = packingViewer ? filterCapsForPackingViewer(capsRaw) : capsRaw;
   const blockReasons = order?.blockReasons || {};
   const externalLinks = order?.externalLinks || {};
-  const primaryKey = order?.primaryAction || "openDetail";
-  const primaryLabel = order?.primaryActionLabel || ACTION_LABELS[primaryKey] || "Open";
+  const primaryKeyRaw = order?.primaryAction || "openDetail";
+  const primaryKey = packingViewer
+    ? caps.downloadLabel
+      ? "downloadLabel"
+      : "openDetail"
+    : primaryKeyRaw;
+  const primaryLabel =
+    packingViewer && primaryKey === "downloadLabel"
+      ? "Download label"
+      : packingViewer
+        ? "Open order"
+        : order?.primaryActionLabel || ACTION_LABELS[primaryKey] || "Open";
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
